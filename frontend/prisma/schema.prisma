@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Deployment {
+  id              String   @id @default(cuid())
+  assistantName   String   @default("Yell")
+
+  status          String   @default("pending") // pending | provisioning | configuring | ready | failed
+  configToken     String   @unique            // one-time token for instance to fetch config
+  configFetched   Boolean  @default(false)    // true after EC2 instance fetches config (single-use enforcement)
+  telegramBotToken String? // legacy local dev column kept to avoid destructive db reset
+  whatsappPhoneNumberId String?
+  whatsappToken         String?
+  whatsappProvider      String   @default("kapso") // kapso | meta
+
+  aiProvider      String   @default("anthropic") // anthropic | openai | google
+  aiApiKeyEnc     String?                    // encrypted or env ref; we store hashed/ref for MVP
+
+  instanceId      String?  // AWS EC2 instance id
+  region          String?
+  gatewayUrl      String?  // optional: Tailscale or public URL when ready
+  localPath       String?
+  phoneNumber     String?
+  runtimePid      Int?
+
+  errorMessage    String?  // if status === failed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  logs           DeploymentLog[]
+}
+
+model DeploymentLog {
+  id           String     @id @default(cuid())
+  deploymentId String
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  message      String
+  createdAt    DateTime   @default(now())
+}

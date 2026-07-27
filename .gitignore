@@ -1,0 +1,22 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+node_modules/
+.next/
+.DS_Store
+*.log
+.runtime/
+frontend/.runtime/
+frontend/prisma/dev.db
+.idea/
+.vscode/
+
+# Local Netlify folder
+.netlify
