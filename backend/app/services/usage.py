@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
-from app.models.database import async_session
+from app.models.database import async_session, ensure_tables
 from app.models.user import User, UserUsage
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ class UsageService:
 
     async def get_or_create_user(self, phone_number: str, name: str = "") -> User:
         """Fetch an existing user or create a new one."""
+        await ensure_tables()
         async with async_session() as session:
             result = await session.execute(
                 select(User).where(User.phone_number == phone_number)

@@ -35,31 +35,42 @@ class Settings(BaseSettings):
     WHATSAPP_TOKEN: str = ""
     WHATSAPP_VERIFY_TOKEN: str = "yellai-verify-token"
     WHATSAPP_PHONE_NUMBER_ID: str = ""
+    WHATSAPP_DISPLAY_NUMBER: str = "12057820175"
 
     # Gemini
     GEMINI_API_KEY: str = ""
+
+    # Composio (for 1-tap OAuth connectors: Gmail, Calendar, Notion, GitHub, etc.)
+    COMPOSIO_API_KEY: str = ""
+    COMPOSIO_BASE_URL: str = "https://backend.composio.dev/api/v1"
 
     # Redis
     REDIS_URL: str = DEFAULT_REDIS_URL
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./test.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:////tmp/yellai.db"
 
     # Razorpay
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
 
-    # Usage limits
-    FREE_DAILY_LIMIT: int = 10
+    # Usage limits (India mass-market: generous free tier supported by contextual ads)
+    FREE_DAILY_LIMIT: int = 25
     PAID_DAILY_LIMIT: int = 1000
+    ADS_ENABLED: bool = True
 
-    # Pricing
-    MONTHLY_PRICE_PAISE: int = 90000  # INR 900
+    # Pricing (₹199/mo or ₹900/mo configurable; default ₹199 = 19900 paise for India mass adoption)
+    MONTHLY_PRICE_PAISE: int = 19900  # INR 199
 
     # Production Hardening
-    ADMIN_API_KEY: str = "supersecretadmin123" # Change in production
-    CORS_ALLOWED_ORIGINS: str = "*" # Comma-separated list
-    APP_URL: str = "https://api.yellai.in" # Your production domain
+    ADMIN_API_KEY: str = "supersecretadmin123"  # Change in production
+    CORS_ALLOWED_ORIGINS: str = "*"  # Comma-separated list
+    APP_URL: str = "https://api.yell.nhancio.com"
+    FRONTEND_URL: str = "https://yell.nhancio.com"
+    APP_FRONTEND_URL: str = "https://yellapp.nhancio.com"
+
+    # Firebase Phone Auth (Yell App login)
+    FIREBASE_PROJECT_ID: str = "yell-ai-nhancio"
     RATE_LIMIT_PER_MINUTE: int = 60
 
 

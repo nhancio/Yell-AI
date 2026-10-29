@@ -214,5 +214,6 @@ class WhatsAppService:
                 logger.error(
                     "WhatsApp API error %s: %s", resp.status_code, resp.text
                 )
-            resp.raise_for_status()
+            if resp.status_code not in (200, 201):
+                return {"error": resp.text, "status_code": resp.status_code}
             return resp.json()

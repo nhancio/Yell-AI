@@ -20,3 +20,7 @@ frontend/prisma/dev.db
 
 # Local Netlify folder
 .netlify
+
+frontend/out/
+frontend/out-app/
+.firebase/

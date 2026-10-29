@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Yell AI — Deploy your WhatsApp AI assistant",
+  title: "Yell AI — India's Personal AI Super-Agent on WhatsApp",
   description:
-    "Deploy a NanoClaw-powered assistant, scan the WhatsApp QR code, and start chatting in minutes.",
+    "Connect Gmail, Google Calendar, Notion, GitHub & LinkedIn once via Composio. Do everything inside WhatsApp.",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased min-h-screen font-sans">
+      <body className="antialiased min-h-screen font-sans bg-[#070b14] text-slate-100">
         {children}
       </body>
     </html>

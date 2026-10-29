@@ -1,7 +1,8 @@
-"""Agent orchestration — emotion → intent → task routing."""
+"""Agent orchestration — emotion → intent → Composio connector check → task routing."""
 
 import logging
 from dataclasses import dataclass
+from typing import Optional
 
 from app.agents.emotion import EmotionAgent
 from app.agents.intent import IntentAgent
@@ -19,18 +20,25 @@ class AgentResult:
     task_response: str | None
     full_response: str
     is_crisis: bool = False
+    required_toolkit: Optional[str] = None
 
 
 class AgentOrchestrator:
-    """Runs the full pipeline: emotion → intent → task agent."""
+    """Runs the full pipeline: emotion → intent → task agent + Composio toolkit detection."""
 
     def __init__(self, gemini: GeminiService) -> None:
         self.emotion_agent = EmotionAgent(gemini)
         self.intent_agent = IntentAgent(gemini)
         self.task_router = TaskAgentRouter(gemini)
 
-    async def process(self, message: str, history: list[dict] | None = None) -> AgentResult:
+    async def process(
+        self,
+        message: str,
+        history: list[dict] | None = None,
+        connected_apps: list[str] | None = None,
+    ) -> AgentResult:
         history = history or []
+        connected_apps = connected_apps or []
 
         # Step 1 — Emotion detection + empathetic response
         emotion_result = await self.emotion_agent.detect_and_respond(message, history)
@@ -67,24 +75,28 @@ class AgentOrchestrator:
 
         # Step 2 — Intent classification
         intent_result = await self.intent_agent.classify(message, emotion_result["emotion"])
-        logger.info("Intent: %s", intent_result["intent"])
+        intent = intent_result["intent"]
+        required_toolkit = intent_result.get("required_toolkit")
+        logger.info("Intent: %s | required_toolkit: %s", intent, required_toolkit)
 
         # Step 3 — Route to task agent
         task_response = await self.task_router.route(
-            intent=intent_result["intent"],
+            intent=intent,
             details=intent_result.get("details", {}),
             context=message,
             emotion=emotion_result["emotion"],
             history=history,
+            connected_apps=connected_apps,
         )
 
         # Combine empathy + task into a single WhatsApp-friendly response
-        full_response = f"{emotion_result['empathy_response']}\n\n{task_response}"
+        full_response = f"{emotion_result['empathy_response']}\n\n{task_response}".strip()
 
         return AgentResult(
             emotion=emotion_result["emotion"],
-            intent=intent_result["intent"],
+            intent=intent,
             empathy_response=emotion_result["empathy_response"],
             task_response=task_response,
             full_response=full_response,
+            required_toolkit=required_toolkit,
         )

@@ -11,8 +11,11 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Configure the SDK once at module level
-genai.configure(api_key=settings.GEMINI_API_KEY)
+if settings.GEMINI_API_KEY:
+    try:
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+    except Exception as exc:
+        logger.warning("Gemini configure warning: %s", exc)
 
 FALLBACK_RESPONSE = (
     "I'm here for you, but I'm having a moment. Try again in a bit?"
@@ -22,17 +25,25 @@ FALLBACK_RESPONSE = (
 class GeminiService:
     """Thin wrapper around Gemini 2.0 Flash for text generation."""
 
-    MODEL_NAME = "gemini-2.0-flash"
+    MODEL_NAME = "gemini-2.5-flash"
 
     def __init__(self) -> None:
-        self.model = genai.GenerativeModel(
-            model_name=self.MODEL_NAME,
-            generation_config=genai.GenerationConfig(
-                temperature=0.7,
-                top_p=0.95,
-                max_output_tokens=1024,
-            ),
-        )
+        self._model = None
+
+    @property
+    def model(self):
+        if self._model is None:
+            if settings.GEMINI_API_KEY:
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+            self._model = genai.GenerativeModel(
+                model_name=self.MODEL_NAME,
+                generation_config=genai.GenerationConfig(
+                    temperature=0.7,
+                    top_p=0.95,
+                    max_output_tokens=1024,
+                ),
+            )
+        return self._model
 
     async def generate_response(
         self,
@@ -40,22 +51,9 @@ class GeminiService:
         user_message: str,
         history: Optional[list[dict[str, str]]] = None,
     ) -> str:
-        """Call Gemini and return the generated text.
-
-        Args:
-            system_prompt: Instructions that set agent behaviour.
-            user_message: The latest message from the user.
-            history: Optional prior conversation turns as
-                     [{"role": "user"/"model", "parts": [text]}, ...].
-
-        Returns:
-            Generated text, or a friendly fallback on failure.
-        """
+        """Call Gemini and return the generated text."""
         try:
-            # Build the chat-style content list
             contents: list[dict[str, Any]] = []
-
-            # Prior turns
             if history:
                 for turn in history:
                     contents.append(
@@ -64,8 +62,6 @@ class GeminiService:
                             "parts": [{"text": turn.get("content", "")}],
                         }
                     )
-
-            # Current user message
             contents.append({"role": "user", "parts": [{"text": user_message}]})
 
             response = self.model.generate_content(
@@ -91,16 +87,11 @@ class GeminiService:
         user_message: str,
         history: Optional[list[dict[str, str]]] = None,
     ) -> dict[str, Any]:
-        """Call Gemini expecting a JSON response. Parses and returns dict.
-
-        Falls back to an empty dict on parse failure.
-        """
+        """Call Gemini expecting a JSON response. Parses and returns dict."""
         raw = await self.generate_response(system_prompt, user_message, history)
 
-        # Strip markdown code fences if Gemini wraps the JSON
         cleaned = raw.strip()
         if cleaned.startswith("```"):
-            # Remove opening fence (possibly ```json)
             first_newline = cleaned.index("\n") if "\n" in cleaned else 3
             cleaned = cleaned[first_newline + 1 :]
         if cleaned.endswith("```"):

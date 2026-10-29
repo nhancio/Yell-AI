@@ -1,0 +1,41 @@
+{
+  "hosting": {
+    "public": "frontend/out",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "yell-ai-api",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/webhook{,/**}",
+        "run": {
+          "serviceId": "yell-ai-api",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/payment/**",
+        "run": {
+          "serviceId": "yell-ai-api",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/health",
+        "run": {
+          "serviceId": "yell-ai-api",
+          "region": "asia-south1"
+        }
+      }
+    ]
+  }
+}
