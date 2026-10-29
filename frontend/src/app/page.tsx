@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ContactChannels from "@/components/ContactChannels";
 import { useState } from "react";
 
 const WHATSAPP_NUMBER = "12057820175";
@@ -47,7 +48,7 @@ export default function HomePage() {
 
   const cleanPhone = phone.replace(/\D/g, "");
   const fullPhone = cleanPhone.length === 10 ? "91" + cleanPhone : cleanPhone;
-  const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi Yell AI! Let's connect my apps 🇮🇳")}`;
+  const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi Yell! Let's connect my apps")}`;
   const connectUrl = APP_URL;
 
   return (
@@ -401,6 +402,12 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+
+      <section id="contact" className="py-16 px-4 border-t border-white/10">
+        <div className="max-w-3xl mx-auto">
+          <ContactChannels />
+        </div>
+      </section>
 
       <footer className="border-t border-white/10 py-8 px-4 text-center text-xs text-slate-500">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">

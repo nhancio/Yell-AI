@@ -10,6 +10,8 @@ import {
   signOut,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import ContactChannels from "@/components/ContactChannels";
+import { CHANNELS, GREETING } from "@/lib/channels";
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 const LANDING_URL = "https://yell.nhancio.com";
@@ -222,9 +224,7 @@ function Dashboard({ user }: { user: User }) {
     }
   }
 
-  const waLink = me
-    ? `https://wa.me/${me.whatsapp_number}?text=${encodeURIComponent("Hi Yell AI! 👋")}`
-    : "#";
+  const waLink = `https://wa.me/${CHANNELS.whatsapp}?text=${encodeURIComponent(GREETING)}`;
   const connectedCount = me?.connections.filter((c) => c.status === "active").length ?? 0;
   const pct = me ? Math.min(100, Math.round((me.usage.used_today / Math.max(1, me.usage.daily_limit)) * 100)) : 0;
 
@@ -322,6 +322,8 @@ function Dashboard({ user }: { user: User }) {
             {!me && !error && Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-40 rounded-2xl bg-slate-900/60 animate-pulse" />)}
           </div>
         </section>
+
+        <ContactChannels subtitle="Text Yell from any of these — same assistant, same connected apps." />
       </main>
     </div>
   );
