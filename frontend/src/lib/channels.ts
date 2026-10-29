@@ -2,7 +2,6 @@
 export const CHANNELS = {
   whatsapp: process.env.NEXT_PUBLIC_YELL_WHATSAPP || "12057820175", // digits only, with country code
   messages: process.env.NEXT_PUBLIC_YELL_MESSAGES || "", // iMessage / RCS / SMS number, digits only
-  email: process.env.NEXT_PUBLIC_YELL_EMAIL || "",
 };
 
 export function formatPhone(digits: string): string {
