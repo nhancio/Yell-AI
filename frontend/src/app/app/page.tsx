@@ -118,7 +118,7 @@ function Login() {
           {step === "phone" ? (
             <form onSubmit={sendOtp} className="mt-6 space-y-4">
               <div className="flex items-center bg-black/60 border border-white/15 rounded-xl px-4 py-3 focus-within:border-emerald-400/60">
-                <span className="text-slate-400 font-semibold text-sm mr-2">🇮🇳 +91</span>
+                <span className="text-slate-400 font-semibold text-sm mr-2 whitespace-nowrap shrink-0">🇮🇳 +91</span>
                 <input
                   type="tel"
                   inputMode="numeric"
