@@ -1,4 +1,0 @@
-/api/* https://yell-ai-nhancio.web.app/api/:splat 200!
-/webhook https://yell-ai-nhancio.web.app/webhook 200!
-/payment/* https://yell-ai-nhancio.web.app/payment/:splat 200!
-/health https://yell-ai-nhancio.web.app/health 200!

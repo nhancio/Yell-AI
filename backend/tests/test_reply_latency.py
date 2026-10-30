@@ -42,8 +42,11 @@ class TypingIndicatorTests(unittest.IsolatedAsyncioTestCase):
         service = WhatsAppService()
         indicator = getattr(service, "send_typing_indicator", None)
         self.assertIsNotNone(indicator, "Native typing feedback is missing")
-        with patch.object(service, "_post", AsyncMock(side_effect=asyncio.TimeoutError)):
-            self.assertFalse(await indicator("wamid.inbound"))
+        async def stalled_post(*args, **kwargs):
+            await asyncio.Event().wait()
+
+        with patch.object(service, "_post", side_effect=stalled_post):
+            self.assertFalse(await asyncio.wait_for(indicator("wamid.inbound"), timeout=3))
 
     async def test_typing_precedes_database_work_and_duplicate_does_not_repeat_it(self):
         events = []
@@ -146,7 +149,12 @@ class AsyncGeminiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, "Astra response")
 
     async def test_generation_timeout_returns_fallback(self):
+        async def stalled_generation(*args, **kwargs):
+            await asyncio.Event().wait()
+
         model = SimpleNamespace(generate_content=lambda contents: SimpleNamespace(text="unbounded"),
-                                generate_content_async=AsyncMock(side_effect=asyncio.TimeoutError))
-        with patch.object(GeminiService, "_get_model", return_value=model):
-            self.assertEqual(await GeminiService().generate_response("system", "hello"), FALLBACK_RESPONSE)
+                                generate_content_async=stalled_generation)
+        with patch.object(GeminiService, "_get_model", return_value=model), \
+             patch.object(GeminiService, "REQUEST_TIMEOUT_SECONDS", 0.01):
+            self.assertEqual(await asyncio.wait_for(
+                GeminiService().generate_response("system", "hello"), timeout=0.5), FALLBACK_RESPONSE)
