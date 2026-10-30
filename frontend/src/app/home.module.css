@@ -913,34 +913,6 @@
   align-items: center;
   gap: 7px;
 }
-.recordingDot {
-  background: #c77264;
-  width: 6px;
-  height: 6px;
-  border-radius: 100%;
-}
-.waveform {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  height: 90px;
-  margin-top: 15px;
-  overflow: hidden;
-}
-.waveform i {
-  display: block;
-  background: #287a52;
-  width: 3px;
-  border-radius: 5px;
-  flex-shrink: 0;
-}
-.voiceTime {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  color: #868d85;
-}
 .voiceCard > p {
   font-family: Exposure, Georgia, serif;
   font-size: 24px;
@@ -1986,14 +1958,6 @@
   .voiceCard {
     padding: 23px 20px;
     max-width: 310px;
-  }
-  .waveform {
-    height: 70px;
-    margin-top: 10px;
-    gap: 2px;
-  }
-  .waveform i {
-    width: 3px;
   }
   .voiceCard > p {
     font-size: 22px;

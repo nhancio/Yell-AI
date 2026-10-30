@@ -1,0 +1,11 @@
+# Astra AI
+
+> Astra is a personal AI assistant you text on WhatsApp, built for India. It drafts emails and messages, plans your day, compares options and answers questions in English, Hindi, Hinglish, Telugu or Tamil.
+
+- Website: https://tryastra.web.app
+- How to start: tap Get Started, sign in with your WhatsApp number, then text Astra on WhatsApp. No app download.
+- Plans: Bharat Free (15 AI tasks/day, with sponsored perks), Astra Pro ₹99/month (80 tasks/day), Astra Business ₹999/month (1,000 tasks/day).
+- Astra gives ready-to-use drafts and plans. With Gmail, Google Calendar, Todoist or Google Tasks linked, it can send an email or add an event or task after showing a preview and waiting for the user's YES.
+- Comparison of AI assistants on WhatsApp in India: https://tryastra.web.app/whatsapp-ai-assistants
+- Privacy policy: https://tryastra.web.app/privacy
+- Data deletion: https://tryastra.web.app/data-deletion

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FAQS } from "@/lib/faq";
 import { useEffect, useRef, useState } from "react";
 import { User, onAuthStateChanged } from "firebase/auth";
 import QRCode from "qrcode";
@@ -13,39 +14,22 @@ const whatsapp = (text = "Hi Astra!") =>
 const WA_LINK = whatsapp();
 const asset = (name: string) => `/poke/${name}`;
 const apps = [
-  ["Strava", "stravaapp.webp"],
-  ["Canva", "canvaapp.webp"],
   ["Gmail", "gmailapp.webp"],
   ["Google Calendar", "googlecalendarapp.webp"],
-  ["GitHub", "githubapp.webp"],
-  ["Granola", "granolaapp.webp"],
-  ["Asana", "asanaapp.webp"],
-  ["Sonos", "sonosapp.webp"],
   ["Notion", "notionapp.webp"],
-  ["Linear", "linearapp.webp"],
   ["Todoist", "todoistapp.webp"],
-  ["Vercel", "vercel.png"],
-  ["Ramp", "rampapp.webp"],
-  ["Webflow", "webflow.png"],
-  ["Devin", "devin.svg"],
-  ["Mercury", "mercuryapp.webp"],
-  ["Cursor", "cursor.png"],
-  ["Fitbit", "fitbit.svg"],
-  ["Sentry", "sentry.png"],
-  ["Oura", "ourapp.webp"],
-  ["Supabase", "supabase.png"],
-  ["Philips Hue", "hueapp.webp"],
-  ["Netlify", "netlify.png"],
   ["Outlook", "outlookapp.webp"],
+  ["GitHub", "githubapp.webp"],
+  ["Strava", "stravaapp.webp"],
 ];
 const recipes = [
   {
     name: "Executive assistant",
     icon: "googlecalendarapp.webp",
     title: "A little less admin. A lot more life.",
-    description: "Your inbox, calendar, and to-do list. All in one text.",
+    description: "Emails, plans, and to-do lists. All in one text.",
     prompt:
-      "Bhai, kal subah 11 baje Rahul ke saath Google Meet lagao aur uska last mail summarize karo.",
+      "Bhai, Rahul ko kal subah 11 baje Google Meet ke liye ek short mail draft karo.",
   },
   {
     name: "Founder outreach",
@@ -53,46 +37,46 @@ const recipes = [
     title: "Your next opportunity, one text away.",
     description: "Make the right connections, with a little help.",
     prompt:
-      "Find funded AI startups in Bengaluru hiring full-stack engineers and draft an intro from my GitHub.",
+      "Draft a short intro to a Bengaluru AI startup founder. I'm a full-stack engineer who has shipped two React apps.",
   },
   {
     name: "Everyday life",
     icon: "gmailapp.webp",
-    title: "All the little things, taken care of.",
-    description: "Inbox triage, action items, and everything in between.",
+    title: "All the little things, a little easier.",
+    description: "Quick replies, checklists, and everything in between.",
     prompt:
-      "Summarize my unread emails from today and turn the action items into a Notion checklist.",
+      "Turn this into a checklist I can paste into Notion: pay rent, call the plumber, buy milk, book the dentist.",
   },
 ];
 const conversationIdeas = [
   [
     "A calmer morning",
-    "Give me a quick morning briefing: today's meetings, important emails, and anything I should know before I head out.",
+    "Help me plan today: three meetings, a deck due at 5, and the gym. What should I do first?",
     "googlecalendarapp.webp",
   ],
   [
     "An inbox that feels lighter",
-    "Summarize my unread emails and draft a reply to the ones that need my attention.",
+    "Draft a polite reply saying I can't make Friday's call but Monday at 11 works.",
     "gmailapp.webp",
   ],
   [
     "Room for your next big idea",
-    "Save this voice note to Notion and turn it into a tidy list of next steps. I'll come back to it after lunch.",
+    "Turn these rough notes into a tidy list of next steps: launch page, pricing, find 10 beta users.",
     "notionapp.webp",
   ],
   [
     "A little help getting there",
-    "Find my flight itinerary in Gmail and remind me to leave for the airport on time.",
+    "My flight leaves Bengaluru at 7 AM. What time should I leave home, and what should I pack?",
     "gmailapp.webp",
   ],
   [
     "Your next chapter",
-    "Help me write a short introduction to a startup founder using the projects on my GitHub.",
+    "Help me write a short intro to a startup founder about my two projects: a budgeting app and a Telugu chatbot.",
     "githubapp.webp",
   ],
   [
     "The everyday, sorted",
-    "Add up this month's food and grocery receipts. How much did I spend on Swiggy and Blinkit?",
+    "I spent ₹4,200 on Swiggy and ₹3,100 on Blinkit this month. How can I cut that by a third?",
     "googlecalendarapp.webp",
   ],
 ];
@@ -156,7 +140,7 @@ function Phone() {
     <div
       className={styles.phone}
       role="img"
-      aria-label="Example WhatsApp conversation with Astra AI about scheduling a meeting and organizing your day"
+      aria-label="Example WhatsApp conversation with Astra AI drafting a meeting email"
     >
       <div className={styles.phoneScreen}>
         <div className={styles.statusBar}>
@@ -187,15 +171,15 @@ function Phone() {
           <span className={styles.chatDate}>Today 9:41 AM</span>
           <p className={styles.incoming}>morning! ready for the day?</p>
           <p className={styles.outgoing}>
-            Bhai, schedule a Meet with Rahul for 11 tomorrow
+            Bhai, draft a mail to Rahul for a Meet at 11 tomorrow
           </p>
           <p className={styles.incoming}>
-            done boss! invite sent, Meet link included
+            here you go 👇 <b>Subject:</b> Quick sync tomorrow at 11?
           </p>
           <p className={styles.incoming}>
-            btw I summarized your 3 unread threads &amp; saved the notes to Notion ✨
+            copy, paste, send ✨ want a shorter version too?
           </p>
-          <p className={styles.outgoing}>you remembered 😭</p>
+          <p className={styles.outgoing}>perfect, thanks 😭</p>
           <p className={styles.incoming}>that&apos;s what I&apos;m here for</p>
           <span className={styles.typing}>
             <i />
@@ -462,7 +446,7 @@ export default function HomePage() {
             your new favorite contact
           </h1>
           <p className={styles.heroSubtitle}>
-            Proactive, personal, and right in your WhatsApp
+            Your personal AI assistant, right in your WhatsApp
           </p>
           <div className={styles.heroActions}>
             <a
@@ -540,7 +524,7 @@ export default function HomePage() {
             className={styles.iconMarquees}
             aria-label="Connected apps and services"
           >
-            {[apps.slice(0, 12), apps.slice(12)].map((row, rowIndex) => (
+            {[apps.slice(0, 4), apps.slice(4)].map((row, rowIndex) => (
               <div className={styles.iconRow} key={rowIndex}>
                 <div
                   className={`${styles.iconTrack} ${rowIndex === 1 ? styles.reverseTrack : ""}`}
@@ -625,8 +609,8 @@ export default function HomePage() {
                 with Astra Recipes
               </h2>
               <p>
-                Set up your integrations, make everyday tasks automatic, and
-                find a little more time for yourself.
+                Pick a recipe, send it on WhatsApp, and get a ready-to-use
+                draft back in seconds.
               </p>
               <p className={styles.recipeTitle} aria-live="polite">
                 {recipes[activeRecipe].title}
@@ -648,43 +632,28 @@ export default function HomePage() {
           >
             <div className={`${styles.featureVisual} ${styles.scheduleVisual}`}>
               <div className={styles.voiceCard}>
-                <span className={styles.voiceLabel}>
-                  <span className={styles.recordingDot} /> Voice message
-                </span>
-                <div className={styles.waveform} aria-hidden="true">
-                  {Array.from({ length: 44 }, (_, i) => (
-                    <i
-                      key={i}
-                      style={{ height: `${10 + ((i * 19 + 7) % 49)}px` }}
-                    />
-                  ))}
-                </div>
-                <div className={styles.voiceTime}>
-                  <span>0:00</span>
-                  <span>0:12</span>
-                </div>
+                <span className={styles.voiceLabel}>Message</span>
                 <p>
-                  “Remind me to call Amma
+                  “Kal plan karo: 10 baje standup,
                   <br />
-                  tomorrow at 6.”
+                  2 baje client call, 6 baje gym.”
                 </p>
                 <span className={styles.voiceReply}>
-                  <Icon name="check" size={16} /> I&apos;ll remind you. Go enjoy
-                  your day.
+                  <Icon name="check" size={16} /> Here&apos;s your day, block by
+                  block.
                 </span>
               </div>
             </div>
             <div className={styles.featureCopy}>
               <span className={styles.number}>(3)</span>
               <h2 id="schedule-title">
-                Handles tasks according
+                Plans around
                 <br />
-                to your schedule
+                your schedule
               </h2>
               <p>
-                From meeting invites to reminders that actually arrive on time.
-                Just send a text or a voice note, in English, Hindi, or
-                Hinglish.
+                Send your day in one line and get back a clear plan you can
+                follow. In English, Hindi, Hinglish, Telugu, or Tamil.
               </p>
               <a
                 href={WA_LINK}
@@ -692,7 +661,7 @@ export default function HomePage() {
                 rel="noreferrer"
                 className={styles.textLink}
               >
-                Leave it with Astra <Icon name="arrow" size={18} />
+                Plan my day <Icon name="arrow" size={18} />
               </a>
             </div>
           </section>
@@ -731,8 +700,8 @@ export default function HomePage() {
                     Astra <span>now</span>
                   </b>
                   <p>
-                    Your 5 PM call starts in 15 mins — here are the 3 key
-                    talking points from your last thread.
+                    Here are 3 talking points for your 5 PM call with Priya,
+                    based on what you shared.
                   </p>
                 </div>
               </div>
@@ -740,14 +709,14 @@ export default function HomePage() {
             <div className={styles.featureCopy}>
               <span className={styles.number}>(4)</span>
               <h2 id="proactive-title">
-                Proactively keeps
+                Ready the moment
                 <br />
-                you in the loop
+                you text
               </h2>
               <p>
-                A heads-up before your next meeting. A morning briefing before
-                your coffee. Astra remembers the little things, and reaches out
-                when it matters.
+                Text Astra before a call or a busy day and get talking points,
+                drafts, or a quick plan back in seconds. It only replies to you,
+                and never messages first.
               </p>
               <a
                 href={WA_LINK}
@@ -769,7 +738,7 @@ export default function HomePage() {
                 <span className={styles.composerTitle}>
                   What would you like to make happen?
                 </span>
-                <p>Add action items from my emails to calendar</p>
+                <p>Draft a follow-up to today&apos;s client call</p>
                 <div>
                   <span>
                     <Icon name="plus" size={14} /> Integrations
@@ -803,8 +772,9 @@ export default function HomePage() {
                 <br />A lot more personal.
               </h2>
               <p>
-                Connect Gmail, Calendar, Notion, and GitHub once. Astra puts them
-                to work together, right inside your WhatsApp.
+                Link Gmail, Calendar, Notion, and 14 more apps to your account.
+                Astra drafts the work right inside WhatsApp, and you decide what
+                gets sent.
               </p>
               <a
                 href="#login"
@@ -847,9 +817,9 @@ export default function HomePage() {
               <ul>
                 {[
                   "15 AI tasks per day (Ad-supported)",
-                  "Connect Gmail, Calendar, Notion & GitHub",
-                  "Smart reminders, research & daily briefings",
-                  "English, Hinglish & Hindi voice and text",
+                  "Link Gmail, Calendar, Notion & 14 more apps",
+                  "Drafts, day plans & quick answers",
+                  "English, Hindi, Hinglish, Telugu & Tamil",
                 ].map((f) => (
                   <li key={f}>
                     <Icon name="check" size={16} />
@@ -885,7 +855,7 @@ export default function HomePage() {
               <ul>
                 {[
                   "80 actions per day (FUP: ~2,400 tasks/mo)",
-                  "Priority execution on Gemini 3.8 Flash",
+                  "5× the Free daily limit",
                   "Founder cold outreach & custom drafts",
                   "100% Ad-Free experience",
                 ].map((f) => (
@@ -909,21 +879,19 @@ export default function HomePage() {
                 Enterprise Headroom
               </span>
               <h3>Astra Business</h3>
-              <p>For agencies, high-volume teams, and automated workflows</p>
+              <p>For heavy daily users who text Astra all day</p>
               <div className={styles.price}>
                 ₹999<span>/ month</span>
               </div>
               <span className={styles.billingNote}>
-                Billed monthly · Priority SLA
+                Billed monthly · 30 days of access
               </span>
               <div className={styles.planDivider} />
               <b className={styles.includes}>Everything in Pro, plus:</b>
               <ul>
                 {[
-                  "1,000 actions per day enterprise limit",
-                  "Multi-seat & team workflow prioritization",
-                  "Custom Composio toolchains & webhooks",
-                  "Dedicated support & priority SLA",
+                  "1,000 messages per day",
+                  "12× the Pro daily limit",
                 ].map((f) => (
                   <li key={f}>
                     <Icon name="check" size={16} />
@@ -995,25 +963,22 @@ export default function HomePage() {
           aria-labelledby="faq-title"
         >
           <h2 id="faq-title">A few things you might be wondering</h2>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "FAQPage",
+                mainEntity: FAQS.map(([name, text]) => ({
+                  "@type": "Question",
+                  name,
+                  acceptedAnswer: { "@type": "Answer", text },
+                })),
+              }),
+            }}
+          />
           <div>
-            {[
-              [
-                "What is Astra?",
-                "Astra is your personal AI assistant on WhatsApp. It helps with email, your calendar, reminders, research, and the little things that fill up your day.",
-              ],
-              [
-                "Do I need to download another app?",
-                "No new app needed. Tap Get Started, say hi on WhatsApp, and connect the services you want Astra to help with.",
-              ],
-              [
-                "Can I speak in Hindi or Hinglish?",
-                "Yes. Text or send voice notes in English, Hindi, or Hinglish — whatever feels natural to you.",
-              ],
-              [
-                "Can I try Astra for free?",
-                "Yes. Bharat Free includes 15 AI tasks per day with curated sponsored perks. Astra Pro is ₹99 per month (80 tasks/day FUP), and Astra Business is ₹999 per month (1,000 tasks/day).",
-              ],
-            ].map(([question, answer]) => (
+            {FAQS.map(([question, answer]) => (
               <details key={question}>
                 <summary>
                   {question}
