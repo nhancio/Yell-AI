@@ -200,11 +200,6 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
           </div>
         )}
         <h1 className={setupStyles.heading}>{waOpened ? <>Send the message<br />on WhatsApp.</> : <>Your Astra starts<br />with a hello.</>}</h1>
-        {waOpened && (
-          <p className={setupStyles.description}>
-            {`Hit send on the pre-filled WhatsApp message${challenge ? ` (code: ${challenge.code})` : ""} and this page will sign you in automatically.`}
-          </p>
-        )}
         <div className={setupStyles.form}>
           {challenge?.whatsapp_url ? (
             <a
