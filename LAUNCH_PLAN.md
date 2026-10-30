@@ -13,9 +13,9 @@
 
 Three facts kill the current shape:
 
-1. **The platform bans it.** Meta's WhatsApp Business terms have barred general-purpose AI assistants since 15 Jan 2026. ChatGPT and Copilot left WhatsApp. Meta reopened access, for a fee, only where regulators forced it (Italy, Brazil, EU/EEA). An India reversal is claimed by one blog and is **unverified**. Yell's own intent prompt calls it a *"WhatsApp AI Super-Agent"*, which is the banned category.
+1. **The platform bans it.** Meta's WhatsApp Business terms have barred general-purpose AI assistants since 15 Jan 2026. ChatGPT and Copilot left WhatsApp. Meta reopened access, for a fee, only where regulators forced it (Italy, Brazil, EU/EEA). **Yell is India-only, so none of those exceptions help.** An India reversal is claimed by one blog and is **unverified**. Yell's intent prompt called it a *"WhatsApp AI Super-Agent"*, which is the banned category (fixed in Gate 0).
 2. **Every reply now costs money, and ads don't cover it.** Since 1 Oct 2026 Meta charges ~₹0.115 + GST per service message in India (first 1,000/month per number free). The ad model loses money per message even with the spreadsheet's own optimistic numbers (table below).
-3. **You can't compete on "AI in WhatsApp".** Meta AI is built into WhatsApp and free. ChatGPT Go is free for 12 months in India, Jio users get Gemini Pro free, and Puch AI (9090909090) is free and voice-first. A general assistant has no wedge.
+3. **You can't compete on "AI in WhatsApp".** For the WhatsApp-native, regional-language user, ChatGPT and Gemini apps aren't the competition; they don't install them. **Meta AI is**: it's inside the WhatsApp they already use, free, and speaks Hindi (third-party estimates put it at ~140M Indian users). Puch AI is free on WhatsApp in 10+ Indian languages too. Nobody beats free inside the same app, so a general assistant has no wedge.
 
 ### The math (per WhatsApp reply)
 
@@ -47,7 +47,7 @@ The 12-month forecast's Month 12 implies **₹315 ad revenue per DAU per month**
 | Reach | 5/5 | WhatsApp is where India lives. |
 | Platform risk | 1/5 | Meta controls access, pricing, and is a direct competitor (Meta AI). |
 | Unit economics | 1/5 | Negative per message as currently priced/capped. |
-| Differentiation | 1/5 | Meta AI, ChatGPT Go, Gemini, Puch AI are all free. |
+| Differentiation | 1/5 | Meta AI (inside WhatsApp) and Puch AI are free for the same WhatsApp-native user. |
 | Build readiness | 3/5 | Lots of code; end-to-end flow not verified (see `READINESS.md`). |
 | Focus | 1/5 | Repo tells 3 stories: super-agent, NanoClaw launcher, and SMB review tool (`socials.MD`). |
 
@@ -63,7 +63,7 @@ The 12-month forecast's Month 12 implies **₹315 ad revenue per DAU per month**
 |---|---|
 | Tasks Meta AI can't do (act on your Gmail, outreach) | Meta ban on general AI assistants |
 | "Business service that uses WhatsApp" is an allowed category | Per-message fees since Oct 2026 |
-| India job market: huge, painful, UPI-payable | Free AI everywhere in India |
+| India job market: huge, painful, UPI-payable | Meta AI is free inside WhatsApp itself |
 
 ### Competitors
 
@@ -72,8 +72,16 @@ The 12-month forecast's Month 12 implies **₹315 ad revenue per DAU per month**
 | Meta AI | Free | Built in | Act on your Gmail/Calendar; outreach |
 | ChatGPT | Go free for 12 months | Left Jan 2026 | Live in WhatsApp |
 | Gemini | Pro free for Jio users | No | Live in WhatsApp |
-| Puch AI | Free | Yes (9090909090) | Paid outcomes; deep tool actions |
+| Puch AI | Free, no visible revenue model | Yes. As of 30 Oct 2026 the site links to **+91 99988 81729**, not the 9090909090 number from 2025. Still live after the ban, reason unknown. | Paid outcomes; deep tool actions. Funding disputed; UP's ₹25,000 cr MoU was cancelled in Mar 2026. |
 | Naukri / LinkedIn Premium / Instahyre | ₹500–2,000+/mo | No | Direct founder outreach done for you |
+| **Backdoor** (backdoorai.app) | Free chat; outreach from ₹20/day | **Yes, Indian +91 number** + iMessage/SMS | Already does the wedge below. Claims 18,000+ users. Targets pre-seed to Series C startups, English, Gen-Z tone |
+| Poke (Interaction Co.) | Paid, US-focused | Only where Meta allows (EU/Brazil); main channel iMessage | General assistant, so blocked on WhatsApp in India |
+| Instinct (San Francisco) | Invite-only | Lists iMessage, WhatsApp, email | US product; how its WhatsApp access fits the ban is unconfirmed |
+
+**How they get around the ban:**
+- **Backdoor** is a single business service (a job agent), the category Meta still allows.
+- **Poke** relies on iMessage, where Apple approved it for Messages for Business in June 2026. It also uses SMS and Telegram, and WhatsApp only where regulators forced Meta to allow it.
+- **For India:** iMessage barely matters, and business SMS needs DLT registration. That leaves a narrow service on WhatsApp (the Backdoor model), or Telegram/web for anything general.
 
 ### What to keep, cut, shelve
 
@@ -95,6 +103,8 @@ Why this one:
 - **People pay for outcomes.** "Interviews" is worth paying for. "Chat" isn't.
 
 Pricing to test: **free first 5 emails → ₹299 per 14-day sprint (up to 50 founder emails)**. Drop the always-on ₹99/month plan.
+
+**Watch out: Backdoor already does this in India** on a +91 WhatsApp number, from ₹20/day, and claims 18,000+ users. That shows people will pay. It also means you'd be second, so don't copy its segment. Segment hypothesis to test in Phase 1: **tier-2/3 freshers and non-tech roles (sales, ops, marketing, support), in Hindi/Telugu/Tamil, targeting Indian startups and D2C brands.** Backdoor is English, tech-heavy and focused on VC-backed startups. If Phase 1 shows this segment doesn't get replies, stop rather than fight Backdoor head-on.
 
 ### Primary persona: "Arjun", 21–27
 
@@ -122,9 +132,10 @@ Nothing ships until all of these are done.
 |---|---|---|---|
 | 0.1 | Ask Kapso (BSP) and Meta in writing: is "job-outreach service using AI, with WhatsApp for approvals/updates" allowed for an Indian number under current Business Solution Terms? | Founder | Written answer saved |
 | 0.2 | Pick the wedge (default: Backdoor) and the name | Founder | Decision logged in this file |
-| 0.3 | Fix the money leak: `PAID_DAILY_LIMIT` 1000 → 40; free tier = 5 outreach emails, not 25 chats/day | Eng | Deployed |
-| 0.4 | Rewrite the intent system prompt: remove "Super-Agent"; describe a job-outreach service | Eng | Deployed |
-| 0.5 | Turn off ad cards and unused intents (IRCTC, food, budget) | Eng | Deployed |
+| 0.3 | ✅ *Code done 30 Oct:* `PAID_DAILY_LIMIT` 1000 → 40, `FREE_DAILY_LIMIT` 25 → 10 replies/day. The 5-email free quota needs the send flow first. | Eng | **Prod env vars updated + deployed** |
+| 0.4 | ↩️ *Reverted 30 Oct (founder decision):* intent + task prompts and the welcome message are back to the general super-agent. Upgrade copy now shows the real daily cap instead of "1,000". | Founder | Decided together with 0.7 (target user + channel) |
+| 0.5 | ✅ *Code done 30 Oct:* `ADS_ENABLED=false`. All original intents kept (the intent removal was reverted with 0.4). | Eng | **Deployed** |
+| 0.7 | **Founder decision 30 Oct: launch on RCS + iMessage, WhatsApp "coming soon".** Open question: which target user (WhatsApp-native locals vs urban iPhone/professional users)? RCS needs Google RBM verification + TRAI DLT, at ~₹0.13/msg + GST. iMessage needs Apple Messages for Business approval (only Poke approved so far; India availability unconfirmed). | Founder | Target user chosen; RBM + Apple applications filed |
 | 0.6 | Fallback channel if 0.1 is "no": the web app at yellapp (Firebase OTP already built) + Telegram. Don't use unofficial WhatsApp Web clients (NanoClaw/Baileys) commercially; numbers get banned. | Eng | Fallback path decided |
 
 ### Phase 1 — Concierge validation (9–22 Nov)
@@ -205,4 +216,8 @@ Time it for January off-campus hiring and new-year job-switch intent.
 - [Meta — WhatsApp Business Platform pricing](https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing.md)
 - [Croma — Jio Gemini vs Airtel Perplexity vs ChatGPT Go free plans](https://www.croma.com/unboxed/jio-vs-airtel-vs-chatgpt-go)
 - [Storyboard18 — Puch AI on 9090909090](https://storyboard18.com/digital/puch-ai-bets-on-indias-most-expensive-mobile-number-to-challenge-chatgpt-and-grok-80124.htm)
+- [Backdoor — homepage (WhatsApp +91 number, ₹20/day, 18,000+ users claimed)](https://backdoorai.app/)
+- [TechCrunch — Poke makes AI agents as easy as sending a text (Apr 2026)](https://techcrunch.com/2026/04/08/poke-makes-ai-agents-as-easy-as-sending-a-text/)
+- [TechTimes — Apple approves Poke as first iMessage AI agent (Jun 2026)](https://www.techtimes.com/articles/317863/20260605/apple-approves-poke-first-imessage-ai-agent-charging-per-user-before-wwdc.htm)
+- [TechCrunch — Instinct raises $1B Series C (Sep 2026)](https://techcrunch.com/2026/09/28/viral-ai-agent-instinct-raises-1b-series-c-at-a-10b-valuation/)
 - [Exchange4media — India's low CPMs in Meta's ad market](https://www.exchange4media.com/digital-news/metas-ad-prices-rise-14-globally-in-q3-just-1-in-apac-the-india-equation-159408.html)

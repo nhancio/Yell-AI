@@ -149,7 +149,7 @@ async def process_user_message(
         msg = (
             f"⚡ *Upgrade to Yell AI Pro for just ₹{price_inr}/month!*\n\n"
             "Unlock unlimited super-agent powers:\n"
-            "• 1,000 tasks & queries every day\n"
+            f"• {settings.PAID_DAILY_LIMIT} tasks & queries every day\n"
             "• Priority execution on Gemini 3.8 Flash\n"
             "• All 8+ Composio tools (Gmail, Calendar, Notion, GitHub)\n"
             "• 100% Ad-Free experience\n"
@@ -172,7 +172,7 @@ async def process_user_message(
         upsell_text = (
             "You've hit your daily free limit on Yell AI! ⚡\n\n"
             f"Upgrade to *Yell AI Pro* for just *₹{price_inr}/month* (UPI supported) to unlock:\n"
-            "• 1,000 tasks & messages/day\n"
+            f"• {settings.PAID_DAILY_LIMIT} tasks & messages/day\n"
             "• Unlimited Gmail, Calendar, Notion & Backdoor Founder Outreach\n"
             "• Zero sponsored ads\n\n"
         )
