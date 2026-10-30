@@ -33,6 +33,7 @@ class MemoryService:
         self._local_storage: dict[str, list[str]] = {}
         self._local_once: dict[str, float] = {}
         self._local_latest: dict[str, str] = {}
+        self._local_values: dict[str, tuple[str, float]] = {}
         self._connect_lock = asyncio.Lock()
         self._retry_after = 0.0
 
@@ -148,6 +149,29 @@ class MemoryService:
             logger.error("Memory clear failed (%s)", type(exc).__name__)
             if not settings.memory_fallback_allowed:
                 raise MemoryUnavailable("Conversation memory is unavailable") from exc
+
+    async def set_value(self, key: str, value: str, ttl: int) -> None:
+        """Short-lived per-user state (e.g. an action awaiting YES)."""
+        try:
+            r = await self._get_redis()
+            if r:
+                await r.set(key, value, ex=ttl)
+            else:
+                self._local_values[key] = (value, time.time() + ttl)
+        except Exception as exc:
+            logger.error("Value write failed (%s)", type(exc).__name__)
+
+    async def pop_value(self, key: str) -> Optional[str]:
+        """Read and delete in one step, so a value is only ever acted on once."""
+        try:
+            r = await self._get_redis()
+            if r:
+                return await r.getdel(key)
+            value, expires = self._local_values.pop(key, (None, 0))
+            return value if time.time() < expires else None
+        except Exception as exc:
+            logger.error("Value read failed (%s)", type(exc).__name__)
+            return None
 
     async def mark_latest(self, phone_number: str, message_id: str) -> None:
         """Record the newest inbound message so older in-flight replies can be dropped."""

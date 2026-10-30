@@ -47,39 +47,39 @@ SUPPORTED_TOOLKITS: dict[str, dict[str, str]] = {
     },
     "youtube": {
         "name": "YouTube", "icon": "▶️", "category": "Everyday",
-        "description": "Find videos, summarize them, and manage your playlists", "auth_config_id": "",
+        "description": "Find videos, summarize them, and manage your playlists", "auth_config_id": "ac_U2wtaGq5eT83",
     },
     "googletasks": {
         "name": "Google Tasks", "icon": "✅", "category": "Everyday",
-        "description": "Add to-dos and check off your list from WhatsApp", "auth_config_id": "",
+        "description": "Add to-dos and check off your list from WhatsApp", "auth_config_id": "ac_cQra6TChQz4s",
     },
     "googlephotos": {
         "name": "Google Photos", "icon": "🖼️", "category": "Everyday",
-        "description": "Find photos and albums by date, place, or person", "auth_config_id": "",
+        "description": "Find photos and albums by date, place, or person", "auth_config_id": "ac_AvRdQQSqmuL5",
     },
     "outlook": {
         "name": "Outlook", "icon": "📨", "category": "Everyday",
-        "description": "Read, search, and reply to Outlook mail and calendar", "auth_config_id": "",
+        "description": "Read, search, and reply to Outlook mail and calendar", "auth_config_id": "ac_Vz_Y4GMRkVlw",
     },
     "todoist": {
         "name": "Todoist", "icon": "📋", "category": "Everyday",
-        "description": "Capture tasks, set due dates, and plan your day", "auth_config_id": "",
+        "description": "Capture tasks, set due dates, and plan your day", "auth_config_id": "ac_9rO6q08NpKfc",
     },
     "splitwise": {
         "name": "Splitwise", "icon": "💸", "category": "Everyday",
-        "description": "Split bills with friends and see who owes what", "auth_config_id": "",
+        "description": "Split bills with friends and see who owes what", "auth_config_id": "ac_4cJKg8DhCYeu",
     },
     "strava": {
         "name": "Strava", "icon": "🏃", "category": "Everyday",
-        "description": "Check your runs, rides, and weekly fitness progress", "auth_config_id": "",
+        "description": "Check your runs, rides, and weekly fitness progress", "auth_config_id": "ac_27DrroYIUXqw",
     },
     "discord": {
         "name": "Discord", "icon": "🎮", "category": "Everyday",
-        "description": "Catch up on your servers and messages", "auth_config_id": "",
+        "description": "Catch up on your servers and messages", "auth_config_id": "ac_tkiLFMJmpMw4",
     },
     "zoom": {
         "name": "Zoom", "icon": "🎥", "category": "Everyday",
-        "description": "Schedule meetings and grab join links instantly", "auth_config_id": "",
+        "description": "Schedule meetings and grab join links instantly", "auth_config_id": "ac_VAPvHc64KmvW",
     },
     "notion": {
         "name": "Notion",

@@ -14,10 +14,12 @@ from app.config import get_settings
 from app.models.database import async_session, ensure_tables
 from app.models.user import FlowLog
 from app.services.ads_service import AdsService
+from app.services.chat_actions import ChatActions, connect_hint
 from app.services.composio_service import SUPPORTED_TOOLKITS, ComposioService, normalize_phone
 from app.services.gemini import GeminiService
 from app.services.memory import memory_service as memory
 from app.services.payment import PaymentService
+from app.services.tool_runs import ToolRunService
 from app.services.usage import UsageService
 from app.services.whatsapp import WhatsAppService
 
@@ -34,6 +36,7 @@ usage_service = UsageService()
 payment_service = PaymentService()
 composio_service = ComposioService()
 ads_service = AdsService()
+chat_actions = ChatActions(gemini, ToolRunService(composio_service))
 
 
 PROCESSED_MESSAGE_IDS = collections.OrderedDict()
@@ -102,6 +105,12 @@ async def process_user_message(
     norm_phone = normalize_phone(sender)
     connect_hub_url = "https://tryastra.web.app"
 
+    # 0. An app action awaiting approval: YES runs it, NO cancels; anything else drops it and carries on.
+    pending_reply = await chat_actions.resolve_pending(norm_phone, clean_text)
+    if pending_reply:
+        await whatsapp.send_message(sender, pending_reply)
+        return {"status": "ok"}
+
     # 1. Onboarding / Greeting Command
     if clean_text in ("/start", "hi", "hello", "hey", "namaste", "yo"):
         first_name = sender_name.split()[0] if sender_name else "bro"
@@ -109,12 +118,11 @@ async def process_user_message(
             f"Namaste {first_name}! 🙏🇮🇳\n\n"
             "I'm *Astra AI* — your personal AI super-agent on WhatsApp.\n\n"
             "⚡ *What I can do for you right here:*\n"
-            "• 📧 *Gmail & Calendar:* Read/send emails, schedule meetings & smart reminders\n"
-            "• 🧠 *Connected Workspace:* Sync notes & tasks across Notion, GitHub, Docs & Sheets\n"
-            "• 🚀 *Research & Outreach:* Deep web research, founder outreach & custom drafts\n"
-            "• 🎙️ *Voice & Text:* Send a voice note or text — Astra handles the rest\n\n"
-            f"🔌 *Connect your apps once (1-tap):*\n👉 {connect_hub_url}\n\n"
-            "Or type `/connect gmail` or just tell me what you want done!"
+            "• ✍️ Draft emails, messages & cold outreach, ready to send\n"
+            "• 🗓️ Plan your day and turn goals into steps\n"
+            "• 💡 Answer questions, compare options & give advice\n"
+            "• ✅ Link Gmail, Calendar, Todoist or Google Tasks and I'll send emails or add events & tasks after you reply YES\n\n"
+            "Just text me what you need!"
         )
         await whatsapp.send_message(sender, welcome)
         await memory.add_message(sender, "assistant", welcome)
@@ -168,8 +176,6 @@ async def process_user_message(
             "⚡ *Astra AI Subscription Plans (Fair Usage Policy):*\n\n"
             f"1️⃣ *Astra Pro — ₹{pro_price}/month (Most Popular)*\n"
             f"• {settings.PAID_DAILY_LIMIT} tasks & queries/day (~2,400 tasks/mo)\n"
-            "• Priority Gemini 3.8 Flash execution\n"
-            "• All Composio tools (Gmail, Calendar, Notion, GitHub)\n"
             "• 100% Ad-Free experience\n"
             f"👉 *Subscribe to Pro (₹{pro_price}):* {pro_url or f'{settings.FRONTEND_URL}#pricing'}\n\n"
             f"2️⃣ *Astra Business / Team — ₹{biz_price}/month*\n"
@@ -207,9 +213,8 @@ async def process_user_message(
             pro_price = settings.MONTHLY_PRICE_PAISE // 100
             upsell_text = (
                 f"You've completed your {settings.FREE_DAILY_LIMIT} free daily tasks on Astra AI! ⚡\n\n"
-                f"Upgrade to *Astra AI Pro* for just *₹{pro_price}/month* (UPI Autopay) to unlock:\n"
+                f"Upgrade to *Astra AI Pro* for just *₹{pro_price}/month* to unlock:\n"
                 f"• {settings.PAID_DAILY_LIMIT} tasks & messages/day (FUP)\n"
-                "• Unlimited Gmail, Calendar, Notion & Backdoor Founder Outreach\n"
                 "• 100% Zero sponsored ads\n\n"
                 f"👉 *Upgrade via UPI / Razorpay (₹{pro_price}):* {pro_url or f'{settings.FRONTEND_URL}#pricing'}"
             )
@@ -240,21 +245,24 @@ async def process_user_message(
 
     # 5. Process through AgentOrchestrator
     try:
+        # Linked apps: preview a real action and wait for YES instead of only drafting.
+        action_reply = await chat_actions.propose(norm_phone, text, active_apps, message_id, history)
+        if action_reply:
+            if not await memory.is_latest(sender, message_id):
+                return await _superseded(message_id, log_id)
+            await whatsapp.send_message(sender, action_reply)
+            await memory.add_message(sender, "assistant", action_reply)
+            await usage_service.increment_usage(sender)
+            return {"status": "action_preview"}
+
         result = await orchestrator.process(text, history, connected_apps=active_apps)
         # ponytail: Gemini calls already in flight still run to completion; cancel them per
         # instance with asyncio tasks if that spend matters.
         if not await memory.is_latest(sender, message_id):
             return await _superseded(message_id, log_id)
         response_text = result.full_response
-
-        # If the intent needs a Composio toolkit that isn't connected yet, append a 1-tap connect prompt
-        req_tk = result.required_toolkit
-        if req_tk and req_tk in SUPPORTED_TOOLKITS and req_tk not in active_apps:
-            tk_meta = SUPPORTED_TOOLKITS[req_tk]
-            response_text += (
-                f"\n\n{tk_meta['icon']} *Want me to execute this directly in your {tk_meta['name']}?*\n"
-                f"Sign in to connect {tk_meta['name']}: {connect_hub_url}"
-            )
+        if result.required_toolkit and result.required_toolkit not in active_apps:
+            response_text += connect_hint(result.required_toolkit, connect_hub_url)
 
         if not signed_up:
             left = preview_left - 1
