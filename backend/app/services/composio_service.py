@@ -17,18 +17,6 @@ settings = get_settings()
 
 # Pre-provisioned Composio v3 Managed OAuth Config IDs for Astra AI
 SUPPORTED_TOOLKITS: dict[str, dict[str, str]] = {
-    "hubspot": {
-        "name": "HubSpot", "icon": "🔶", "category": "CRM",
-        "description": "Manage contacts, companies, and deals", "auth_config_id": "",
-    },
-    "salesforce": {
-        "name": "Salesforce", "icon": "☁️", "category": "CRM",
-        "description": "Work with leads, accounts, and opportunities", "auth_config_id": "",
-    },
-    "pipedrive": {
-        "name": "Pipedrive", "icon": "🟢", "category": "CRM",
-        "description": "Manage people, deals, and sales activities", "auth_config_id": "",
-    },
     "gmail": {
         "name": "Gmail",
         "icon": "📧",
@@ -56,6 +44,42 @@ SUPPORTED_TOOLKITS: dict[str, dict[str, str]] = {
         "description": "Track expenses, UPI budgets, founder outreach lists, and CRM rows",
         "category": "Google Workspace",
         "auth_config_id": "ac_1P23_HNwER1k",
+    },
+    "youtube": {
+        "name": "YouTube", "icon": "▶️", "category": "Everyday",
+        "description": "Find videos, summarize them, and manage your playlists", "auth_config_id": "",
+    },
+    "googletasks": {
+        "name": "Google Tasks", "icon": "✅", "category": "Everyday",
+        "description": "Add to-dos and check off your list from WhatsApp", "auth_config_id": "",
+    },
+    "googlephotos": {
+        "name": "Google Photos", "icon": "🖼️", "category": "Everyday",
+        "description": "Find photos and albums by date, place, or person", "auth_config_id": "",
+    },
+    "outlook": {
+        "name": "Outlook", "icon": "📨", "category": "Everyday",
+        "description": "Read, search, and reply to Outlook mail and calendar", "auth_config_id": "",
+    },
+    "todoist": {
+        "name": "Todoist", "icon": "📋", "category": "Everyday",
+        "description": "Capture tasks, set due dates, and plan your day", "auth_config_id": "",
+    },
+    "splitwise": {
+        "name": "Splitwise", "icon": "💸", "category": "Everyday",
+        "description": "Split bills with friends and see who owes what", "auth_config_id": "",
+    },
+    "strava": {
+        "name": "Strava", "icon": "🏃", "category": "Everyday",
+        "description": "Check your runs, rides, and weekly fitness progress", "auth_config_id": "",
+    },
+    "discord": {
+        "name": "Discord", "icon": "🎮", "category": "Everyday",
+        "description": "Catch up on your servers and messages", "auth_config_id": "",
+    },
+    "zoom": {
+        "name": "Zoom", "icon": "🎥", "category": "Everyday",
+        "description": "Schedule meetings and grab join links instantly", "auth_config_id": "",
     },
     "notion": {
         "name": "Notion",

@@ -154,7 +154,6 @@ export default function Onboarding({ account, setup, save, connect, checkout, on
           <div className={s.summaryRow}><Icon name="link" size={20} />{connectedCount ? `${connectedCount} ${connectedCount === 1 ? "app" : "apps"} connected` : "Connect your apps when you’re ready"}</div>
         </div>
         <button className={s.primary} onClick={() => void advance("plan")} disabled={busy}>{busy ? "Saving…" : "Continue"}</button>
-        {account.whatsapp_number && <div className={s.footer}><a className={s.textButton} href={`https://wa.me/${account.whatsapp_number}?text=${encodeURIComponent("Hi Astra!")}`} target="_blank" rel="noreferrer">Open WhatsApp ↗</a></div>}
       </>}
 
       {step === "plan" && <>

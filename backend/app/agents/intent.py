@@ -3,6 +3,7 @@
 import logging
 from typing import Any
 
+from app.services.composio_service import SUPPORTED_TOOLKITS
 from app.services.gemini import GeminiService
 
 logger = logging.getLogger(__name__)
@@ -29,17 +30,17 @@ Available intents:
 - general_help: Anything else that needs action
 - just_venting: User is just expressing feelings and doesn't need a task done
 
-Also identify if a Composio connector toolkit is needed ("gmail", "googlecalendar", "notion", "github", "linkedin", "googlesheets", or null).
+Also identify if a Composio connector toolkit is needed (one of: {TOOLKITS}; or null).
 
 Return ONLY valid JSON:
 {
   "intent": "one_of_the_above_intents",
-  "required_toolkit": "gmail|googlecalendar|notion|github|linkedin|googlesheets|null",
+  "required_toolkit": "one toolkit slug from the list above, or null",
   "details": {
     "summary": "brief summary of what they need",
     "key_points": ["point1", "point2"]
   }
-}"""
+}""".replace("{TOOLKITS}", ", ".join(SUPPORTED_TOOLKITS))
 
 
 class IntentAgent:
