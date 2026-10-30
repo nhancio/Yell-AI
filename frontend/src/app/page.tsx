@@ -223,9 +223,21 @@ export default function HomePage() {
 
   useEffect(() => {
     const updateHeader = () => setScrolled(window.scrollY > 70);
+    const closeDropdowns = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      document
+        .querySelectorAll<HTMLDetailsElement>(`.${styles.navDropdown}[open]`)
+        .forEach((el) => {
+          if (!el.contains(target) || target?.closest("a")) el.open = false;
+        });
+    };
     updateHeader();
     window.addEventListener("scroll", updateHeader, { passive: true });
-    return () => window.removeEventListener("scroll", updateHeader);
+    document.addEventListener("click", closeDropdowns);
+    return () => {
+      window.removeEventListener("scroll", updateHeader);
+      document.removeEventListener("click", closeDropdowns);
+    };
   }, []);
 
   return (
@@ -247,7 +259,7 @@ export default function HomePage() {
             <Mark />
           </Link>
           <nav className={styles.desktopNav} aria-label="Main navigation">
-            <details className={styles.navDropdown}>
+            <details name="nav" className={styles.navDropdown}>
               <summary>
                 Product <span>⌄</span>
               </summary>
@@ -261,7 +273,7 @@ export default function HomePage() {
                 </a>
               </div>
             </details>
-            <details className={styles.navDropdown}>
+            <details name="nav" className={styles.navDropdown}>
               <summary>
                 Resources <span>⌄</span>
               </summary>
@@ -322,10 +334,10 @@ export default function HomePage() {
           id="experience"
           aria-labelledby="hero-title"
         >
-          <Link href="/brands" className={styles.announcement}>
+          <a href={APP_ENTRY} className={styles.announcement}>
             <span>New</span> Your everyday, a little easier{" "}
             <Icon name="chevron" size={14} />
-          </Link>
+          </a>
           <h1 id="hero-title">
             Meet Astra,
             <br />
