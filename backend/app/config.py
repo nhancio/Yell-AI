@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     FREE_DAILY_LIMIT: int = 15  # Free tier: 15 tasks/day (ad-supported)
     PAID_DAILY_LIMIT: int = 80  # Pro plan (₹99/mo): 80 tasks/day FUP (~2,400 tasks/mo)
     BUSINESS_DAILY_LIMIT: int = 1000  # Business/Team plan (₹999/mo): 1,000 tasks/day enterprise
+    SIGNUP_PREVIEW_MESSAGES: int = 2  # Lifetime AI replies a number gets before it must log in to the app
     ADS_ENABLED: bool = True
 
     # Pricing

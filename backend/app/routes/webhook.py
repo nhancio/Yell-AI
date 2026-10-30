@@ -164,6 +164,19 @@ async def process_user_message(
         await whatsapp.send_message(sender, msg)
         return {"status": "ok"}
 
+    # 3a. Numbers that never logged in to the app get a small preview, then the onboarding link.
+    # The inbound message already proves they own the number; app login (OTP, same number) links it.
+    signed_up, preview_left = await usage_service.signup_state(sender)
+    if not signed_up and preview_left == 0:
+        first_name = sender_name.split()[0] if sender_name else "there"
+        await whatsapp.send_message(sender, (
+            f"Hey {first_name}! 👋 Loved chatting so far.\n\n"
+            "Finish a 30-second setup to keep going with *Astra AI*:\n"
+            f"👉 {connect_hub_url}\n\n"
+            f"Log in with this same WhatsApp number (+{norm_phone}) and I'll pick up right here."
+        ))
+        return {"status": "signup_required"}
+
     # 3. Check usage limits (Fair Usage Policy enforcement)
     usage_status = await usage_service.check_usage(sender)
     if not usage_status["allowed"]:
@@ -215,6 +228,13 @@ async def process_user_message(
             response_text += (
                 f"\n\n{tk_meta['icon']} *Want me to execute this directly in your {tk_meta['name']}?*\n"
                 f"Sign in to connect {tk_meta['name']}: {connect_hub_url}"
+            )
+
+        if not signed_up:
+            left = preview_left - 1
+            response_text += (
+                f"\n\n✨ {left} free message{'' if left == 1 else 's'} left. "
+                f"Finish setup in 30 sec to keep chatting: {connect_hub_url}"
             )
 
         # Append contextual India native ad for free-tier users on high-intent queries

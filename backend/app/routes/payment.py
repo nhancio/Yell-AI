@@ -11,7 +11,6 @@ from fastapi import HTTPException
 from app.config import get_settings
 from app.services.payment import PaymentService
 from app.services.usage import UsageService
-from app.services.whatsapp import WhatsAppService
 from app.services.auth import current_phone
 from app.services.composio_service import normalize_phone
 from typing import Literal
@@ -23,7 +22,6 @@ router = APIRouter(prefix="/payment", tags=["payment"])
 
 payment_service = PaymentService()
 usage_service = UsageService()
-whatsapp = WhatsAppService()
 
 
 class PublicPaymentLinkRequest(BaseModel):
@@ -95,14 +93,8 @@ async def razorpay_webhook(request: Request) -> dict:
             if phone_number:
                 plan_tier = notes.get("plan_tier", "pro")
                 success = await payment_service.activate_premium(phone_number, plan_tier=plan_tier)
+                # No WhatsApp confirmation: the bot only replies, it never messages first.
                 if success:
-                    limit = settings.BUSINESS_DAILY_LIMIT if plan_tier == "business" else settings.PAID_DAILY_LIMIT
-                    await whatsapp.send_message(
-                        phone_number,
-                        f"🎉 *Welcome to Astra AI {plan_tier.upper()}!*\n\n"
-                        f"Your account now has {limit} conversations/day for the next 30 days.\n\n"
-                        "Go ahead, ask Astra anything! I'm all ears. 💛"
-                    )
                     logger.info("Premium (%s) activated via webhook for %s", plan_tier, phone_number)
 
         return {"status": "ok"}

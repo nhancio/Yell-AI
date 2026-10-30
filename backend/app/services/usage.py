@@ -4,12 +4,13 @@ import logging
 from datetime import date, datetime, timedelta
 from contextlib import nullcontext
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.database import async_session, ensure_tables
+from app.models.onboarding import UserOnboarding
 from app.models.user import User, UserUsage
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,17 @@ class UsageService:
                 await session.refresh(user)
 
             return user
+
+    async def signup_state(self, phone_number: str) -> tuple[bool, int]:
+        """(signed_up, preview replies left). Signed up = logged in to the app (same number, OTP) or paid."""
+        user = await self.get_or_create_user(phone_number)
+        async with async_session() as session:
+            if user.is_premium or await session.get(UserOnboarding, user.id):
+                return True, 0
+            used = await session.scalar(
+                select(func.coalesce(func.sum(UserUsage.query_count), 0)).where(UserUsage.user_id == user.id)
+            )
+        return False, max(0, settings.SIGNUP_PREVIEW_MESSAGES - used)
 
     async def check_usage(
         self, phone_number: str

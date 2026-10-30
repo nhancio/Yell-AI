@@ -40,16 +40,7 @@ def state(user, setup: UserOnboarding | None) -> dict:
             "completed_at": setup.completed_at.isoformat() if setup and setup.completed_at else None}
 
 
-@router.get("")
-async def get_setup(phone: str = Depends(current_phone), db: AsyncSession = Depends(get_db)) -> dict:
-    user = await usage.get_or_create_user(phone, session=db)
-    return state(user, await db.get(UserOnboarding, user.id))
-
-
-@router.patch("")
-async def save_setup(body: Preferences, phone: str = Depends(current_phone),
-                     db: AsyncSession = Depends(get_db)) -> dict:
-    user = await usage.get_or_create_user(phone, session=db)
+async def setup_row(db: AsyncSession, user) -> UserOnboarding:
     setup = await db.get(UserOnboarding, user.id)
     if setup is None:
         try:
@@ -62,6 +53,23 @@ async def save_setup(body: Preferences, phone: str = Depends(current_phone),
             setup = await db.get(UserOnboarding, user.id)
             if setup is None:
                 raise
+    return setup
+
+
+@router.get("")
+async def get_setup(phone: str = Depends(current_phone), db: AsyncSession = Depends(get_db)) -> dict:
+    user = await usage.get_or_create_user(phone, session=db)
+    # The row doubles as "this number has logged in" — it unlocks WhatsApp chat past the preview.
+    setup = await setup_row(db, user)
+    await db.commit()
+    return state(user, setup)
+
+
+@router.patch("")
+async def save_setup(body: Preferences, phone: str = Depends(current_phone),
+                     db: AsyncSession = Depends(get_db)) -> dict:
+    user = await usage.get_or_create_user(phone, session=db)
+    setup = await setup_row(db, user)
     if "name" in body.model_fields_set:
         user.name = body.name or None
     if body.interests is not None:
