@@ -25,16 +25,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # WhatsApp Provider: "kapso" or "meta"
-    WHATSAPP_PROVIDER: str = "kapso"
-
-    # Kapso AI (preferred)
-    KAPSO_API_KEY: str = ""
-    # Inbound webhooks are rejected unless they carry a valid signature from one of these
-    KAPSO_WEBHOOK_SECRET: str = ""  # Kapso webhook secret (X-Webhook-Signature)
-    WHATSAPP_APP_SECRET: str = ""  # Meta app secret (X-Hub-Signature-256)
-
-    # Meta Direct (fallback)
+    # WhatsApp (Meta Cloud API)
+    # Inbound webhooks are rejected unless they carry a valid X-Hub-Signature-256 made with this
+    WHATSAPP_APP_SECRET: str = ""  # Meta app secret (App settings → Basic)
     WHATSAPP_TOKEN: str = ""
     WHATSAPP_VERIFY_TOKEN: str = "yellai-verify-token"
     WHATSAPP_PHONE_NUMBER_ID: str = ""

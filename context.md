@@ -4,7 +4,7 @@
 - **Repo Path:** `/Users/nithi/Desktop/Claude-Projects/Nhancio-Projects/Yell AI`
 - **Production URL:** `https://yell.nhancio.com`
 - **Backend URL:** `https://api.yell.nhancio.com` (FastAPI on `:8000` locally)
-- **WhatsApp Provider:** Kapso AI (`WHATSAPP_PROVIDER=kapso`, Phone ID configured in `.env`)
+- **WhatsApp Provider:** Meta WhatsApp Cloud API, direct (`WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET` in `.env`)
 - **Payments:** Razorpay Live (`₹199/mo` Pro Plan via UPI / Razorpay + Free Ad-Supported Tier)
 
 ## Architecture (v2.0 — India Super-Agent)

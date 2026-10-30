@@ -35,16 +35,15 @@ class WebhookSecurityTests(unittest.IsolatedAsyncioTestCase):
         return await self.client.post("/webhook", content=BODY, headers=headers)
 
     async def test_whatsapp_webhook_rejects_unsigned_and_forged(self):
-        with patch.object(settings, "KAPSO_WEBHOOK_SECRET", "kapso-secret"), patch.object(settings, "WHATSAPP_APP_SECRET", "meta-secret"):
+        with patch.object(settings, "WHATSAPP_APP_SECRET", "meta-secret"):
             self.assertEqual((await self.post_webhook({})).status_code, 401)
-            self.assertEqual((await self.post_webhook({"X-Webhook-Signature": sign("wrong")})).status_code, 401)
-            self.assertEqual((await self.post_webhook({"X-Webhook-Signature": sign("kapso-secret")})).status_code, 200)
+            self.assertEqual((await self.post_webhook({"X-Hub-Signature-256": "sha256=" + sign("wrong")})).status_code, 401)
             self.assertEqual((await self.post_webhook({"X-Hub-Signature-256": "sha256=" + sign("meta-secret")})).status_code, 200)
 
-    async def test_whatsapp_webhook_rejects_everything_without_secrets(self):
-        with patch.object(settings, "KAPSO_WEBHOOK_SECRET", ""), patch.object(settings, "WHATSAPP_APP_SECRET", ""):
+    async def test_whatsapp_webhook_rejects_everything_without_secret(self):
+        with patch.object(settings, "WHATSAPP_APP_SECRET", ""):
             # An empty secret must not make an empty-key HMAC acceptable
-            self.assertEqual((await self.post_webhook({"X-Webhook-Signature": sign("")})).status_code, 401)
+            self.assertEqual((await self.post_webhook({"X-Hub-Signature-256": "sha256=" + sign("")})).status_code, 401)
 
     async def test_admin_refuses_blank_or_old_default_key(self):
         for configured in ("", "supersecretadmin123"):

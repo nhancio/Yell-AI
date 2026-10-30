@@ -25,7 +25,7 @@ if env_path.exists():
         k, v = line.split("=", 1)
         k = k.strip()
         v = v.strip()
-        if k in ("WHATSAPP_PROVIDER", "KAPSO_API_KEY", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TOKEN", "WHATSAPP_VERIFY_TOKEN", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
+        if k in ("WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_APP_SECRET", "ADMIN_API_KEY", "RAZORPAY_WEBHOOK_SECRET", "WHATSAPP_TOKEN", "WHATSAPP_VERIFY_TOKEN", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
             env_vars[k] = v
 
 env_vars["DATABASE_URL"] = "sqlite+aiosqlite:////tmp/yellai.db"

@@ -266,7 +266,7 @@ async def handle_webhook(request: Request, background_tasks: BackgroundTasks) ->
     raw_body = await request.body()
 
     if not WhatsAppService.verify_signature(raw_body, request.headers):
-        logger.warning("Rejected WhatsApp webhook: missing or invalid signature (set KAPSO_WEBHOOK_SECRET or WHATSAPP_APP_SECRET)")
+        logger.warning("Rejected WhatsApp webhook: missing or invalid signature (set WHATSAPP_APP_SECRET)")
         return Response(content="Invalid signature", status_code=401)
 
     try:

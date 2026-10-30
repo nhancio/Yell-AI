@@ -68,7 +68,7 @@ This prevents the UI from pretending that NanoClaw deployments can run inside a 
 
 ### Required environment variables
 - `WHATSAPP_PROVIDER`
-- `KAPSO_API_KEY` or `WHATSAPP_TOKEN`
+- `WHATSAPP_TOKEN` and `WHATSAPP_APP_SECRET` (Meta Cloud API)
 - `WHATSAPP_VERIFY_TOKEN`
 - `WHATSAPP_PHONE_NUMBER_ID`
 - `GEMINI_API_KEY`
@@ -109,7 +109,7 @@ If you prefer manual records:
 - `GOOGLE_CLIENT_SECRET`
 
 ### Backend secrets
-- `KAPSO_API_KEY` or Meta WhatsApp token
+- Meta WhatsApp token and app secret
 - `WHATSAPP_PHONE_NUMBER_ID`
 - `WHATSAPP_VERIFY_TOKEN`
 - `GEMINI_API_KEY`

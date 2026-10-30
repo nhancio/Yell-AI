@@ -1,4 +1,4 @@
-"""WhatsApp integration — supports Kapso AI (preferred) and direct Meta Graph API."""
+"""WhatsApp integration — Meta WhatsApp Cloud API (Graph API)."""
 
 import hashlib
 import hmac
@@ -13,32 +13,19 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # API base URLs
-KAPSO_API_URL = "https://api.kapso.ai/meta/whatsapp/v24.0"
 GRAPH_API_URL = "https://graph.facebook.com/v19.0"
 
 
 class WhatsAppService:
-    """Send and receive messages through WhatsApp via Kapso AI or Meta directly."""
+    """Send and receive messages through the Meta WhatsApp Cloud API."""
 
     def __init__(self) -> None:
-        self.provider = settings.WHATSAPP_PROVIDER.lower()
-
-        if self.provider == "kapso":
-            self.phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
-            self.base_url = f"{KAPSO_API_URL}/{self.phone_number_id}/messages"
-            self.headers = {
-                "X-API-Key": settings.KAPSO_API_KEY,
-                "Content-Type": "application/json",
-            }
-            logger.info("WhatsApp provider: Kapso AI")
-        else:
-            self.phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
-            self.base_url = f"{GRAPH_API_URL}/{self.phone_number_id}/messages"
-            self.headers = {
-                "Authorization": f"Bearer {settings.WHATSAPP_TOKEN}",
-                "Content-Type": "application/json",
-            }
-            logger.info("WhatsApp provider: Meta Direct")
+        self.phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
+        self.base_url = f"{GRAPH_API_URL}/{self.phone_number_id}/messages"
+        self.headers = {
+            "Authorization": f"Bearer {settings.WHATSAPP_TOKEN}",
+            "Content-Type": "application/json",
+        }
 
     # ------------------------------------------------------------------
     # Sending
@@ -113,25 +100,21 @@ class WhatsAppService:
             logger.warning("Failed to mark message %s as read", message_id)
 
     # ------------------------------------------------------------------
-    # Parsing (same format for both Kapso and Meta webhooks)
+    # Parsing (Meta webhook format)
     # ------------------------------------------------------------------
 
     @staticmethod
     def verify_signature(body: bytes, headers: Mapping[str, str]) -> bool:
-        """True only if the raw body carries a valid Kapso or Meta HMAC-SHA256 signature.
+        """True only if the raw body carries Meta's valid X-Hub-Signature-256 (HMAC-SHA256, app secret).
 
         Without this, anyone could POST a fake message "from" any phone number and act as that user.
         """
-        checks = (
-            (settings.KAPSO_WEBHOOK_SECRET, headers.get("x-webhook-signature", "")),
-            (settings.WHATSAPP_APP_SECRET, headers.get("x-hub-signature-256", "").removeprefix("sha256=")),
-        )
-        for secret, signature in checks:
-            if secret and signature:
-                expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-                if hmac.compare_digest(expected, signature):
-                    return True
-        return False
+        secret = settings.WHATSAPP_APP_SECRET
+        signature = headers.get("x-hub-signature-256", "").removeprefix("sha256=")
+        if not secret or not signature:
+            return False
+        expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, signature)
 
     @staticmethod
     def parse_incoming_message(

@@ -130,7 +130,7 @@ Nothing ships until all of these are done.
 
 | # | Task | Owner | Done when |
 |---|---|---|---|
-| 0.1 | Ask Kapso (BSP) and Meta in writing: is "job-outreach service using AI, with WhatsApp for approvals/updates" allowed for an Indian number under current Business Solution Terms? | Founder | Written answer saved |
+| 0.1 | Ask Meta in writing: is "job-outreach service using AI, with WhatsApp for approvals/updates" allowed for an Indian number under current Business Solution Terms? | Founder | Written answer saved |
 | 0.2 | Pick the wedge (default: Backdoor) and the name | Founder | Decision logged in this file |
 | 0.3 | ✅ *Code done 30 Oct:* `PAID_DAILY_LIMIT` 1000 → 40, `FREE_DAILY_LIMIT` 25 → 10 replies/day. The 5-email free quota needs the send flow first. | Eng | **Prod env vars updated + deployed** |
 | 0.4 | ↩️ *Reverted 30 Oct (founder decision):* intent + task prompts and the welcome message are back to the general super-agent. Upgrade copy now shows the real daily cap instead of "1,000". | Founder | Decided together with 0.7 (target user + channel) |

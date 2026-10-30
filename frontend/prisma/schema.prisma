@@ -17,7 +17,7 @@ model Deployment {
   telegramBotToken String? // legacy local dev column kept to avoid destructive db reset
   whatsappPhoneNumberId String?
   whatsappToken         String?
-  whatsappProvider      String   @default("kapso") // kapso | meta
+  whatsappProvider      String   @default("meta") // meta (Cloud API)
 
   aiProvider      String   @default("anthropic") // anthropic | openai | google
   aiApiKeyEnc     String?                    // encrypted or env ref; we store hashed/ref for MVP

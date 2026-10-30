@@ -4,7 +4,7 @@ Yell AI is a WhatsApp-first AI assistant project with two related product
 tracks living in one repo:
 
 - **`backend/`** — a hosted FastAPI service that receives WhatsApp webhooks
-  (Kapso or Meta), classifies emotion/intent, replies via Google Gemini,
+  (Meta WhatsApp Cloud API), classifies emotion/intent, replies via Google Gemini,
   enforces usage limits, and creates Razorpay payment links for premium.
 - **`frontend/`** — a Next.js 14 app ("Deploy Now") that lets a signed-in
   user spin up their own local **NanoClaw** runtime, scan a WhatsApp QR
