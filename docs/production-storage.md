@@ -40,3 +40,5 @@ The initial on-demand backup `1793387581656` completed successfully at `2026-10-
 The release script now preserves the managed database configuration instead of forcing SQLite. Production configuration rejects non-PostgreSQL URLs. When rolling back application code, retain the Cloud SQL attachment and database secret references; do not restore a temporary SQLite environment.
 
 The final backend suite passes all 74 tests. Production database validation and administrator authorization for campaign GET/POST routes pass. Three static-export checks and the production frontend build also pass.
+
+Final clean-install validation also removed the unused frontend Prisma install hooks, dependency and client wrapper, including the obsolete local startup commands. The frontend uses Next.js 14.2.35, the 14.x patch listed in the [December security advisory](https://nextjs.org/blog/security-update-2025-12-11). `npm audit` still reports dependency advisories; the suggested Next.js major upgrade is separate from this static-site release. Production does not run a Next.js server.

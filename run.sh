@@ -71,9 +71,7 @@ pip install -q -r backend/requirements.txt
 # Start Frontend setup
 echo "💻 Setting up Astra AI Frontend..."
 cd frontend
-npm install
-npx prisma generate
-npx prisma db push
+npm ci
 cd ..
 
 # Free typical dev ports if a previous Astra / uvicorn / Next run is still listening
