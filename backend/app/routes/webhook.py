@@ -115,13 +115,11 @@ async def process_user_message(
         parts = clean_text.replace("/", "").split()
         if len(parts) >= 2 and parts[1] in SUPPORTED_TOOLKITS:
             tk = parts[1]
-            link_res = await composio_service.create_auth_link(sender, tk)
             tk_meta = SUPPORTED_TOOLKITS[tk]
             msg = (
                 f"{tk_meta['icon']} *Connect {tk_meta['name']} to Yell AI*\n\n"
-                f"Tap once below to link your {tk_meta['name']} account:\n"
-                f"👉 {link_res['auth_url']}\n\n"
-                "Once connected, you never have to leave WhatsApp again!"
+                f"Sign in to your verified account to link {tk_meta['name']}:\n"
+                f"👉 {connect_hub_url}"
             )
             await whatsapp.send_message(sender, msg)
             return {"status": "ok"}
@@ -141,45 +139,61 @@ async def process_user_message(
         await whatsapp.send_message(sender, "Fresh start! 🧹 Tell me what we're tackling next.")
         return {"status": "ok"}
 
-    # 2b. Direct Pro Upgrade Command (/upgrade, upgrade, pro)
-    if clean_text in ("/upgrade", "upgrade", "pro", "/pro"):
+    # 2b. Direct Upgrade Command (/upgrade, upgrade, pro, business)
+    if clean_text in ("/upgrade", "upgrade", "pro", "/pro", "business", "/business"):
         user = await usage_service.get_or_create_user(sender)
-        payment_url = await payment_service.create_payment_link(sender, user.id)
-        price_inr = settings.MONTHLY_PRICE_PAISE // 100
+        is_requesting_biz = "business" in clean_text
+        pro_url = await payment_service.create_payment_link(sender, user.id, plan="pro")
+        biz_url = await payment_service.create_payment_link(sender, user.id, plan="business")
+        
+        pro_price = settings.MONTHLY_PRICE_PAISE // 100
+        biz_price = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) // 100
+
         msg = (
-            f"⚡ *Upgrade to Yell AI Pro for just ₹{price_inr}/month!*\n\n"
-            "Unlock unlimited super-agent powers:\n"
-            f"• {settings.PAID_DAILY_LIMIT} tasks & queries every day\n"
-            "• Priority execution on Gemini 3.8 Flash\n"
-            "• All 8+ Composio tools (Gmail, Calendar, Notion, GitHub)\n"
+            "⚡ *Yell AI Subscription Plans (Fair Usage Policy):*\n\n"
+            f"1️⃣ *Yell Pro — ₹{pro_price}/month (Most Popular)*\n"
+            f"• {settings.PAID_DAILY_LIMIT} tasks & queries/day (~2,400 tasks/mo)\n"
+            "• Priority Gemini 3.8 Flash execution\n"
+            "• All Composio tools (Gmail, Calendar, Notion, GitHub)\n"
             "• 100% Ad-Free experience\n"
-            "• Automated Backdoor Founder Outreach\n\n"
+            f"👉 *Subscribe to Pro (₹{pro_price}):* {pro_url or f'{settings.FRONTEND_URL}#pricing'}\n\n"
+            f"2️⃣ *Yell Business / Team — ₹{biz_price}/month*\n"
+            f"• {settings.BUSINESS_DAILY_LIMIT} tasks & queries/day (Enterprise headroom)\n"
+            "• Dedicated priority execution & custom connectors\n"
+            f"👉 *Subscribe to Business (₹{biz_price}):* {biz_url or f'{settings.FRONTEND_URL}#pricing'}"
         )
-        if payment_url:
-            msg += f"👉 *1-Tap Pay via UPI / Cards / Razorpay:*\n{payment_url}"
-        else:
-            msg += "Payment link generation is currently syncing with Razorpay. Try again in 1 minute!"
 
         await whatsapp.send_message(sender, msg)
         return {"status": "ok"}
 
-    # 3. Check usage limits
+    # 3. Check usage limits (Fair Usage Policy enforcement)
     usage_status = await usage_service.check_usage(sender)
     if not usage_status["allowed"]:
         user = await usage_service.get_or_create_user(sender)
-        payment_url = await payment_service.create_payment_link(sender, user.id)
-        price_inr = settings.MONTHLY_PRICE_PAISE // 100
-        upsell_text = (
-            "You've hit your daily free limit on Yell AI! ⚡\n\n"
-            f"Upgrade to *Yell AI Pro* for just *₹{price_inr}/month* (UPI supported) to unlock:\n"
-            f"• {settings.PAID_DAILY_LIMIT} tasks & messages/day\n"
-            "• Unlimited Gmail, Calendar, Notion & Backdoor Founder Outreach\n"
-            "• Zero sponsored ads\n\n"
-        )
-        if payment_url:
-            upsell_text += f"👉 *Upgrade via UPI / Razorpay:* {payment_url}"
+        current_tier = usage_status.get("plan_tier", "free")
+        
+        if current_tier == "free":
+            pro_url = await payment_service.create_payment_link(sender, user.id, plan="pro")
+            pro_price = settings.MONTHLY_PRICE_PAISE // 100
+            upsell_text = (
+                f"You've completed your {settings.FREE_DAILY_LIMIT} free daily tasks on Yell AI! ⚡\n\n"
+                f"Upgrade to *Yell AI Pro* for just *₹{pro_price}/month* (UPI Autopay) to unlock:\n"
+                f"• {settings.PAID_DAILY_LIMIT} tasks & messages/day (FUP)\n"
+                "• Unlimited Gmail, Calendar, Notion & Backdoor Founder Outreach\n"
+                "• 100% Zero sponsored ads\n\n"
+                f"👉 *Upgrade via UPI / Razorpay (₹{pro_price}):* {pro_url or f'{settings.FRONTEND_URL}#pricing'}"
+            )
         else:
-            upsell_text += "Reply *UPGRADE* and we'll activate your Pro pass!"
+            # Pro user hit the 80/day limit -> upsell to Business 1,000 tasks/day
+            biz_url = await payment_service.create_payment_link(sender, user.id, plan="business")
+            biz_price = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) // 100
+            upsell_text = (
+                f"You've reached your Pro daily Fair Usage limit of {settings.PAID_DAILY_LIMIT} tasks! ⚡\n\n"
+                f"Need heavy enterprise throughput? Upgrade to *Yell Business* for *₹{biz_price}/month*:\n"
+                f"• {settings.BUSINESS_DAILY_LIMIT} tasks/day headroom\n"
+                "• Multi-workflow automation & team prioritization\n\n"
+                f"👉 *Upgrade to Business (₹{biz_price}):* {biz_url or f'{settings.FRONTEND_URL}#pricing'}"
+            )
 
         await whatsapp.send_message(sender, upsell_text)
         return {"status": "limit_reached"}
@@ -199,11 +213,10 @@ async def process_user_message(
         # If the intent needs a Composio toolkit that isn't connected yet, append a 1-tap connect prompt
         req_tk = result.required_toolkit
         if req_tk and req_tk in SUPPORTED_TOOLKITS and req_tk not in active_apps:
-            link_res = await composio_service.create_auth_link(sender, req_tk)
             tk_meta = SUPPORTED_TOOLKITS[req_tk]
             response_text += (
                 f"\n\n{tk_meta['icon']} *Want me to execute this directly in your {tk_meta['name']}?*\n"
-                f"Tap once to connect {tk_meta['name']}: {link_res['auth_url']}"
+                f"Sign in to connect {tk_meta['name']}: {connect_hub_url}"
             )
 
         # Append contextual India native ad for free-tier users on high-intent queries
@@ -251,6 +264,10 @@ async def process_user_message(
 async def handle_webhook(request: Request, background_tasks: BackgroundTasks) -> dict:
     # Process incoming WhatsApp messages with instant ack and deduplication
     raw_body = await request.body()
+
+    if not WhatsAppService.verify_signature(raw_body, request.headers):
+        logger.warning("Rejected WhatsApp webhook: missing or invalid signature (set KAPSO_WEBHOOK_SECRET or WHATSAPP_APP_SECRET)")
+        return Response(content="Invalid signature", status_code=401)
 
     try:
         payload = json.loads(raw_body)

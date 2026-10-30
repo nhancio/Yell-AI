@@ -25,21 +25,25 @@ whatsapp = WhatsAppService()
 
 class PublicPaymentLinkRequest(BaseModel):
     phone_number: str
+    plan: str = "pro"  # "pro" (₹99) or "business" (₹999)
 
 
 @router.post("/create-link")
 async def create_public_payment_link(req: PublicPaymentLinkRequest) -> dict:
-    """Create a ₹99 Razorpay payment link for a user's phone number."""
+    """Create a Razorpay payment link for Pro (₹99) or Business (₹999)."""
     norm_phone = "".join(filter(str.isdigit, req.phone_number))
     if len(norm_phone) == 10:
         norm_phone = "91" + norm_phone
     user = await usage_service.get_or_create_user(norm_phone)
-    url = await payment_service.create_payment_link(f"+{norm_phone}", user.id)
+    url = await payment_service.create_payment_link(f"+{norm_phone}", user.id, plan=req.plan)
     if not url:
         raise HTTPException(status_code=503, detail="Razorpay payment initiation failed")
+    is_biz = req.plan.lower() in ("business", "biz", "team")
+    amount = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) // 100 if is_biz else settings.MONTHLY_PRICE_PAISE // 100
     return {
         "payment_url": url,
-        "amount_inr": settings.MONTHLY_PRICE_PAISE // 100,
+        "amount_inr": amount,
+        "plan": "business" if is_biz else "pro",
         "phone_number": norm_phone
     }
 
@@ -86,15 +90,17 @@ async def razorpay_webhook(request: Request) -> dict:
             phone_number = notes.get("phone_number", "")
 
             if phone_number:
-                success = await payment_service.activate_premium(phone_number)
+                plan_tier = notes.get("plan_tier", "pro")
+                success = await payment_service.activate_premium(phone_number, plan_tier=plan_tier)
                 if success:
+                    limit = settings.BUSINESS_DAILY_LIMIT if plan_tier == "business" else settings.PAID_DAILY_LIMIT
                     await whatsapp.send_message(
                         phone_number,
-                        "🎉 *Welcome to Yell AI Pro!*\n\n"
-                        "You now have 1000 conversations/day for the next 30 days.\n\n"
+                        f"🎉 *Welcome to Yell AI {plan_tier.upper()}!*\n\n"
+                        f"Your account now has {limit} conversations/day for the next 30 days.\n\n"
                         "Go ahead, yell away! I'm all ears. 💛"
                     )
-                    logger.info("Premium activated via webhook for %s", phone_number)
+                    logger.info("Premium (%s) activated via webhook for %s", plan_tier, phone_number)
 
         return {"status": "ok"}
 

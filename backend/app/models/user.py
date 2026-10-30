@@ -28,6 +28,7 @@ class User(Base):
     city = Column(String(64), nullable=True)
     preferred_language = Column(String(32), default="hinglish", nullable=False)
     is_premium = Column(Boolean, default=False, nullable=False)
+    plan_tier = Column(String(32), default="free", nullable=False)  # "free", "pro" (₹99), "business" (₹999)
     premium_expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(

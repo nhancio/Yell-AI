@@ -1,5 +1,6 @@
 """Admin routes for dashboarding and flow monitoring."""
 
+import hmac
 import logging
 from datetime import date, datetime, timedelta
 
@@ -17,9 +18,11 @@ settings = get_settings()
 api_key_header = APIKeyHeader(name="X-Admin-Key", auto_error=True)
 
 async def verify_admin_key(api_key: str = Security(api_key_header)):
-    """Verify the admin API key."""
-    if api_key != settings.ADMIN_API_KEY:
-        logger.warning(f"Invalid admin API key attempt: {api_key}")
+    """Verify the admin API key. Refuses everything until a real ADMIN_API_KEY is configured."""
+    configured = settings.ADMIN_API_KEY
+    # The old hard-coded default is public in git history, so it never counts as configured
+    if not configured or configured == "supersecretadmin123" or not hmac.compare_digest(api_key, configured):
+        logger.warning("Rejected admin API request with invalid key")
         raise HTTPException(status_code=403, detail="Forbidden: Invalid Admin Key")
     return api_key
 

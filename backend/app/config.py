@@ -30,6 +30,9 @@ class Settings(BaseSettings):
 
     # Kapso AI (preferred)
     KAPSO_API_KEY: str = ""
+    # Inbound webhooks are rejected unless they carry a valid signature from one of these
+    KAPSO_WEBHOOK_SECRET: str = ""  # Kapso webhook secret (X-Webhook-Signature)
+    WHATSAPP_APP_SECRET: str = ""  # Meta app secret (X-Hub-Signature-256)
 
     # Meta Direct (fallback)
     WHATSAPP_TOKEN: str = ""
@@ -42,7 +45,10 @@ class Settings(BaseSettings):
 
     # Composio (for 1-tap OAuth connectors: Gmail, Calendar, Notion, GitHub, etc.)
     COMPOSIO_API_KEY: str = ""
-    COMPOSIO_BASE_URL: str = "https://backend.composio.dev/api/v1"
+    COMPOSIO_BASE_URL: str = "https://backend.composio.dev/api/v3"
+    # JSON objects keyed by toolkit slug. Empty auth config disables that connector.
+    COMPOSIO_AUTH_CONFIGS: dict[str, str] = {}
+    COMPOSIO_TOOL_VERSIONS: dict[str, str] = {}
 
     # Redis
     REDIS_URL: str = DEFAULT_REDIS_URL
@@ -53,18 +59,20 @@ class Settings(BaseSettings):
     # Razorpay
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""  # Dashboard webhook secret; falls back to RAZORPAY_KEY_SECRET
 
-    # Usage limits: every reply costs ~₹0.145 (Meta ₹0.115/msg since Oct 2026 + LLM),
-    # so Pro (~₹82 net) breaks even at ~19 replies/day. Ads are shelved (LAUNCH_PLAN.md).
-    FREE_DAILY_LIMIT: int = 10
-    PAID_DAILY_LIMIT: int = 40
-    ADS_ENABLED: bool = False
+    # Usage limits: Fair Usage Policy (FUP) & Tiers
+    FREE_DAILY_LIMIT: int = 15  # Free tier: 15 tasks/day (ad-supported)
+    PAID_DAILY_LIMIT: int = 80  # Pro plan (₹99/mo): 80 tasks/day FUP (~2,400 tasks/mo)
+    BUSINESS_DAILY_LIMIT: int = 1000  # Business/Team plan (₹999/mo): 1,000 tasks/day enterprise
+    ADS_ENABLED: bool = True
 
-    # Pricing (₹99/mo default = 9900 paise for mass adoption via UPI)
-    MONTHLY_PRICE_PAISE: int = 9900  # INR 99
+    # Pricing
+    MONTHLY_PRICE_PAISE: int = 9900  # Pro: ₹99/mo (9900 paise)
+    BUSINESS_PRICE_PAISE: int = 99900  # Business: ₹999/mo (99900 paise)
 
     # Production Hardening
-    ADMIN_API_KEY: str = "supersecretadmin123"  # Change in production
+    ADMIN_API_KEY: str = ""  # Admin routes refuse every request until this is set
     CORS_ALLOWED_ORIGINS: str = "*"  # Comma-separated list
     APP_URL: str = "https://api.yell.nhancio.com"
     FRONTEND_URL: str = "https://yell.nhancio.com"

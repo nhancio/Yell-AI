@@ -2,10 +2,11 @@
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.services.ads_service import AdsService
+from app.services.auth import current_phone
 from app.services.composio_service import ComposioService, normalize_phone
 from app.services.whatsapp import WhatsAppService
 
@@ -22,11 +23,9 @@ class ConnectLinkRequest(BaseModel):
     send_whatsapp_link: bool = False
 
 
-class ExecuteToolRequest(BaseModel):
-    phone_number: str
-    action_slug: str
-    params: dict[str, Any] = {}
-
+def require_owner(claimed_phone: str, verified_phone: str) -> None:
+    if normalize_phone(claimed_phone) != verified_phone:
+        raise HTTPException(status_code=403, detail="This connection belongs to another account")
 
 @router.get("/connectors/toolkits")
 async def list_toolkits() -> dict[str, Any]:
@@ -36,10 +35,12 @@ async def list_toolkits() -> dict[str, Any]:
 
 @router.get("/connectors/status")
 async def get_user_connector_status(
-    phone: str = Query(..., description="User WhatsApp phone number")
+    phone: str = Query(..., description="User WhatsApp phone number"),
+    owner: str = Depends(current_phone),
 ) -> dict[str, Any]:
     """Get status of all connectors for a given WhatsApp phone number."""
     norm = normalize_phone(phone)
+    require_owner(norm, owner)
     if not norm:
         raise HTTPException(status_code=400, detail="Valid phone number required")
     connections = await composio_service.get_user_connections(norm)
@@ -47,8 +48,9 @@ async def get_user_connector_status(
 
 
 @router.post("/connectors/link")
-async def create_connector_link(body: ConnectLinkRequest) -> dict[str, Any]:
+async def create_connector_link(body: ConnectLinkRequest, owner: str = Depends(current_phone)) -> dict[str, Any]:
     """Generate a 1-tap Composio OAuth URL and optionally send it to the user on WhatsApp."""
+    require_owner(body.phone_number, owner)
     try:
         res = await composio_service.create_auth_link(
             phone_number=body.phone_number,
@@ -79,28 +81,10 @@ async def create_connector_link(body: ConnectLinkRequest) -> dict[str, Any]:
 
 
 @router.post("/connectors/confirm")
-async def confirm_connector_callback(body: ConnectLinkRequest) -> dict[str, Any]:
-    """Mark a toolkit as active when the user returns from OAuth redirect."""
-    res = await composio_service.mark_connected(body.phone_number, body.toolkit)
-    try:
-        await whatsapp_service.send_message(
-            res["phone_number"],
-            f"✅ *{body.toolkit.upper()} is now connected to Yell AI!*\n\n"
-            "Try asking me to check your inbox, schedule a meeting, or run a task right here in WhatsApp. 🚀",
-        )
-    except Exception:
-        pass
-    return res
-
-
-@router.post("/connectors/execute")
-async def execute_connector_tool(body: ExecuteToolRequest) -> dict[str, Any]:
-    """Execute a Composio action for a connected WhatsApp user."""
-    return await composio_service.execute_action(
-        phone_number=body.phone_number,
-        action_slug=body.action_slug,
-        params=body.params,
-    )
+async def confirm_connector_callback(body: ConnectLinkRequest, owner: str = Depends(current_phone)) -> dict[str, Any]:
+    """Mark a toolkit as active when the user returns from OAuth redirect (verified with Composio)."""
+    require_owner(body.phone_number, owner)
+    return await composio_service.mark_connected(owner, body.toolkit)
 
 
 @router.get("/ads/campaigns")

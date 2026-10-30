@@ -1,7 +1,9 @@
 """WhatsApp integration — supports Kapso AI (preferred) and direct Meta Graph API."""
 
+import hashlib
+import hmac
 import logging
-from typing import Any, Optional
+from typing import Any, Mapping, Optional
 
 import httpx
 
@@ -113,6 +115,23 @@ class WhatsAppService:
     # ------------------------------------------------------------------
     # Parsing (same format for both Kapso and Meta webhooks)
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def verify_signature(body: bytes, headers: Mapping[str, str]) -> bool:
+        """True only if the raw body carries a valid Kapso or Meta HMAC-SHA256 signature.
+
+        Without this, anyone could POST a fake message "from" any phone number and act as that user.
+        """
+        checks = (
+            (settings.KAPSO_WEBHOOK_SECRET, headers.get("x-webhook-signature", "")),
+            (settings.WHATSAPP_APP_SECRET, headers.get("x-hub-signature-256", "").removeprefix("sha256=")),
+        )
+        for secret, signature in checks:
+            if secret and signature:
+                expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+                if hmac.compare_digest(expected, signature):
+                    return True
+        return False
 
     @staticmethod
     def parse_incoming_message(

@@ -5,9 +5,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.models.database import Base, engine
-from app.routes import admin, brands, connectors, health, me, payment, webhook
+from app.routes import admin, brands, connectors, health, me, payment, tool_runs, webhook
+from app.services.composio_service import ConnectorError
 
 logging.basicConfig(
     level=logging.INFO,
@@ -79,7 +81,13 @@ app.add_middleware(
 app.include_router(webhook.router)
 app.include_router(connectors.router)
 app.include_router(me.router)
+app.include_router(tool_runs.router)
 app.include_router(payment.router)
 app.include_router(health.router)
 app.include_router(admin.router)
 app.include_router(brands.router)
+
+
+@app.exception_handler(ConnectorError)
+async def connector_error_handler(request, exc: ConnectorError):
+    return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})

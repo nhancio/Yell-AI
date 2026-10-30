@@ -55,15 +55,19 @@ class UsageService:
     async def check_usage(
         self, phone_number: str
     ) -> dict:
-        """Check whether the user can send another message today.
+        """Check whether the user can send another message today against their tier limit.
 
         Returns:
-            {"allowed": bool, "remaining": int, "is_premium": bool}
+            {"allowed": bool, "remaining": int, "is_premium": bool, "plan_tier": str, "limit": int}
         """
         user = await self.get_or_create_user(phone_number)
-        limit = (
-            settings.PAID_DAILY_LIMIT if user.is_premium else settings.FREE_DAILY_LIMIT
-        )
+        tier = getattr(user, "plan_tier", "pro" if user.is_premium else "free")
+        if tier == "business":
+            limit = settings.BUSINESS_DAILY_LIMIT  # 1,000 tasks/day
+        elif tier == "pro" or user.is_premium:
+            limit = settings.PAID_DAILY_LIMIT      # 80 tasks/day FUP
+        else:
+            limit = settings.FREE_DAILY_LIMIT      # 15 tasks/day free
 
         async with async_session() as session:
             result = await session.execute(
@@ -80,6 +84,8 @@ class UsageService:
             "allowed": current_count < limit,
             "remaining": remaining,
             "is_premium": user.is_premium,
+            "plan_tier": tier,
+            "limit": limit,
         }
 
     async def increment_usage(self, phone_number: str) -> None:

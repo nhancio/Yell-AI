@@ -227,6 +227,7 @@ export default function HomePage() {
   const [qrUrl, setQrUrl] = useState("");
   const [showQr, setShowQr] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<"pro" | "business">("pro");
   const [upgradePhone, setUpgradePhone] = useState("");
   const [upgrading, setUpgrading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
@@ -271,7 +272,7 @@ export default function HomePage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone_number: clean }),
+          body: JSON.stringify({ phone_number: clean, plan: selectedPlan }),
         },
       );
       if (!res.ok)
@@ -767,9 +768,9 @@ export default function HomePage() {
               <b className={styles.includes}>Includes:</b>
               <ul>
                 {[
-                  "25 AI queries & tasks per day",
+                  "15 AI tasks per day (Ad-supported)",
                   "Connect Gmail, Calendar, Notion & GitHub",
-                  "Train, travel & everyday expense help",
+                  "IRCTC train, travel & Swiggy expense tracker",
                   "English, Hinglish & Hindi voice and text",
                 ].map((f) => (
                   <li key={f}>
@@ -784,15 +785,17 @@ export default function HomePage() {
                 rel="noreferrer"
                 className={`${styles.button} ${styles.lightButton}`}
               >
-                Get Started
+                Start Free on WhatsApp
               </a>
             </article>
+
+            {/* Pro Plan */}
             <article className={`${styles.plan} ${styles.proPlan}`}>
               <span className={styles.planBadge}>
-                A little extra, every day
+                Fair Usage Policy • Most Popular
               </span>
               <h3>Yell Pro</h3>
-              <p>More room for founders, operators, and everyday power users</p>
+              <p>For founders, operators, and everyday power users</p>
               <div className={styles.price}>
                 ₹99<span>/ month</span>
               </div>
@@ -803,10 +806,10 @@ export default function HomePage() {
               <b className={styles.includes}>Everything in Free, plus:</b>
               <ul>
                 {[
-                  "1,000 actions per day",
-                  "Founder outreach and personalized drafts",
-                  "A completely ad-free experience",
-                  "Proactive briefings & priority execution",
+                  "80 actions per day (FUP: ~2,400 tasks/mo)",
+                  "Priority execution on Gemini 3.8 Flash",
+                  "Founder cold outreach & custom drafts",
+                  "100% Ad-Free experience",
                 ].map((f) => (
                   <li key={f}>
                     <Icon name="check" size={16} />
@@ -816,12 +819,53 @@ export default function HomePage() {
               </ul>
               <button
                 onClick={() => {
+                  setSelectedPlan("pro");
                   setCheckoutError("");
                   setShowUpgradeModal(true);
                 }}
                 className={`${styles.button} ${styles.darkButton}`}
               >
-                Get Pro <Icon name="arrow" size={17} />
+                Get Pro (₹99) <Icon name="arrow" size={17} />
+              </button>
+            </article>
+
+            {/* Business / Team Plan */}
+            <article className={`${styles.plan} ${styles.proPlan}`}>
+              <span className={styles.planBadge}>
+                Enterprise Headroom
+              </span>
+              <h3>Yell Business</h3>
+              <p>For agencies, high-volume teams, and automated workflows</p>
+              <div className={styles.price}>
+                ₹999<span>/ month</span>
+              </div>
+              <span className={styles.billingNote}>
+                Billed monthly · Priority SLA
+              </span>
+              <div className={styles.planDivider} />
+              <b className={styles.includes}>Everything in Pro, plus:</b>
+              <ul>
+                {[
+                  "1,000 actions per day enterprise limit",
+                  "Multi-seat & team workflow prioritization",
+                  "Custom Composio toolchains & webhooks",
+                  "Dedicated support & priority SLA",
+                ].map((f) => (
+                  <li key={f}>
+                    <Icon name="check" size={16} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => {
+                  setSelectedPlan("business");
+                  setCheckoutError("");
+                  setShowUpgradeModal(true);
+                }}
+                className={`${styles.button} ${styles.darkButton}`}
+              >
+                Get Business (₹999) <Icon name="arrow" size={17} />
               </button>
             </article>
           </div>
@@ -1002,12 +1046,55 @@ export default function HomePage() {
             <Icon name="close" />
           </button>
           <Mark app />
-          <span className={styles.dialogEyebrow}>Yell Pro · ₹99 / month</span>
-          <h2 id="upgrade-title">A little more Yell.</h2>
+          <span className={styles.dialogEyebrow}>
+            {selectedPlan === "business" ? "Yell Business · ₹999 / month" : "Yell Pro · ₹99 / month"}
+          </span>
+          <h2 id="upgrade-title">
+            {selectedPlan === "business" ? "Enterprise Headroom." : "A little more Yell."}
+          </h2>
           <p>
             Enter your WhatsApp number to continue to secure Razorpay checkout.
             Pay with UPI, cards, or UPI Autopay.
           </p>
+
+          {/* Plan Selector inside Dialog */}
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            <button
+              type="button"
+              onClick={() => setSelectedPlan("pro")}
+              style={{
+                flex: 1,
+                padding: "8px",
+                borderRadius: "8px",
+                border: selectedPlan === "pro" ? "2px solid #1C1C1C" : "1px solid #DDD",
+                backgroundColor: selectedPlan === "pro" ? "#1C1C1C" : "#FFF",
+                color: selectedPlan === "pro" ? "#FFF" : "#1C1C1C",
+                fontWeight: 600,
+                fontSize: "13px",
+                cursor: "pointer"
+              }}
+            >
+              Pro (₹99 / mo)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedPlan("business")}
+              style={{
+                flex: 1,
+                padding: "8px",
+                borderRadius: "8px",
+                border: selectedPlan === "business" ? "2px solid #1C1C1C" : "1px solid #DDD",
+                backgroundColor: selectedPlan === "business" ? "#1C1C1C" : "#FFF",
+                color: selectedPlan === "business" ? "#FFF" : "#1C1C1C",
+                fontWeight: 600,
+                fontSize: "13px",
+                cursor: "pointer"
+              }}
+            >
+              Business (₹999 / mo)
+            </button>
+          </div>
+
           <form onSubmit={handleProUpgrade}>
             <label htmlFor="upgrade-phone">
               WhatsApp number, with country code
@@ -1024,8 +1111,8 @@ export default function HomePage() {
               aria-invalid={!!checkoutError}
             />
             <div className={styles.checkoutSummary}>
-              <span>Yell Pro · 30 days</span>
-              <b>₹99.00</b>
+              <span>{selectedPlan === "business" ? "Yell Business (1,000 tasks/day) · 30 days" : "Yell Pro (80 tasks/day FUP) · 30 days"}</span>
+              <b>{selectedPlan === "business" ? "₹999.00" : "₹99.00"}</b>
             </div>
             {checkoutError && (
               <p

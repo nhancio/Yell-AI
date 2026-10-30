@@ -23,6 +23,7 @@ interface Connection {
   description: string;
   category: string;
   status: string;
+  configured: boolean;
 }
 
 interface Me {
@@ -195,7 +196,7 @@ function Dashboard({ user }: { user: User }) {
     const params = new URLSearchParams(window.location.search);
     const connected = params.get("connected");
     if (connected) {
-      setToast(`✅ ${connected} authorization finished — refreshing status...`);
+      setToast(`Checking ${connected} authorization status...`);
       window.history.replaceState({}, "", window.location.pathname);
     }
     load();
@@ -211,6 +212,19 @@ function Dashboard({ user }: { user: User }) {
       if (res.auth_url) window.location.href = res.auth_url;
     } catch (e: any) {
       setToast(`⚠️ ${e.message}`);
+      setBusySlug(null);
+    }
+  }
+
+  async function disconnect(slug: string) {
+    setBusySlug(slug);
+    try {
+      await api(user, `/api/me/connectors/${encodeURIComponent(slug)}`, { method: "DELETE" });
+      await load();
+      setToast("App disconnected.");
+    } catch (e: any) {
+      setToast(`⚠️ ${e.message}`);
+    } finally {
       setBusySlug(null);
     }
   }
@@ -305,17 +319,18 @@ function Dashboard({ user }: { user: User }) {
                       </div>
                     </div>
                     <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${on ? "bg-emerald-500/20 text-emerald-300" : c.status === "pending" ? "bg-amber-500/15 text-amber-300" : "bg-white/5 text-slate-400"}`}>
-                      {on ? "✓ Connected" : c.status === "pending" ? "Pending" : "Not linked"}
+                      {on ? "✓ Connected" : c.status === "pending" ? "Pending" : c.status === "unknown" ? "Status unavailable" : "Not linked"}
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 mt-3 leading-relaxed">{c.description}</p>
                   <button
                     onClick={() => connect(c.slug)}
-                    disabled={busySlug === c.slug}
-                    className={`mt-4 py-2.5 rounded-xl text-sm font-bold transition ${on ? "bg-white/10 hover:bg-white/15 text-white" : "bg-[#25D366] hover:bg-[#1ebe5d] text-black"}`}
+                    disabled={busySlug === c.slug || !c.configured}
+                    className={`mt-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed ${on ? "bg-white/10 hover:bg-white/15 text-white" : "bg-[#25D366] hover:bg-[#1ebe5d] text-black"}`}
                   >
-                    {busySlug === c.slug ? "Opening..." : on ? "Reconnect" : `Connect ${c.name} →`}
+                    {busySlug === c.slug ? "Please wait..." : !c.configured ? "Coming soon" : on ? "Reconnect" : `Connect ${c.name} →`}
                   </button>
+                  {on && <button onClick={() => disconnect(c.slug)} disabled={busySlug === c.slug} className="mt-2 text-xs text-slate-400 hover:text-white disabled:opacity-50">Disconnect</button>}
                 </div>
               );
             })}
