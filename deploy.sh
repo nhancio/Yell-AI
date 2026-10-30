@@ -49,13 +49,10 @@ subprocess.run([
 echo "==> 2/3 Building Next.js Static Export (frontend/out)..."
 (cd frontend && npm run build:sites)
 
-echo "==> 3/3 Deploying Frontend + Rewrites to Firebase Hosting ($PROJECT)..."
+echo "==> 3/3 Deploying Multi-Site Hosting to Firebase ($PROJECT)..."
 firebase deploy --only hosting --project "$PROJECT"
-netlify deploy --prod --no-build --dir=frontend/out --site="7128a350-9f2e-45ca-9bca-d1f304a4fbc3"      # yell.nhancio.com (landing)
-netlify deploy --prod --no-build --dir=frontend/out-app --site="45cced1b-8105-4021-a5f2-00d35fc92004"  # yellapp.nhancio.com (app)
 
-echo "✅ Deployment complete!"
-echo "   Firebase URL: https://yell-ai-nhancio.web.app"
-echo "   Custom URL:   https://yell.nhancio.com"
-echo "   API URL:      https://api.yell.nhancio.com"
-echo "   App URL:      https://yellapp.nhancio.com"
+echo "✅ Deployment complete 100% on Firebase & Cloud Run!"
+echo "   Landing (Firebase): https://yell-ai-nhancio.web.app"
+echo "   App Hub (Firebase): https://yellapp-nhancio.web.app"
+echo "   Cloud Run API:      https://yell-ai-api-6epx3aakpq-el.a.run.app"

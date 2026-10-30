@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "yell-ai-nhancio"
+  },
+  "targets": {
+    "yell-ai-nhancio": {
+      "hosting": {
+        "landing": [
+          "yell-ai-nhancio"
+        ],
+        "app": [
+          "yellapp-nhancio"
+        ]
+      }
+    }
   }
 }
