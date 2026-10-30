@@ -181,9 +181,11 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
     return <SetupFrame index={waOpened ? 1 : 0}>
       <section className={setupStyles.content}>
         <h1 className={setupStyles.heading}>{waOpened ? <>Send the message<br />on WhatsApp.</> : <>Your Astra starts<br />with a hello.</>}</h1>
-        <p className={setupStyles.description}>{waOpened
-          ? `Hit send on the pre-filled WhatsApp message${challenge ? ` (code: ${challenge.code})` : ""} and this page will sign you in automatically.`
-          : "Sign in directly with WhatsApp in one tap. Send the pre-filled message to verify your number instantly—no waiting for SMS codes."}</p>
+        {waOpened && (
+          <p className={setupStyles.description}>
+            {`Hit send on the pre-filled WhatsApp message${challenge ? ` (code: ${challenge.code})` : ""} and this page will sign you in automatically.`}
+          </p>
+        )}
         <div className={setupStyles.form}>
           {challenge?.whatsapp_url ? (
             <a
