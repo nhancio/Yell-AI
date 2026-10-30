@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from fastapi import HTTPException
 from app.config import get_settings
-from app.services.payment import PaymentService
+from app.services.payment import PRODUCT_TAG, PaymentService
 from app.services.usage import UsageService
 from app.services.auth import current_phone
 from app.services.composio_service import normalize_phone
@@ -88,6 +88,9 @@ async def razorpay_webhook(request: Request) -> dict:
         if event == "payment_link.paid":
             payment_entity = payload.get("payload", {}).get("payment_link", {}).get("entity", {})
             notes = payment_entity.get("notes", {})
+            if notes.get("product") != PRODUCT_TAG:
+                logger.info("Ignoring payment_link.paid for another product")
+                return {"status": "ignored"}
             phone_number = notes.get("phone_number", "")
 
             if phone_number:

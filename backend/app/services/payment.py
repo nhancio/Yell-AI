@@ -15,6 +15,7 @@ from app.models.user import User
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+PRODUCT_TAG = "astra"
 
 
 class PaymentService:
@@ -57,6 +58,9 @@ class PaymentService:
                 "callback_url": f"{settings.APP_URL}/payment/success",
                 "callback_method": "get",
                 "notes": {
+                    # The Razorpay account is shared with other products; the webhook only
+                    # grants Astra plans for links carrying this marker.
+                    "product": PRODUCT_TAG,
                     "phone_number": phone_number,
                     "user_id": str(user_id),
                     "plan_tier": "business" if is_biz else "pro",
