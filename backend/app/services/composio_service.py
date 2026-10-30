@@ -6,7 +6,10 @@ from typing import Any, Optional
 from urllib.parse import urlsplit
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.exc import IntegrityError
 
 from app.config import Settings, get_settings
 from app.models.database import async_session, ensure_tables
@@ -148,6 +151,12 @@ class ComposioService:
         self.sessions = session_factory or async_session
         self.initialize = initialize or ensure_tables
         self.transport = transport
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=25, transport=self.transport)
+        return self._client
 
     def _toolkit(self, toolkit: str) -> str:
         slug = toolkit.lower().strip()
@@ -169,9 +178,9 @@ class ComposioService:
         if not self.api_key:
             raise ConnectorError("App connections are not configured", 503)
         try:
-            async with httpx.AsyncClient(timeout=25, transport=self.transport) as client:
-                response = await client.request(method, f"{self.base_url}{path}",
-                                                headers={"x-api-key": self.api_key}, **kwargs)
+            client = self._get_client()
+            response = await client.request(method, f"{self.base_url}{path}",
+                                            headers={"x-api-key": self.api_key}, **kwargs)
         except httpx.RequestError as exc:
             raise ConnectorError("Connection provider is unavailable", 503,
                                  uncertain=executing) from exc
@@ -216,7 +225,7 @@ class ComposioService:
         phone = normalize_phone(phone_number)
         stored = await self._stored(phone)
         verified = False
-        if self.api_key:
+        if self.api_key and stored:
             try:
                 accounts = []
                 cursor = None
@@ -250,6 +259,8 @@ class ComposioService:
             except ConnectorError:
                 # Cached information remains in the DB but must not masquerade as live ACTIVE.
                 logger.warning("Could not refresh connection statuses")
+        elif self.api_key and not stored:
+            verified = True
         return [{**meta, "status": (stored[meta["slug"]].status if verified else "unknown")
                  if meta["slug"] in stored else "disconnected",
                  "verified": verified,
@@ -367,17 +378,37 @@ class ComposioService:
     async def _upsert_connection(self, phone_number: str, toolkit: str, status: str,
                                  auth_url: Optional[str] = None, connection_id: Optional[str] = None) -> None:
         await self.initialize()
+        values: dict[str, Any] = {
+            "status": status,
+            "auth_url": auth_url if status == "pending" else None,
+        }
+        if connection_id is not None:
+            values["connection_id"] = connection_id
+
         async with self.sessions() as session:
-            row = (await session.execute(select(UserConnection).where(
-                UserConnection.phone_number == phone_number, UserConnection.toolkit == toolkit))).scalar_one_or_none()
-            if row is None:
-                row = UserConnection(phone_number=phone_number, toolkit=toolkit, status=status)
-                session.add(row)
-            row.status = status
-            # Clear OAuth links after completion, revocation, or failure.
-            row.auth_url = auth_url if status == "pending" else None
-            if connection_id is not None:
-                row.connection_id = connection_id
+            dialect = session.bind.dialect.name if session.bind else ""
+            if dialect in ("sqlite", "postgresql"):
+                ins = sqlite_insert if dialect == "sqlite" else pg_insert
+                stmt = ins(UserConnection).values(
+                    phone_number=phone_number,
+                    toolkit=toolkit,
+                    **values,
+                )
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=[UserConnection.phone_number, UserConnection.toolkit],
+                    set_=values,
+                )
+                await session.execute(stmt)
+                await session.commit()
+                return
+
+            updated = await session.execute(
+                update(UserConnection)
+                .where(UserConnection.phone_number == phone_number, UserConnection.toolkit == toolkit)
+                .values(**values)
+            )
+            if updated.rowcount == 0:
+                session.add(UserConnection(phone_number=phone_number, toolkit=toolkit, **values))
             await session.commit()
 
 

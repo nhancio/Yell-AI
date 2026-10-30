@@ -33,14 +33,22 @@ class GeminiService:
     JSON_MODEL_NAME = "gemini-3.1-flash-lite"
     REQUEST_TIMEOUT_SECONDS = 20
 
+    def __init__(self) -> None:
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=self.REQUEST_TIMEOUT_SECONDS)
+        return self._client
+
     async def _generate(self, model: str, thinking: str, body: dict[str, Any]) -> str:
         body["generationConfig"]["thinkingConfig"] = {"thinkingLevel": thinking}
-        async with httpx.AsyncClient(timeout=self.REQUEST_TIMEOUT_SECONDS) as client:
-            resp = await client.post(
-                API_URL.format(model=model),
-                json=body,
-                headers={"x-goog-api-key": settings.GEMINI_API_KEY},
-            )
+        client = self._get_client()
+        resp = await client.post(
+            API_URL.format(model=model),
+            json=body,
+            headers={"x-goog-api-key": settings.GEMINI_API_KEY},
+        )
         if resp.status_code != 200:
             raise RuntimeError(f"Gemini {model} HTTP {resp.status_code}: {resp.text[:300]}")
         parts = resp.json()["candidates"][0]["content"].get("parts", [])

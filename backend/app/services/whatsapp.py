@@ -28,6 +28,12 @@ class WhatsAppService:
             "Authorization": f"Bearer {settings.WHATSAPP_TOKEN}",
             "Content-Type": "application/json",
         }
+        self._client: Optional[httpx.AsyncClient] = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(timeout=30)
+        return self._client
 
     # ------------------------------------------------------------------
     # Sending
@@ -275,16 +281,16 @@ class WhatsAppService:
     # ------------------------------------------------------------------
 
     async def _post(self, payload: dict[str, Any], *, timeout: float = 30) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                self.base_url,
-                json=payload,
-                headers=self.headers,
+        client = self._get_client()
+        resp = await client.post(
+            self.base_url,
+            json=payload,
+            headers=self.headers,
+            timeout=timeout,
+        )
+        if resp.status_code not in (200, 201):
+            logger.error(
+                "WhatsApp API error %s: %s", resp.status_code, resp.text
             )
-            if resp.status_code not in (200, 201):
-                logger.error(
-                    "WhatsApp API error %s: %s", resp.status_code, resp.text
-                )
-            if resp.status_code not in (200, 201):
-                return {"error": resp.text, "status_code": resp.status_code}
-            return resp.json()
+            return {"error": resp.text, "status_code": resp.status_code}
+        return resp.json()

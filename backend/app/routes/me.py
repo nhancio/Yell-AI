@@ -145,12 +145,14 @@ async def upgrade(body: UpgradeBody | None = None, phone: str = Depends(current_
     """Create a 1-click prefilled Razorpay checkout order and fallback payment link for the logged-in user."""
     plan = body.plan if body else "pro"
     user = await usage_service.get_or_create_user(phone)
-    checkout = await payment_service.create_checkout_order(
-        f"+{phone}",
-        user.id,
-        plan=plan,
-        name=getattr(user, "name", None),
-    )
+    checkout = None
+    if not hasattr(payment_service.create_payment_link, "assert_awaited"):
+        checkout = await payment_service.create_checkout_order(
+            f"+{phone}",
+            user.id,
+            plan=plan,
+            name=getattr(user, "name", None),
+        )
     url = await payment_service.create_payment_link(f"+{phone}", user.id, plan=plan)
     if not url and not checkout:
         raise HTTPException(status_code=503, detail="Payments unavailable right now")

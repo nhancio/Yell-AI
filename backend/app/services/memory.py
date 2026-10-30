@@ -121,9 +121,16 @@ class MemoryService:
             r = await self._get_redis()
             if r:
                 key = self._key(phone_number)
-                await r.rpush(key, json_entry)
-                await r.ltrim(key, -50, -1)
-                await r.expire(key, SESSION_TTL_SECONDS)
+                if hasattr(r, "pipeline"):
+                    pipe = r.pipeline(transaction=False)
+                    pipe.rpush(key, json_entry)
+                    pipe.ltrim(key, -50, -1)
+                    pipe.expire(key, SESSION_TTL_SECONDS)
+                    await pipe.execute()
+                else:
+                    await r.rpush(key, json_entry)
+                    await r.ltrim(key, -50, -1)
+                    await r.expire(key, SESSION_TTL_SECONDS)
                 return
 
             # Local fallback
@@ -209,23 +216,26 @@ class MemoryService:
             logger.error("Latest-message read failed (%s)", type(exc).__name__)
             return True
 
-    async def first_today(self, key: str) -> bool:
-        """True only for the first call per key in a rolling 24h window, shared across instances."""
+    async def claim_once(self, key: str, ttl: int) -> bool:
+        """True only for the first caller within `ttl` seconds, shared across instances."""
         try:
             r = await self._get_redis()
             if r:
-                return bool(await r.set(f"astra:once:{key}", 1, nx=True, ex=SESSION_TTL_SECONDS))
+                return bool(await r.set(f"astra:once:{key}", 1, nx=True, ex=ttl))
 
             # Local fallback
             now = time.time()
-            if now - self._local_once.get(key, 0) < SESSION_TTL_SECONDS:
+            if now - self._local_once.get(key, 0) < ttl:
                 return False
             self._local_once[key] = now
             return True
         except Exception as exc:
-            # Fail open: one extra paid message beats a user stuck in silence.
-            logger.error("Once-per-day check failed (%s)", type(exc).__name__)
+            logger.error("Once-per-key check failed (%s)", type(exc).__name__)
             return True
+
+    async def first_today(self, key: str) -> bool:
+        """True only for the first call per key in a rolling 24h window, shared across instances."""
+        return await self.claim_once(key, SESSION_TTL_SECONDS)
 
     async def close(self) -> None:
         """Close the Redis connection."""

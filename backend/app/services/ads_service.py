@@ -4,7 +4,7 @@ import logging
 import random
 from typing import Any, Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, case, select, update
 
 from app.config import get_settings
 from app.models.database import async_session, ensure_tables
@@ -147,16 +147,35 @@ class AdsService:
 
                 # Calculate impression cost in paise: (cpm_inr * 100) / 1000 = cpm_inr / 10
                 cost_paise = max(1, int((chosen.cpm_inr * 100) / 1000))
+                new_spent = SponsoredCampaign.spent_paise + cost_paise
 
-                chosen.impressions += 1
-                chosen.spent_paise += cost_paise
-
-                # Auto-pause when prepaid wallet hits zero
-                if chosen.budget_paise > 0 and chosen.spent_paise >= chosen.budget_paise:
-                    chosen.is_active = False
-                    logger.info("Campaign %s budget depleted (%s spent / %s budget). Auto-paused.", chosen.id, chosen.spent_paise, chosen.budget_paise)
-
+                # Atomic impression & wallet debit; auto-pause when prepaid wallet hits budget
+                debited = await session.execute(
+                    update(SponsoredCampaign)
+                    .where(
+                        SponsoredCampaign.id == chosen.id,
+                        SponsoredCampaign.is_active.is_(True),
+                        (SponsoredCampaign.budget_paise <= 0)
+                        | (SponsoredCampaign.spent_paise < SponsoredCampaign.budget_paise),
+                    )
+                    .values(
+                        impressions=SponsoredCampaign.impressions + 1,
+                        spent_paise=new_spent,
+                        is_active=case(
+                            (
+                                and_(
+                                    SponsoredCampaign.budget_paise > 0,
+                                    new_spent >= SponsoredCampaign.budget_paise,
+                                ),
+                                False,
+                            ),
+                            else_=SponsoredCampaign.is_active,
+                        ),
+                    )
+                )
                 await session.commit()
+                if debited.rowcount == 0:
+                    return None
 
                 # Generate custom tracking click redirect URL
                 track_url = f"{settings.APP_URL}/r/{chosen.id}"
@@ -172,20 +191,23 @@ class AdsService:
             return None
 
     async def record_click(self, campaign_id: int) -> Optional[str]:
-        """Record click and return destination URL for redirect."""
+        """Atomically record click and return destination URL for redirect."""
         try:
             await ensure_tables()
             async with async_session() as session:
-                result = await session.execute(
-                    select(SponsoredCampaign).where(SponsoredCampaign.id == campaign_id)
+                cta_url = await session.scalar(
+                    select(SponsoredCampaign.cta_url).where(SponsoredCampaign.id == campaign_id)
                 )
-                campaign = result.scalar_one_or_none()
-                if not campaign:
+                if not cta_url:
                     return None
 
-                campaign.clicks += 1
+                await session.execute(
+                    update(SponsoredCampaign)
+                    .where(SponsoredCampaign.id == campaign_id)
+                    .values(clicks=SponsoredCampaign.clicks + 1)
+                )
                 await session.commit()
-                return campaign.cta_url
+                return cta_url
         except Exception as exc:
             logger.error("Click record error: %s", exc)
             return None

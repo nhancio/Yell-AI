@@ -44,9 +44,9 @@ class User(Base):
         DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    usages = relationship("UserUsage", back_populates="user", lazy="selectin")
-    conversations = relationship("Conversation", back_populates="user", lazy="selectin")
-    connections = relationship("UserConnection", back_populates="user", lazy="selectin")
+    usages = relationship("UserUsage", back_populates="user")
+    conversations = relationship("Conversation", back_populates="user")
+    connections = relationship("UserConnection", back_populates="user")
 
     def __repr__(self) -> str:
         return f"<User {self.phone_number} premium={self.is_premium}>"

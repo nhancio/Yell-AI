@@ -4,7 +4,9 @@ import logging
 from datetime import date, datetime, timedelta
 from contextlib import nullcontext
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -59,8 +61,9 @@ class UsageService:
 
     async def signup_state(self, phone_number: str) -> tuple[bool, int]:
         """(signed_up, preview replies left). Signed up = logged in to the app (same number, OTP) or paid."""
-        user = await self.get_or_create_user(phone_number)
+        await ensure_tables()
         async with async_session() as session:
+            user = await self.get_or_create_user(phone_number, session=session)
             if (user.is_premium or await session.get(UserOnboarding, user.id)
                     or await session.get(VerifiedWhatsAppAccount, user.phone_number)):
                 return True, 0
@@ -77,16 +80,17 @@ class UsageService:
         Returns:
             {"allowed": bool, "remaining": int, "is_premium": bool, "plan_tier": str, "limit": int}
         """
-        user = await self.get_or_create_user(phone_number)
-        tier = ("business" if user.plan_tier == "business" else "pro") if user.is_premium else "free"
-        if tier == "business":
-            limit = settings.BUSINESS_DAILY_LIMIT
-        elif tier == "pro" or user.is_premium:
-            limit = settings.PAID_DAILY_LIMIT
-        else:
-            limit = settings.FREE_DAILY_LIMIT
-
+        await ensure_tables()
         async with async_session() as session:
+            user = await self.get_or_create_user(phone_number, session=session)
+            tier = ("business" if user.plan_tier == "business" else "pro") if user.is_premium else "free"
+            if tier == "business":
+                limit = settings.BUSINESS_DAILY_LIMIT
+            elif tier == "pro" or user.is_premium:
+                limit = settings.PAID_DAILY_LIMIT
+            else:
+                limit = settings.FREE_DAILY_LIMIT
+
             result = await session.execute(
                 select(UserUsage).where(
                     UserUsage.user_id == user.id,
@@ -106,26 +110,28 @@ class UsageService:
         }
 
     async def increment_usage(self, phone_number: str) -> None:
-        """Increment today's query count for the given phone number."""
-        user = await self.get_or_create_user(phone_number)
-
+        """Atomically increment today's query count for the given phone number."""
+        await ensure_tables()
+        today = date.today()
         async with async_session() as session:
-            result = await session.execute(
-                select(UserUsage).where(
-                    UserUsage.user_id == user.id,
-                    UserUsage.date == date.today(),
+            user = await self.get_or_create_user(phone_number, session=session)
+            dialect = session.bind.dialect.name if session.bind else ""
+            if dialect in ("sqlite", "postgresql"):
+                ins = sqlite_insert if dialect == "sqlite" else pg_insert
+                stmt = ins(UserUsage).values(user_id=user.id, date=today, query_count=1)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=[UserUsage.user_id, UserUsage.date],
+                    set_={"query_count": UserUsage.query_count + 1},
                 )
+                await session.execute(stmt)
+                await session.commit()
+                return
+
+            updated = await session.execute(
+                update(UserUsage)
+                .where(UserUsage.user_id == user.id, UserUsage.date == today)
+                .values(query_count=UserUsage.query_count + 1)
             )
-            usage = result.scalar_one_or_none()
-
-            if usage is None:
-                usage = UserUsage(
-                    user_id=user.id,
-                    date=date.today(),
-                    query_count=1,
-                )
-                session.add(usage)
-            else:
-                usage.query_count += 1
-
+            if updated.rowcount == 0:
+                session.add(UserUsage(user_id=user.id, date=today, query_count=1))
             await session.commit()
