@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 from fastapi import FastAPI
 
+from app.agents import AgentOrchestrator
 from app.routes import webhook
 from app.services import memory as memory_module
 from app.services.gemini import FALLBACK_RESPONSE, GeminiService
@@ -177,3 +178,45 @@ class AsyncGeminiTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("gemini-3.8-flash:", main_path)
         self.assertEqual(main["generationConfig"]["thinkingConfig"], {"thinkingLevel": "low"})
         self.assertEqual([c["role"] for c in main["contents"]], ["user", "model", "user"])
+
+    async def test_orchestrator_routes_simple_tasks_to_flash_lite_and_complex_to_flash(self):
+        requests = []
+
+        def handle(request):
+            body = json.loads(request.content)
+            requests.append((request.url.path, body))
+            if body["generationConfig"].get("responseMimeType") == "application/json":
+                is_complex = "Founder" in body["contents"][-1]["parts"][0]["text"]
+                payload = {
+                    "emotion": "neutral",
+                    "empathy_response": "Got it.",
+                    "needs_action": True,
+                    "is_crisis": False,
+                    "complex": is_complex,
+                    "intent": "founder_outreach" if is_complex else "general_help",
+                    "required_toolkit": None,
+                    "details": {"summary": "test", "key_points": []},
+                }
+                text = json.dumps(payload)
+            else:
+                text = "Here is your answer."
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": text}]}}]})
+
+        real_client = httpx.AsyncClient
+        transport = httpx.MockTransport(handle)
+        orchestrator = AgentOrchestrator(GeminiService())
+        with patch("app.services.gemini.httpx.AsyncClient",
+                   side_effect=lambda **kw: real_client(transport=transport, **kw)):
+            await orchestrator.process("What is the capital of Karnataka?")
+            await orchestrator.process("Founder cold email for a YC fintech role")
+
+        # 1st message: router (Flash-Lite JSON) + simple task answer (Flash-Lite plain text)
+        self.assertIn("gemini-3.5-flash-lite:", requests[0][0])
+        self.assertEqual(requests[0][1]["generationConfig"].get("responseMimeType"), "application/json")
+        self.assertIn("gemini-3.5-flash-lite:", requests[1][0])
+        self.assertIsNone(requests[1][1]["generationConfig"].get("responseMimeType"))
+        # 2nd message: router (Flash-Lite JSON) + complex task answer (Flash plain text)
+        self.assertIn("gemini-3.5-flash-lite:", requests[2][0])
+        self.assertIn("gemini-3.8-flash:", requests[3][0])
+        self.assertEqual(requests[3][1]["generationConfig"]["thinkingConfig"], {"thinkingLevel": "low"})
+

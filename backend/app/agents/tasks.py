@@ -103,6 +103,19 @@ Be practical, sharp, warm, and immediately useful.""" ,
 }
 
 
+# Intents that benefit from full Flash reasoning; simple/everyday intents run on Flash-Lite
+# unless the router explicitly flags `complex=True`.
+COMPLEX_INTENTS = frozenset({
+    "founder_outreach",
+    "resume_help",
+    "budget_planning",
+    "research",
+    "email_draft",
+    "gmail_action",
+    "job_search",
+})
+
+
 class TaskAgentRouter:
     def __init__(self, gemini: GeminiService) -> None:
         self.gemini = gemini
@@ -115,13 +128,15 @@ class TaskAgentRouter:
         emotion: str,
         history: list[dict[str, Any]] | None = None,
         connected_apps: list[str] | None = None,
+        complex_task: bool = False,
     ) -> str:
-        """Dispatch to the right task handler and return the response text."""
+        """Dispatch to the right task handler and model tier (Flash-Lite vs Flash)."""
         if intent == "just_venting":
             return ""
 
         system_prompt = PROMPTS.get(intent, PROMPTS["general_help"])
         apps_str = ", ".join(connected_apps) if connected_apps else "none connected yet"
+        use_fast = not (complex_task or intent in COMPLEX_INTENTS)
 
         user_message = (
             f"User's emotion: {emotion}\n"
@@ -135,6 +150,7 @@ class TaskAgentRouter:
             system_prompt=system_prompt,
             user_message=user_message,
             history=history,
+            fast=use_fast,
         )
 
         return response

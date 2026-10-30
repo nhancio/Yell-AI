@@ -49,8 +49,9 @@ class GeminiService:
         user_message: str,
         history: Optional[list[dict[str, str]]] = None,
         fast: bool = False,
+        json_output: bool = False,
     ) -> str:
-        """Call Gemini and return the generated text. `fast` = Flash-Lite, for classification."""
+        """Call Gemini and return the generated text. `fast` = Flash-Lite; `json_output` forces JSON MIME."""
         try:
             contents = [
                 {
@@ -65,7 +66,7 @@ class GeminiService:
                 "contents": contents,
                 "generationConfig": {"temperature": 0.7, "topP": 0.95, "maxOutputTokens": 1024},
             }
-            if fast:
+            if json_output:
                 body["generationConfig"]["responseMimeType"] = "application/json"
             model, thinking = (self.FAST_MODEL_NAME, "minimal") if fast else (self.MODEL_NAME, "low")
 
@@ -84,7 +85,9 @@ class GeminiService:
         history: Optional[list[dict[str, str]]] = None,
     ) -> dict[str, Any]:
         """Call Gemini (fast model) expecting a JSON response. Parses and returns dict."""
-        raw = await self.generate_response(system_prompt, user_message, history, fast=True)
+        raw = await self.generate_response(
+            system_prompt, user_message, history, fast=True, json_output=True
+        )
 
         cleaned = raw.strip()
         if cleaned.startswith("```"):

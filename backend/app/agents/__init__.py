@@ -76,7 +76,7 @@ class AgentOrchestrator:
         required_toolkit = intent_result.get("required_toolkit")
         logger.info("Intent: %s | required_toolkit: %s", intent, required_toolkit)
 
-        # Step 3 — Route to task agent
+        # Step 3 — Route to task agent (Flash-Lite for simple tasks, Flash for complex ones)
         task_response = await self.task_router.route(
             intent=intent,
             details=intent_result.get("details", {}),
@@ -84,6 +84,7 @@ class AgentOrchestrator:
             emotion=emotion_result["emotion"],
             history=history,
             connected_apps=connected_apps,
+            complex_task=bool(intent_result.get("complex", False)),
         )
 
         # Intelligent synthesis: Avoid repeating duplicate answers!

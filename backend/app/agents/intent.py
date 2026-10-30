@@ -36,7 +36,7 @@ Available intents:
 - general_help: Anything else that needs action
 - just_venting: User is just expressing feelings and doesn't need a task done
 
-Also identify if a Composio connector toolkit is needed (one of: {TOOLKITS}; or null).
+Also identify if a Composio connector toolkit is needed (one of: {TOOLKITS}; or null), and set complex = true ONLY when the reply needs deep reasoning, code, financial/tax math, resume rewriting, cold outreach, or multi-step analysis (false for everyday questions, quick facts, casual advice, or simple tasks).
 
 Return ONLY valid JSON:
 {
@@ -44,6 +44,7 @@ Return ONLY valid JSON:
   "empathy_response": "your warm line",
   "needs_action": true/false,
   "is_crisis": true/false,
+  "complex": true/false,
   "intent": "one_of_the_above_intents",
   "required_toolkit": "one toolkit slug from the list above, or null",
   "details": {
@@ -73,6 +74,7 @@ class IntentAgent:
             "empathy_response": empathy,
             "needs_action": bool(result.get("needs_action", True)),
             "is_crisis": bool(result.get("is_crisis", False)),
+            "complex": bool(result.get("complex", False)),
         }
         if not result:
             return feelings | {
