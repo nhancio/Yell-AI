@@ -85,6 +85,53 @@ class PaymentWebhookTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(success_resp.status_code, 302)
                 self.assertIn("/app?paid=1&plan=pro&phone=918374548218&name=Nithin", success_resp.headers["location"])
 
+    async def test_instant_1click_checkout_prefills_logged_in_phone_and_upi(self):
+        app = FastAPI()
+        app.include_router(payment.router)
+        fake_order_cfg = {
+            "key_id": "rzp_test_123",
+            "order_id": "order_1click",
+            "amount": 9900,
+            "currency": "INR",
+            "name": "Astra AI",
+            "description": "Astra AI Pro",
+            "plan_tier": "pro",
+            "notes": {"product": PRODUCT_TAG, "plan_tier": "pro", "phone_number": "917095288950"},
+            "prefill": {"contact": "+917095288950", "email": "917095288950@tryastra.app", "method": "upi"},
+            "readonly": {"contact": True, "email": True},
+            "hidden": {"email": True},
+            "config": {"display": {"sequence": ["block.upi"]}},
+        }
+        with patch.object(payment.payment_service, "create_checkout_order", AsyncMock(return_value=fake_order_cfg)):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as client:
+                resp = await client.get("/payment/checkout?plan=pro&phone=917095288950")
+                self.assertEqual(resp.status_code, 200)
+                self.assertIn("order_1click", resp.text)
+                self.assertIn("+917095288950", resp.text)
+                self.assertIn('"method": "upi"', resp.text)
+
+    async def test_order_paid_webhook_activates_subscription(self):
+        body = json.dumps({
+            "event": "order.paid",
+            "payload": {
+                "order": {
+                    "entity": {
+                        "id": "order_123",
+                        "notes": {"product": PRODUCT_TAG, "plan_tier": "pro", "phone_number": "917095288950"},
+                    }
+                },
+                "payment": {
+                    "entity": {
+                        "id": "pay_123",
+                        "contact": "+917095288950",
+                    }
+                },
+            },
+        }).encode()
+        resp, activate = await self.post(body)
+        self.assertEqual(resp.status_code, 200)
+        activate.assert_awaited_once_with("917095288950", plan_tier="pro")
+
 
 
 if __name__ == "__main__":

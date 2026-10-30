@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FAQS } from "@/lib/faq";
-import { publicApi, saveWhatsAppSession } from "@/lib/account";
+import { loadWhatsAppSession, publicApi, saveWhatsAppSession } from "@/lib/account";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import styles from "./home.module.css";
@@ -794,6 +794,13 @@ export default function HomePage() {
               </ul>
               <a
                 href="/payment/checkout?plan=pro"
+                onClick={(e) => {
+                  const phone = loadWhatsAppSession()?.phoneNumber;
+                  if (phone) {
+                    e.preventDefault();
+                    window.location.assign(`/payment/checkout?plan=pro&phone=${encodeURIComponent(phone)}`);
+                  }
+                }}
                 className={`${styles.button} ${styles.darkButton}`}
               >
                 Get Pro (₹99) <Icon name="arrow" size={17} />
@@ -828,6 +835,13 @@ export default function HomePage() {
               </ul>
               <a
                 href="/payment/checkout?plan=business"
+                onClick={(e) => {
+                  const phone = loadWhatsAppSession()?.phoneNumber;
+                  if (phone) {
+                    e.preventDefault();
+                    window.location.assign(`/payment/checkout?plan=business&phone=${encodeURIComponent(phone)}`);
+                  }
+                }}
                 className={`${styles.button} ${styles.darkButton}`}
               >
                 Get Business (₹299) <Icon name="arrow" size={17} />

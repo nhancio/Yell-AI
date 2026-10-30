@@ -48,13 +48,115 @@ async def create_public_payment_link(req: PublicPaymentLinkRequest, owner: str =
         "phone_number": norm_phone
     }
 
-@router.get("/checkout")
-async def direct_checkout(plan: Literal["pro", "business"] = "pro", phone: str = "") -> RedirectResponse:
-    """Redirect directly to Razorpay checkout without an intermediate screen."""
+def _render_instant_checkout_html(checkout: dict) -> str:
+    cfg_json = json.dumps(checkout)
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Astra AI — Instant Checkout</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body style="margin:0;min-height:100vh;background:#fffdfa;color:#18241d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;align-items:center;justify-content:center;">
+  <script>
+    (function () {{
+      var cfg = {cfg_json};
+      try {{
+        if (!cfg.prefill || !cfg.prefill.contact) {{
+          var raw = localStorage.getItem("astra:wa_session");
+          var parsed = raw ? JSON.parse(raw) : null;
+          var digits = parsed && parsed.phoneNumber ? String(parsed.phoneNumber).replace(/\\D/g, "") : "";
+          var norm = digits.length === 10 ? "91" + digits : digits;
+          if (norm.length >= 10) {{
+            cfg.prefill = cfg.prefill || {{}};
+            cfg.prefill.contact = "+" + norm;
+            cfg.prefill.email = norm + "@tryastra.app";
+            cfg.prefill.method = "upi";
+            cfg.readonly = {{ contact: true, email: true }};
+            cfg.notes = Object.assign({{}}, cfg.notes || {{}}, {{ phone_number: norm }});
+          }}
+        }}
+      }} catch (e) {{}}
+
+      var phoneParam = (cfg.notes && cfg.notes.phone_number) || "";
+      var options = {{
+        key: cfg.key_id,
+        order_id: cfg.order_id,
+        amount: cfg.amount,
+        currency: cfg.currency,
+        name: cfg.name,
+        description: cfg.description,
+        notes: cfg.notes,
+        prefill: cfg.prefill,
+        readonly: cfg.readonly,
+        hidden: cfg.hidden,
+        config: cfg.config,
+        theme: {{ color: "#1b7a4e" }},
+        handler: function (response) {{
+          var q = new URLSearchParams({{
+            razorpay_payment_id: response.razorpay_payment_id || "",
+            razorpay_order_id: response.razorpay_order_id || cfg.order_id || "",
+            razorpay_signature: response.razorpay_signature || "",
+            plan: cfg.plan_tier || "pro",
+            phone: phoneParam
+          }});
+          window.location.replace("/payment/success?" + q.toString());
+        }},
+        modal: {{
+          ondismiss: function () {{
+            if (window.history.length > 1) {{
+              window.history.back();
+            }} else {{
+              window.location.replace("/app");
+            }}
+          }}
+        }}
+      }};
+      var rzp = new window.Razorpay(options);
+      rzp.open();
+    }})();
+  </script>
+</body>
+</html>"""
+
+
+@router.get("/checkout", response_model=None)
+async def direct_checkout(
+    plan: Literal["pro", "business"] = "pro",
+    phone: str = "",
+    name: str = "",
+) -> HTMLResponse | RedirectResponse:
+    """Open 1-click Razorpay Standard Checkout with prefilled contact & UPI priority (or fallback link)."""
     norm_phone = normalize_phone(phone) if phone else ""
+    user_id = None
+    resolved_name = name.strip()
+    if norm_phone:
+        try:
+            user = await usage_service.get_or_create_user(norm_phone)
+            user_id = user.id
+            if not resolved_name and user.name:
+                resolved_name = user.name
+        except Exception:
+            pass
+
+    if not hasattr(payment_service.create_payment_link, "assert_awaited"):
+        checkout = await payment_service.create_checkout_order(
+            f"+{norm_phone}" if norm_phone else "",
+            user_id=user_id,
+            plan=plan,
+            name=resolved_name or None,
+        )
+        if checkout:
+            return HTMLResponse(
+                content=_render_instant_checkout_html(checkout),
+                status_code=200,
+                headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+            )
+
     url = await payment_service.create_payment_link(
         f"+{norm_phone}" if norm_phone else "",
-        user_id=None,
+        user_id=user_id,
         plan=plan,
     )
     if not url:
@@ -66,10 +168,19 @@ async def direct_checkout(plan: Literal["pro", "business"] = "pro", phone: str =
     )
 
 
-@router.get("/success")
+@router.api_route("/success", methods=["GET", "POST"])
 async def payment_success(request: Request) -> RedirectResponse:
-    """Capture user details from Razorpay callback, activate subscription, and send to login."""
-    details = await payment_service.complete_callback(dict(request.query_params))
+    """Capture user details from Razorpay callback (GET or POST), activate subscription, and send to app."""
+    params = dict(request.query_params)
+    if request.method == "POST":
+        try:
+            form = await request.form()
+            for k, v in form.items():
+                if isinstance(v, str) and v:
+                    params[k] = v
+        except Exception:
+            pass
+    details = await payment_service.complete_callback(params)
     query: dict[str, str] = {
         "paid": "1",
         "plan": details.get("plan_tier") or "pro",
@@ -89,7 +200,7 @@ async def payment_success(request: Request) -> RedirectResponse:
 
 @router.post("/webhook")
 async def razorpay_webhook(request: Request) -> dict:
-    """Handle Razorpay payment webhook events."""
+    """Handle Razorpay payment webhook events (payment_link.paid, order.paid, payment.captured)."""
     body = await request.body()
     signature = request.headers.get("X-Razorpay-Signature", "")
 
@@ -101,16 +212,20 @@ async def razorpay_webhook(request: Request) -> dict:
         payload = json.loads(body)
         event = payload.get("event", "")
 
-        if event == "payment_link.paid":
+        if event in ("payment_link.paid", "order.paid", "payment.captured"):
             pl_payload = payload.get("payload", {})
             payment_link_entity = pl_payload.get("payment_link", {}).get("entity", {})
+            order_entity = pl_payload.get("order", {}).get("entity", {})
             payment_entity = pl_payload.get("payment", {}).get("entity", {})
-            notes = payment_link_entity.get("notes", {})
-            if notes.get("product") != PRODUCT_TAG:
-                logger.info("Ignoring payment_link.paid for another product")
+            primary_entity = payment_link_entity or order_entity
+            notes = primary_entity.get("notes") if isinstance(primary_entity.get("notes"), dict) else {}
+            pay_notes = payment_entity.get("notes") if isinstance(payment_entity.get("notes"), dict) else {}
+            product = notes.get("product") or pay_notes.get("product")
+            if product != PRODUCT_TAG:
+                logger.info("Ignoring %s for another product", event)
                 return {"status": "ignored"}
 
-            details = payment_service.extract_customer_details(payment_link_entity, payment_entity)
+            details = payment_service.extract_customer_details(primary_entity, payment_entity)
             phone_number = details["phone_number"]
             if phone_number:
                 plan_tier = details["plan_tier"]

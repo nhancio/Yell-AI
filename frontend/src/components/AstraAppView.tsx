@@ -297,6 +297,86 @@ function friendly(err: any): string {
   return err?.message || "Something went wrong. Please try again.";
 }
 
+interface UpgradeResponse {
+  payment_url: string;
+  checkout?: {
+    key_id: string;
+    order_id: string;
+    amount: number;
+    currency: string;
+    name: string;
+    description: string;
+    plan_tier?: string;
+    notes?: Record<string, string>;
+    prefill?: Record<string, string>;
+    readonly?: Record<string, boolean>;
+    hidden?: Record<string, boolean>;
+    config?: Record<string, unknown>;
+  };
+}
+
+function loadRazorpaySdk(): Promise<any> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  const w = window as any;
+  if (w.Razorpay) return Promise.resolve(w.Razorpay);
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(w.Razorpay);
+    script.onerror = () => reject(new Error("Could not load Razorpay checkout"));
+    document.head.appendChild(script);
+  });
+}
+
+async function launchRazorpayCheckout(res: UpgradeResponse, onDismiss?: () => void): Promise<void> {
+  const cfg = res.checkout;
+  if (cfg?.key_id && cfg?.order_id) {
+    try {
+      const RazorpayCtor = await loadRazorpaySdk();
+      if (RazorpayCtor) {
+        const phoneParam = cfg.notes?.phone_number || "";
+        const rzp = new RazorpayCtor({
+          key: cfg.key_id,
+          order_id: cfg.order_id,
+          amount: cfg.amount,
+          currency: cfg.currency,
+          name: cfg.name,
+          description: cfg.description,
+          notes: cfg.notes,
+          prefill: cfg.prefill,
+          readonly: cfg.readonly,
+          hidden: cfg.hidden,
+          config: cfg.config,
+          theme: { color: "#1b7a4e" },
+          handler: (response: { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string }) => {
+            const q = new URLSearchParams({
+              razorpay_payment_id: response.razorpay_payment_id || "",
+              razorpay_order_id: response.razorpay_order_id || cfg.order_id,
+              razorpay_signature: response.razorpay_signature || "",
+              plan: cfg.plan_tier || "pro",
+              phone: phoneParam,
+            });
+            window.location.assign(`/payment/success?${q.toString()}`);
+          },
+          modal: {
+            ondismiss: () => {
+              onDismiss?.();
+            },
+          },
+        });
+        rzp.open();
+        return;
+      }
+    } catch {
+      // Fallback to hosted checkout URL below
+    }
+  }
+  if (res.payment_url) {
+    window.location.assign(res.payment_url);
+  }
+}
+
 function Dashboard({ user, initialMe, onSetup, prompt, requestedPlan }: { user: SessionUser; initialMe?: Me | null; onSetup: () => Promise<void>; prompt: string; requestedPlan?: "pro" | "business" }) {
   const [me, setMe] = useState<Me | null>(initialMe ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -383,10 +463,10 @@ function Dashboard({ user, initialMe, onSetup, prompt, requestedPlan }: { user: 
 
   async function upgrade() {
     try {
-      const res = await api<{ payment_url: string }>(user, "/api/me/upgrade", {
+      const res = await api<UpgradeResponse>(user, "/api/me/upgrade", {
         method: "POST", body: JSON.stringify({ plan: requestedPlan || "pro" }),
       });
-      window.location.href = res.payment_url;
+      await launchRazorpayCheckout(res);
     } catch (e: any) {
       setToast(`⚠️ ${e.message}`);
     }
@@ -598,10 +678,10 @@ export function AccountEntry({ user }: { user: SessionUser }) {
     if (account.plan.is_premium && account.plan.name.toLowerCase() === requestedPlan) return;
     checkoutStarted.current = true;
     setCheckingOut(true);
-    api<{ payment_url: string }>(user, "/api/me/upgrade", { method: "POST", body: JSON.stringify({ plan: requestedPlan }) })
-      .then(({ payment_url }) => {
-        if (!payment_url) throw new Error("No checkout link");
-        window.location.assign(payment_url);
+    api<UpgradeResponse>(user, "/api/me/upgrade", { method: "POST", body: JSON.stringify({ plan: requestedPlan }) })
+      .then((res) => {
+        if (!res.payment_url && !res.checkout) throw new Error("No checkout link");
+        return launchRazorpayCheckout(res, () => setCheckingOut(false));
       })
       .catch(() => setCheckingOut(false));
   }, [account, requestedPlan, user]);
@@ -654,10 +734,10 @@ export function AccountEntry({ user }: { user: SessionUser }) {
       window.location.assign(result.auth_url);
     }}
     checkout={async (plan) => {
-      const result = await api<{ payment_url: string }>(user, "/api/me/upgrade", { method: "POST", body: JSON.stringify({ plan }) });
-      if (!result.payment_url) throw new Error("No checkout link was returned. You can continue for free.");
+      const result = await api<UpgradeResponse>(user, "/api/me/upgrade", { method: "POST", body: JSON.stringify({ plan }) });
+      if (!result.payment_url && !result.checkout) throw new Error("No checkout link was returned. You can continue for free.");
       await save({ step: "complete" });
-      window.location.assign(result.payment_url);
+      await launchRazorpayCheckout(result);
     }} />;
 }
 

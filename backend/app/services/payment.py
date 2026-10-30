@@ -87,6 +87,95 @@ class PaymentService:
             logger.error("Razorpay create_payment_link error: %s", exc)
             return None
 
+    async def create_checkout_order(
+        self,
+        phone_number: str = "",
+        user_id: Optional[int] = None,
+        plan: str = "pro",
+        name: Optional[str] = None,
+    ) -> Optional[dict[str, Any]]:
+        """Create a Razorpay Order and 1-click Standard Checkout config with prefilled contact & UPI priority."""
+        if not self.client:
+            return None
+
+        is_biz = plan.lower() in ("business", "biz", "team")
+        plan_tier = "business" if is_biz else "pro"
+        amount = settings.BUSINESS_PRICE_PAISE if is_biz else settings.MONTHLY_PRICE_PAISE
+        limit = settings.BUSINESS_DAILY_LIMIT if is_biz else settings.PAID_DAILY_LIMIT
+        desc = f"Astra AI {'Business' if is_biz else 'Pro'} ({limit} messages/day) - 30 Days"
+        norm_phone = normalize_phone(phone_number) if phone_number else ""
+        clean_name = (name or "").strip()[:128]
+
+        try:
+            notes: dict[str, str] = {
+                "product": PRODUCT_TAG,
+                "plan_tier": plan_tier,
+            }
+            if norm_phone:
+                notes["phone_number"] = norm_phone
+            if clean_name:
+                notes["name"] = clean_name
+            if user_id is not None:
+                notes["user_id"] = str(user_id)
+
+            order_data: dict[str, Any] = {
+                "amount": amount,
+                "currency": "INR",
+                "receipt": f"astra_{plan_tier}_{norm_phone or 'direct'}"[:40],
+                "notes": notes,
+            }
+            order = await run_in_threadpool(self.client.order.create, order_data)
+            order_id = order.get("id", "") if isinstance(order, dict) else ""
+            if not order_id:
+                return None
+
+            prefill: dict[str, str] = {}
+            readonly: dict[str, bool] = {"contact": False, "email": True}
+            if norm_phone:
+                prefill["contact"] = f"+{norm_phone}"
+                prefill["email"] = f"{norm_phone}@tryastra.app"
+                prefill["method"] = "upi"
+                if clean_name:
+                    prefill["name"] = clean_name
+                readonly["contact"] = True
+
+            logger.info(
+                "Created 1-click checkout order %s for %s (%s)",
+                order_id,
+                norm_phone or "direct-checkout",
+                plan_tier,
+            )
+            return {
+                "key_id": settings.RAZORPAY_KEY_ID,
+                "order_id": order_id,
+                "amount": amount,
+                "currency": "INR",
+                "name": "Astra AI",
+                "description": desc,
+                "plan_tier": plan_tier,
+                "callback_url": f"{settings.APP_URL.rstrip('/')}/payment/success",
+                "notes": notes,
+                "prefill": prefill,
+                "readonly": readonly,
+                "hidden": {"email": True},
+                "config": {
+                    "display": {
+                        "blocks": {
+                            "upi": {
+                                "name": "Instant 1-Click UPI",
+                                "instruments": [{"method": "upi"}],
+                            }
+                        },
+                        "hide": [{"method": "upi", "flows": ["collect"]}],
+                        "sequence": ["block.upi"],
+                        "preferences": {"show_default_blocks": True},
+                    }
+                },
+            }
+        except Exception as exc:
+            logger.error("Razorpay create_checkout_order error: %s", exc)
+            return None
+
     def verify_payment(self, payment_id: str, signature: str, body: bytes) -> bool:
         """Verify a Razorpay webhook signature.
 
@@ -223,14 +312,16 @@ class PaymentService:
             return True
 
     async def complete_callback(self, params: dict[str, str]) -> dict[str, str]:
-        """Verify Razorpay redirect callback parameters, fetch customer details, and activate premium."""
+        """Verify Razorpay redirect callback parameters (Order or Payment Link), fetch customer details, and activate premium."""
         plink_id = (params.get("razorpay_payment_link_id") or "").strip()
+        order_id = (params.get("razorpay_order_id") or "").strip()
         payment_id = (params.get("razorpay_payment_id") or "").strip()
         ref_id = params.get("razorpay_payment_link_reference_id") or ""
         status = (params.get("razorpay_payment_link_status") or "").strip()
         signature = (params.get("razorpay_signature") or "").strip()
 
         link_entity: dict[str, Any] = {}
+        order_entity: dict[str, Any] = {}
         payment_entity: dict[str, Any] = {}
         verified = False
 
@@ -242,6 +333,14 @@ class PaymentService:
             except Exception as exc:
                 logger.warning("Could not fetch Razorpay payment_link %s: %s", plink_id, exc)
 
+        if self.client and order_id:
+            try:
+                order_entity = await run_in_threadpool(self.client.order.fetch, order_id)
+                if isinstance(order_entity, dict) and order_entity.get("status") == "paid":
+                    verified = True
+            except Exception as exc:
+                logger.warning("Could not fetch Razorpay order %s: %s", order_id, exc)
+
         if self.client and payment_id:
             try:
                 payment_entity = await run_in_threadpool(self.client.payment.fetch, payment_id)
@@ -249,6 +348,16 @@ class PaymentService:
                     verified = True
             except Exception as exc:
                 logger.warning("Could not fetch Razorpay payment %s: %s", payment_id, exc)
+
+        if not verified and order_id and payment_id and signature and settings.RAZORPAY_KEY_SECRET:
+            payload_str = f"{order_id}|{payment_id}"
+            expected = hmac.HMAC(
+                settings.RAZORPAY_KEY_SECRET.encode("utf-8"),
+                payload_str.encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
+            if hmac.compare_digest(expected, signature):
+                verified = True
 
         if not verified and plink_id and payment_id and signature and settings.RAZORPAY_KEY_SECRET:
             payload_str = f"{plink_id}|{ref_id}|{status}|{payment_id}"
@@ -260,9 +369,17 @@ class PaymentService:
             if status == "paid" and hmac.compare_digest(expected, signature):
                 verified = True
 
-        details = self.extract_customer_details(link_entity, payment_entity)
-        notes = link_entity.get("notes") if isinstance(link_entity.get("notes"), dict) else {}
-        if verified and notes.get("product", PRODUCT_TAG) == PRODUCT_TAG and details["phone_number"]:
+        primary_entity = link_entity or order_entity
+        details = self.extract_customer_details(primary_entity, payment_entity)
+        if not details["phone_number"] and params.get("phone"):
+            details["phone_number"] = normalize_phone(params["phone"])
+        if params.get("plan") in ("pro", "business") and not primary_entity and not payment_entity:
+            details["plan_tier"] = params["plan"]
+
+        notes = primary_entity.get("notes") if isinstance(primary_entity.get("notes"), dict) else {}
+        pay_notes = payment_entity.get("notes") if isinstance(payment_entity.get("notes"), dict) else {}
+        product = notes.get("product") or pay_notes.get("product") or PRODUCT_TAG
+        if verified and product == PRODUCT_TAG and details["phone_number"]:
             await self.activate_premium(
                 details["phone_number"],
                 plan_tier=details["plan_tier"],

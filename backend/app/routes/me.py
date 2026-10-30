@@ -142,9 +142,21 @@ async def link_connector(body: ToolkitBody, phone: str = Depends(current_phone))
 
 @router.post("/upgrade")
 async def upgrade(body: UpgradeBody | None = None, phone: str = Depends(current_phone)) -> dict[str, Any]:
-    """Create a Razorpay payment link for the selected configured plan."""
+    """Create a 1-click prefilled Razorpay checkout order and fallback payment link for the logged-in user."""
+    plan = body.plan if body else "pro"
     user = await usage_service.get_or_create_user(phone)
-    url = await payment_service.create_payment_link(f"+{phone}", user.id, plan=body.plan if body else "pro")
-    if not url:
+    checkout = await payment_service.create_checkout_order(
+        f"+{phone}",
+        user.id,
+        plan=plan,
+        name=getattr(user, "name", None),
+    )
+    url = await payment_service.create_payment_link(f"+{phone}", user.id, plan=plan)
+    if not url and not checkout:
         raise HTTPException(status_code=503, detail="Payments unavailable right now")
-    return {"payment_url": url}
+    result: dict[str, Any] = {
+        "payment_url": url or f"{settings.APP_URL.rstrip('/')}/payment/checkout?plan={plan}&phone={phone}",
+    }
+    if checkout:
+        result["checkout"] = checkout
+    return result
