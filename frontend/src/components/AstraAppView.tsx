@@ -541,7 +541,7 @@ function Dashboard({ user, initialMe, onSetup, prompt, requestedPlan }: { user: 
             <h2 className="text-2xl" style={{ color: "#18241d" }}>Your apps</h2>
             <button onClick={load} className="text-xs" style={{ color: "#1b7a4e", fontWeight: 600 }}>↻ Refresh</button>
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
             {(me?.connections ?? []).map((c) => {
               const on = c.status === "active";
               return (
