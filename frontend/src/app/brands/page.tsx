@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://yell-ai-api-6epx3aakpq-el.a.run.app";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
 interface Campaign {
   id: number;

@@ -279,7 +279,7 @@ export default function HomePage() {
     setUpgrading(true);
     try {
       const res = await fetch(
-        "https://yell-ai-api-6epx3aakpq-el.a.run.app/payment/create-link",
+        "/payment/create-link",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
