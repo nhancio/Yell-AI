@@ -26,7 +26,7 @@ for line in open(".env"):
     if k in ("WHATSAPP_PROVIDER", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TOKEN", "WHATSAPP_VERIFY_TOKEN", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
         env_vars[k] = v
 
-env_vars["DATABASE_URL"] = "sqlite+aiosqlite:////tmp/yellai.db"
+env_vars["DATABASE_URL"] = "sqlite+aiosqlite:////tmp/astra.db"
 env_vars["APP_URL"] = "https://astra.nhancio.com"
 env_vars["FRONTEND_URL"] = "https://astra.nhancio.com"
 env_vars["ADS_ENABLED"] = "true"
@@ -54,6 +54,6 @@ echo "==> 3/3 Deploying Multi-Site Hosting to Firebase ($PROJECT)..."
 firebase deploy --only hosting --project "$PROJECT"
 
 echo "✅ Deployment complete 100% on Firebase & Cloud Run!"
-echo "   Landing (Firebase): https://astra-ai-nhancio.web.app"
-echo "   App Hub (Firebase): https://astraapp-nhancio.web.app"
+echo "   Landing (Firebase): https://astra-nhancio.web.app"
+echo "   App Hub (Firebase): https://astra-nhancio.web.app"
 echo "   Cloud Run API:      https://yell-ai-api-6epx3aakpq-el.a.run.app"

@@ -63,7 +63,7 @@ class MemoryService:
             return False
 
     def _key(self, phone_number: str) -> str:
-        return f"yellai:conv:{phone_number}"
+        return f"astra:conv:{phone_number}"
 
     async def get_conversation_history(
         self, phone_number: str, limit: int = 10

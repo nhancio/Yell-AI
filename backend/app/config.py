@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = DEFAULT_REDIS_URL
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:////tmp/yellai.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:////tmp/astra.db"
     BACKEND_DATABASE_URL: str = ""
 
     # Razorpay
@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     CORS_ALLOWED_ORIGINS: str = ""  # Defaults to the configured frontend origins
     APP_URL: str = "https://api.astra.nhancio.com"
     FRONTEND_URL: str = "https://astra.nhancio.com"
-    APP_FRONTEND_URL: str = "https://astraapp.nhancio.com"
+    APP_FRONTEND_URL: str = "https://astra.nhancio.com"
 
     # Firebase Phone Auth (Astra App login)
     FIREBASE_PROJECT_ID: str = "yell-ai-nhancio"

@@ -5,11 +5,8 @@
   "targets": {
     "yell-ai-nhancio": {
       "hosting": {
-        "landing": [
-          "astra-ai-nhancio"
-        ],
-        "app": [
-          "astraapp-nhancio"
+        "astra": [
+          "astra-nhancio"
         ]
       }
     }

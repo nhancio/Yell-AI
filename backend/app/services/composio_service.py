@@ -98,7 +98,7 @@ def normalize_phone(phone: str) -> str:
 
 def entity_id_for_phone(phone: str) -> str:
     """Deterministic Composio user_id for a WhatsApp user."""
-    return f"yell_wa_{normalize_phone(phone)}"
+    return f"astra_wa_{normalize_phone(phone)}"
 
 
 class ConnectorError(Exception):

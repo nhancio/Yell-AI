@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { User, onAuthStateChanged } from "firebase/auth";
 import QRCode from "qrcode";
+import { auth } from "@/lib/firebase";
+import { AccountEntry, Login } from "@/components/AstraAppView";
 import styles from "./home.module.css";
-
-const APP_URL = "https://astraapp.nhancio.com";
 const WA_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "918790968218";
 const whatsapp = (text = "Hi Astra!") =>
   `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`;
@@ -221,8 +222,18 @@ function Phone() {
 }
 
 export default function HomePage() {
+  const [authUser, setAuthUser] = useState<User | null | undefined>(undefined);
+  const [showAppLogin, setShowAppLogin] = useState(false);
   const [activeRecipe, setActiveRecipe] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setAuthUser(u);
+      if (u) setShowAppLogin(false);
+    });
+    return unsub;
+  }, []);
   const [scrolled, setScrolled] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
   const [showQr, setShowQr] = useState(false);
@@ -294,6 +305,14 @@ export default function HomePage() {
     }
   };
 
+  if (authUser) {
+    return <AccountEntry key={authUser.uid} user={authUser} />;
+  }
+
+  if (showAppLogin) {
+    return <Login onBack={() => setShowAppLogin(false)} />;
+  }
+
   return (
     <div className={styles.site}>
       <a href="#main" className={styles.skipLink}>
@@ -320,7 +339,13 @@ export default function HomePage() {
               <div>
                 <a href="#experience">Meet Astra</a>
                 <a href="#recipes">Recipes</a>
-                <a href={APP_URL}>
+                <a
+                  href="#login"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowAppLogin(true);
+                  }}
+                >
                   Astra App <Icon name="arrow" size={14} />
                 </a>
               </div>
@@ -339,7 +364,14 @@ export default function HomePage() {
             <Link href="/brands">For Brands</Link>
           </nav>
           <div className={styles.headerActions}>
-            <a href={APP_URL} className={styles.login}>
+            <a
+              href="#login"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowAppLogin(true);
+              }}
+              className={styles.login}
+            >
               Log in
             </a>
             <a
@@ -372,7 +404,15 @@ export default function HomePage() {
               <a href="#pricing">Pricing</a>
               <a href="#faq">FAQs</a>
               <Link href="/brands">For Brands</Link>
-              <a href={APP_URL}>Log in</a>
+              <a
+                href="#login"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowAppLogin(true);
+                }}
+              >
+                Log in
+              </a>
             </nav>
           )}
         </header>
@@ -735,7 +775,14 @@ export default function HomePage() {
                 Connect Gmail, Calendar, Notion, and GitHub once. Astra puts them
                 to work together, right inside your WhatsApp.
               </p>
-              <a href={APP_URL} className={styles.textLink}>
+              <a
+                href="#login"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowAppLogin(true);
+                }}
+                className={styles.textLink}
+              >
                 Explore Astra App <Icon name="arrow" size={18} />
               </a>
             </div>
@@ -994,7 +1041,15 @@ export default function HomePage() {
           </Link>
           <div>
             <b>Product</b>
-            <a href={APP_URL}>Log in</a>
+            <a
+              href="#login"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowAppLogin(true);
+              }}
+            >
+              Log in
+            </a>
             <a href="#recipes">Recipes</a>
             <a href="#pricing">Pricing</a>
           </div>

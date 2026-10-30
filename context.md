@@ -9,7 +9,7 @@
 
 ## Architecture (v2.0 — India Super-Agent)
 1. **Connect Once via Composio (`backend/app/services/composio_service.py`):**
-   - Maps each user's WhatsApp phone number (`91XXXXXXXXXX`) to deterministic Composio entity `yell_wa_91XXXXXXXXXX`.
+   - Maps each user's WhatsApp phone number (`91XXXXXXXXXX`) to deterministic Composio entity `astra_wa_91XXXXXXXXXX`.
    - Supported 1-tap OAuth toolkits: `gmail`, `googlecalendar`, `googledrive`, `googlesheets`, `notion`, `github`, `linkedin`, `slack`.
    - REST endpoints in `backend/app/routes/connectors.py`:
      - `GET /api/connectors/toolkits`
