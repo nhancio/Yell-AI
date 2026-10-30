@@ -6,15 +6,42 @@ import logging
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
+from pydantic import BaseModel
+from fastapi import HTTPException
+from app.config import get_settings
 from app.services.payment import PaymentService
+from app.services.usage import UsageService
 from app.services.whatsapp import WhatsAppService
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter(prefix="/payment", tags=["payment"])
 
 payment_service = PaymentService()
+usage_service = UsageService()
 whatsapp = WhatsAppService()
+
+
+class PublicPaymentLinkRequest(BaseModel):
+    phone_number: str
+
+
+@router.post("/create-link")
+async def create_public_payment_link(req: PublicPaymentLinkRequest) -> dict:
+    """Create a ₹99 Razorpay payment link for a user's phone number."""
+    norm_phone = "".join(filter(str.isdigit, req.phone_number))
+    if len(norm_phone) == 10:
+        norm_phone = "91" + norm_phone
+    user = await usage_service.get_or_create_user(norm_phone)
+    url = await payment_service.create_payment_link(f"+{norm_phone}", user.id)
+    if not url:
+        raise HTTPException(status_code=503, detail="Razorpay payment initiation failed")
+    return {
+        "payment_url": url,
+        "amount_inr": settings.MONTHLY_PRICE_PAISE // 100,
+        "phone_number": norm_phone
+    }
 
 @router.get("/success", response_class=HTMLResponse)
 async def payment_success():

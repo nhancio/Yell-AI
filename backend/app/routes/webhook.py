@@ -162,6 +162,28 @@ async def handle_webhook(request: Request) -> dict:
         await whatsapp.send_message(sender, "Fresh start! 🧹 Tell me what we're tackling next.")
         return {"status": "ok"}
 
+    # 2b. Direct Pro Upgrade Command (/upgrade, upgrade, pro)
+    if clean_text in ("/upgrade", "upgrade", "pro", "/pro"):
+        user = await usage_service.get_or_create_user(sender)
+        payment_url = await payment_service.create_payment_link(sender, user.id)
+        price_inr = settings.MONTHLY_PRICE_PAISE // 100
+        msg = (
+            f"⚡ *Upgrade to Yell AI Pro for just ₹{price_inr}/month!*\n\n"
+            "Unlock unlimited super-agent powers:\n"
+            "• 1,000 tasks & queries every day\n"
+            "• Priority execution on Gemini 3.8 Flash\n"
+            "• All 8+ Composio tools (Gmail, Calendar, Notion, GitHub)\n"
+            "• 100% Ad-Free experience\n"
+            "• Automated Backdoor Founder Outreach\n\n"
+        )
+        if payment_url:
+            msg += f"👉 *1-Tap Pay via UPI / Cards / Razorpay:*\n{payment_url}"
+        else:
+            msg += "Payment link generation is currently syncing with Razorpay. Try again in 1 minute!"
+
+        await whatsapp.send_message(sender, msg)
+        return {"status": "ok"}
+
     # 3. Check usage limits
     usage_status = await usage_service.check_usage(sender)
     if not usage_status["allowed"]:

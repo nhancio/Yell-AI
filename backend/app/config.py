@@ -59,8 +59,8 @@ class Settings(BaseSettings):
     PAID_DAILY_LIMIT: int = 1000
     ADS_ENABLED: bool = True
 
-    # Pricing (₹199/mo or ₹900/mo configurable; default ₹199 = 19900 paise for India mass adoption)
-    MONTHLY_PRICE_PAISE: int = 19900  # INR 199
+    # Pricing (₹99/mo default = 9900 paise for mass adoption via UPI)
+    MONTHLY_PRICE_PAISE: int = 9900  # INR 99
 
     # Production Hardening
     ADMIN_API_KEY: str = "supersecretadmin123"  # Change in production

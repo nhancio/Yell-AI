@@ -85,8 +85,37 @@ const BENTO_INTEGRATIONS = [
 export default function HomePage() {
   const [activeRecipe, setActiveRecipe] = useState(0);
   const [qrUrl, setQrUrl] = useState<string>("");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradePhone, setUpgradePhone] = useState("");
+  const [upgrading, setUpgrading] = useState(false);
 
   const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi Yell AI!")}`;
+
+  const handleProUpgrade = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = upgradePhone.replace(/\D/g, "");
+    if (clean.length < 10) {
+      alert("Please enter a valid 10-digit WhatsApp phone number.");
+      return;
+    }
+    try {
+      setUpgrading(true);
+      const res = await fetch("https://yell-ai-api-6epx3aakpq-el.a.run.app/payment/create-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_number: clean }),
+      });
+      if (!res.ok) throw new Error("Payment link generation failed");
+      const data = await res.json();
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to start checkout. Try texting UPGRADE on WhatsApp!");
+    } finally {
+      setUpgrading(false);
+    }
+  };
 
   useEffect(() => {
     QRCode.toDataURL(waLink, {
@@ -428,7 +457,7 @@ export default function HomePage() {
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-[#25D366]">Yell Pro</span>
                   <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-4xl font-extrabold text-[#141210]">₹199</span>
+                    <span className="text-4xl font-extrabold text-[#141210]">₹99</span>
                     <span className="text-xs text-[#7A746D]">/ month (via UPI / Razorpay)</span>
                   </div>
                   <p className="text-xs text-[#5C5752] mt-2">For founders, operators, and power users who want maximum throughput.</p>
@@ -439,12 +468,12 @@ export default function HomePage() {
                     <li className="flex items-center gap-2">✓ Proactive morning briefings & priority execution</li>
                   </ul>
                 </div>
-                <Link
-                  href={APP_URL}
-                  className="mt-8 block text-center w-full py-3.5 rounded-xl bg-[#1C1C1C] hover:bg-[#000] text-white font-bold text-sm transition-colors shadow-sm"
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="mt-8 block text-center w-full py-3.5 rounded-xl bg-[#1C1C1C] hover:bg-[#000] text-white font-bold text-sm transition-colors shadow-sm cursor-pointer active:scale-[0.98]"
                 >
-                  Upgrade to Pro →
-                </Link>
+                  Upgrade to Pro (₹99) →
+                </button>
               </div>
             </div>
 
@@ -471,6 +500,76 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+
+      {/* Upgrade to Pro Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#FAF8F5] border border-[#DDD7CE] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-left">
+            <button
+              onClick={() => setShowUpgradeModal(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-black font-bold text-lg cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">⚡</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#008069]">
+                Yell AI Pro • ₹99 / Month
+              </span>
+            </div>
+
+            <h3 className="text-2xl font-extrabold text-[#141210] tracking-tight">
+              Upgrade Your WhatsApp
+            </h3>
+            <p className="text-xs text-[#5C5752] mt-1.5 leading-relaxed">
+              Enter your WhatsApp number. We will open a secure Razorpay checkout for ₹99 (supports GPay, PhonePe, Paytm, Cards & UPI Autopay).
+            </p>
+
+            <form onSubmit={handleProUpgrade} className="mt-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#333] mb-1.5 uppercase tracking-wider">
+                  WhatsApp Phone Number *
+                </label>
+                <div className="flex items-center bg-white border border-[#DDD7CE] rounded-xl px-3.5 py-3 shadow-xs">
+                  <span className="text-slate-400 font-semibold text-sm mr-2">🇮🇳 +91</span>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="98765 43210"
+                    value={upgradePhone}
+                    onChange={(e) => setUpgradePhone(e.target.value)}
+                    className="bg-transparent text-[#111] placeholder-slate-400 focus:outline-none w-full text-sm font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-[#F0ECE4] p-3 rounded-xl text-xs text-[#555] space-y-1">
+                <div className="flex justify-between">
+                  <span>Plan:</span>
+                  <strong className="text-black">Yell AI Pro (30 Days)</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span>Price:</span>
+                  <strong className="text-[#008069] font-bold">₹99.00</strong>
+                </div>
+                <div className="flex justify-between">
+                  <span>Daily limit:</span>
+                  <span className="text-black">1,000 queries/day (0 ads)</span>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={upgrading}
+                className="w-full bg-[#25D366] hover:bg-[#20ba59] text-black font-extrabold py-3.5 rounded-xl transition-all shadow-md text-sm cursor-pointer disabled:opacity-50"
+              >
+                {upgrading ? "Connecting to Razorpay..." : "Pay ₹99 via UPI / Razorpay →"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Footer (Poke style) */}
       <footer className="border-t border-[#EAE6DE] py-10 px-6 text-xs text-[#7A746D] bg-[#FAF8F5]">
