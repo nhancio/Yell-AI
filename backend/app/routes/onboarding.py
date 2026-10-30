@@ -5,11 +5,13 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.database import get_db
 from app.models.onboarding import UserOnboarding
+from app.models.user import UserConnection
 from app.services.auth import current_phone
 from app.services.usage import UsageService
 
@@ -40,12 +42,32 @@ def state(user, setup: UserOnboarding | None) -> dict:
             "completed_at": setup.completed_at.isoformat() if setup and setup.completed_at else None}
 
 
+async def _has_connected_app_or_plan(db: AsyncSession, user) -> bool:
+    if user.is_premium:
+        return True
+    conn_id = await db.scalar(
+        select(UserConnection.id)
+        .where(
+            UserConnection.phone_number == user.phone_number,
+            UserConnection.status == "active",
+        )
+        .limit(1)
+    )
+    return conn_id is not None
+
+
 async def setup_row(db: AsyncSession, user) -> UserOnboarding:
     setup = await db.get(UserOnboarding, user.id)
     if setup is None:
+        already_active = await _has_connected_app_or_plan(db, user)
         try:
             async with db.begin_nested():
-                setup = UserOnboarding(user_id=user.id, interests=[], step="name")
+                setup = UserOnboarding(
+                    user_id=user.id,
+                    interests=[],
+                    step="complete" if already_active else "name",
+                    completed_at=datetime.now(UTC) if already_active else None,
+                )
                 db.add(setup)
                 await db.flush()
         except IntegrityError:
@@ -53,6 +75,9 @@ async def setup_row(db: AsyncSession, user) -> UserOnboarding:
             setup = await db.get(UserOnboarding, user.id)
             if setup is None:
                 raise
+    elif setup.completed_at is None and await _has_connected_app_or_plan(db, user):
+        setup.step = "complete"
+        setup.completed_at = datetime.now(UTC)
     return setup
 
 

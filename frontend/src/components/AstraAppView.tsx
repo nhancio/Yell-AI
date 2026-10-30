@@ -323,8 +323,13 @@ function Dashboard({ user, initialMe, onSetup, prompt, requestedPlan }: { user: 
     const params = new URLSearchParams(window.location.search);
     const connected = params.get("connected");
     if (connected) {
-      setToast(`Verifying ${connected} connection…`);
       window.history.replaceState({}, "", window.location.pathname);
+      const existing = initialMe?.connections.find((c) => c.slug === connected);
+      if (existing?.status === "active") {
+        setToast(`✓ ${existing.name} connected! You can now use it on WhatsApp.`);
+        return;
+      }
+      setToast(`Verifying ${connected} connection…`);
       void (async () => {
         try {
           await api(user, "/api/me/connectors/confirm", {
@@ -544,13 +549,20 @@ export function AccountEntry({ user }: { user: SessionUser }) {
   const load = useCallback(async () => {
     setError("");
     const onboardedKey = `astra:onboarded:${user.uid}`;
-    const returningFromOAuth = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("connected");
+    const connectedSlug = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("connected") : null;
+    const returningFromOAuth = Boolean(connectedSlug);
     let alreadyOnboarded = returningFromOAuth;
     try {
       if (localStorage.getItem(onboardedKey) === "1") alreadyOnboarded = true;
     } catch { /* ignore */ }
     try {
       await api(user, "/api/me/session", { method: "POST" });
+      if (connectedSlug) {
+        await api(user, "/api/me/connectors/confirm", {
+          method: "POST",
+          body: JSON.stringify({ toolkit: connectedSlug }),
+        }).catch(() => {});
+      }
       const [profile, preferences] = await Promise.all([
         api<Me>(user, "/api/me"), api<Setup>(user, "/api/me/onboarding"),
       ]);
@@ -637,6 +649,8 @@ export function AccountEntry({ user }: { user: SessionUser }) {
     connect={async (slug) => {
       const result = await api<{ auth_url: string }>(user, "/api/me/connectors/link", { method: "POST", body: JSON.stringify({ toolkit: slug }) });
       if (!result.auth_url) throw new Error("No connection link was returned. Please try again.");
+      try { localStorage.setItem(`astra:onboarded:${user.uid}`, "1"); } catch { /* ignore */ }
+      await api<Setup>(user, "/api/me/onboarding", { method: "PATCH", body: JSON.stringify({ step: "complete" }) }).catch(() => {});
       window.location.assign(result.auth_url);
     }}
     checkout={async (plan) => {

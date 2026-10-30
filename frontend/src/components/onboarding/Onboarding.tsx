@@ -9,20 +9,22 @@ const STEPS = ["Phone number", "Verification", "Your name", "Your interests", "Y
 const SETUP_STEPS: SetupStep[] = ["name", "interests", "apps", "ready", "plan"];
 const INTEREST_ROWS = Array.from({ length: 5 }, (_, row) => INTERESTS.slice(row * 3, row * 3 + 3));
 
-export function SetupFrame({ index, children, skip, busy = false }: {
-  index: number; children: ReactNode; skip?: { label: string; action: () => void }; busy?: boolean;
+export function SetupFrame({ index, children, skip, busy = false, showProgress = true }: {
+  index: number; children: ReactNode; skip?: { label: string; action: () => void }; busy?: boolean; showProgress?: boolean;
 }) {
   return <main className={s.screen}>
     <div className={s.flow}>
-      <nav className={s.progressRow} aria-label="Onboarding">
-        <ol className={s.dots} aria-label={`Step ${index + 1} of ${STEPS.length}: ${STEPS[index]}`}>
-          {STEPS.map((label, i) => <li key={label} aria-current={i === index ? "step" : undefined}>
-            <span className={`${s.dot} ${i < index ? s.visited : ""} ${i === index ? s.current : ""}`} />
-            <span className={s.srOnly}>{label}</span>
-          </li>)}
-        </ol>
-        {skip && <button type="button" className={s.skip} onClick={skip.action} disabled={busy}>{skip.label}</button>}
-      </nav>
+      {showProgress && (
+        <nav className={s.progressRow} aria-label="Onboarding">
+          <ol className={s.dots} aria-label={`Step ${index + 1} of ${STEPS.length}: ${STEPS[index]}`}>
+            {STEPS.map((label, i) => <li key={label} aria-current={i === index ? "step" : undefined}>
+              <span className={`${s.dot} ${i < index ? s.visited : ""} ${i === index ? s.current : ""}`} />
+              <span className={s.srOnly}>{label}</span>
+            </li>)}
+          </ol>
+          {skip && <button type="button" className={s.skip} onClick={skip.action} disabled={busy}>{skip.label}</button>}
+        </nav>
+      )}
       {children}
     </div>
   </main>;
@@ -81,7 +83,7 @@ export default function Onboarding({ account, setup, save, connect, checkout, on
   async function connectApp(slug: string) {
     setBusy(true); setBusyApp(slug); setError("");
     try {
-      await save({ name: fullName || null, interests: selected, step: "apps" });
+      await save({ name: fullName || null, interests: selected });
       await connect(slug);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Couldn’t open this connection. Please try again.");
@@ -99,8 +101,7 @@ export default function Onboarding({ account, setup, save, connect, checkout, on
     void advance(SETUP_STEPS[Math.max(0, index - 1)]);
   }
 
-  const next = SETUP_STEPS[index + 1] || "complete";
-  const skip = { label: step === "plan" ? "Not now" : "Set up later", action: () => { void advance(next); } };
+  const skip = { label: step === "plan" ? "Not now" : "Set up later", action: () => { void advance("complete"); } };
   const money = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: Number.isInteger(value) ? 0 : 2 }).format(value);
 
   return <SetupFrame index={index + 2} skip={skip} busy={busy}>

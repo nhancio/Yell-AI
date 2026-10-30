@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.main import app
 from app.models.database import Base, get_db
-from app.models.user import User
+from app.models.user import User, UserConnection
 from app.routes import me
 from app.services.auth import current_phone
 
@@ -131,3 +131,13 @@ class OnboardingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plans["pro"]["price_inr"], me.settings.MONTHLY_PRICE_PAISE / 100)
         self.assertEqual(plans["pro"]["daily_limit"], me.settings.PAID_DAILY_LIMIT)
         self.assertEqual(plans["business"]["price_inr"], me.settings.BUSINESS_PRICE_PAISE / 100)
+
+    async def test_user_with_active_connection_auto_completes_onboarding(self):
+        async with self.sessions() as session:
+            session.add(UserConnection(phone_number=PHONE, toolkit="gmail", status="active", connection_id="ca_test"))
+            await session.commit()
+        response = await self.client.get("/api/me/onboarding")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["completed"])
+        self.assertEqual(response.json()["step"], "complete")
+
