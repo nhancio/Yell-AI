@@ -6,7 +6,7 @@
     "yell-ai-nhancio": {
       "hosting": {
         "astra": [
-          "astra-nhancio"
+          "tryastra"
         ]
       }
     }

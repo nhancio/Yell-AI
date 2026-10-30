@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds unified Astra AI static export (Landing + in-place App Hub):
-#   out/ -> astra-nhancio.web.app & astra.nhancio.com
+#   out/ -> tryastra.web.app & astra.nhancio.com
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

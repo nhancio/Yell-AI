@@ -54,6 +54,6 @@ echo "==> 3/3 Deploying Multi-Site Hosting to Firebase ($PROJECT)..."
 firebase deploy --only hosting --project "$PROJECT"
 
 echo "✅ Deployment complete 100% on Firebase & Cloud Run!"
-echo "   Landing (Firebase): https://astra-nhancio.web.app"
-echo "   App Hub (Firebase): https://astra-nhancio.web.app"
+echo "   Landing (Firebase): https://tryastra.web.app"
+echo "   App Hub (Firebase): https://tryastra.web.app"
 echo "   Cloud Run API:      https://yell-ai-api-6epx3aakpq-el.a.run.app"
