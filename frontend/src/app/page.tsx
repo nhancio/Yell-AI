@@ -1,374 +1,469 @@
 "use client";
 
 import Link from "next/link";
-import ContactChannels from "@/components/ContactChannels";
 import { useState, useEffect } from "react";
 import QRCode from "qrcode";
 
 const WHATSAPP_NUMBER = "15552107308";
 const APP_URL = "https://yellapp.nhancio.com";
 
-const INDIA_USE_CASES = [
+const RECIPES = [
   {
-    tag: "Poke for India • Executive Assistant",
-    title: "Inbox, Calendar & Reminders in Hinglish",
+    id: "assistant",
+    title: "Executive Assistant in Hinglish",
+    badge: "Gmail & Calendar",
+    icon: "📅",
     prompt: "Bhai, kal subah 11 baje Rahul ke saath Google Meet lagao aur uska last mail summarize karo.",
-    reply: "✅ Done! Google Calendar invite sent to rahul@startup.in for 11:00 AM IST tomorrow.\\n\\n📧 *Last Email Summary:* Rahul shared the Q4 deck and asked for final pricing approval before Friday.",
-    connectors: ["Gmail", "Google Calendar"],
+    reply: "✅ Done! Google Calendar invite sent to rahul@startup.in for 11:00 AM IST tomorrow.\n\n📧 Last Email Summary: Rahul shared the Q4 pitch deck and asked for final pricing approval before Friday.",
+    apps: ["Gmail", "Google Calendar"],
   },
   {
-    tag: "Backdoor • Direct Founder Hiring",
-    title: "Skip Job Portals. DM Startup Founders Directly.",
+    id: "hiring",
+    title: "Backdoor Startup Founder Outreach",
+    badge: "GitHub & LinkedIn",
+    icon: "🚀",
     prompt: "Find top funded AI startups in Bengaluru hiring full-stack engineers and draft a cold email from my GitHub.",
-    reply: "🚀 Found 3 newly funded BLR startups (Sarvam, Composio, Smallest AI).\\n\\nDrafted a custom 4-line cold email referencing your top GitHub repo. Reply *SEND* to mail the CTO directly from your Gmail!",
-    connectors: ["GitHub", "Gmail", "LinkedIn"],
+    reply: "🚀 Found 3 funded BLR startups (Sarvam, Composio, Smallest AI).\n\nDrafted a custom 4-line cold email referencing your top repo. Reply SEND to mail the CTO directly!",
+    apps: ["GitHub", "Gmail", "LinkedIn"],
   },
   {
-    tag: "Instinct • India Life-OS",
-    title: "IRCTC Trains, Flights, Swiggy & UPI Budgets",
+    id: "lifeos",
+    title: "India Life-OS & Expense Tracker",
+    badge: "Swiggy & IRCTC",
+    icon: "🚆",
     prompt: "Check my IRCTC PNR from Gmail and tell me my total Swiggy + Blinkit spend this month.",
-    reply: "🚆 *Train 12951 Rajdhani:* Confirmed! Coach B4, Berth 21 (Departs 17:00 IST).\\n\\n💸 *Monthly Food & Quick-Commerce:* ₹6,420 across 14 Swiggy & Blinkit receipts in Gmail.",
-    connectors: ["Gmail", "Google Sheets"],
+    reply: "🚆 Train 12951 Rajdhani: Confirmed! Coach B4, Berth 21 (Departs 17:00 IST).\n\n💸 Food & Quick-Commerce: ₹6,420 across 14 Swiggy & Blinkit receipts in Gmail.",
+    apps: ["Gmail", "Google Sheets"],
   },
 ];
 
-const CONNECTORS = [
-  { slug: "gmail", name: "Gmail", icon: "📧", desc: "Read/send emails, PNR & order receipts" },
-  { slug: "googlecalendar", name: "Google Calendar", icon: "📅", desc: "Book meetings, Meet links & reminders" },
-  { slug: "notion", name: "Notion", icon: "📝", desc: "Save notes, tasks & second-brain docs" },
-  { slug: "github", name: "GitHub", icon: "🐙", desc: "Repo insights, PRs & founder outreach" },
-  { slug: "linkedin", name: "LinkedIn", icon: "💼", desc: "Backdoor hiring & founder cold outreach" },
-  { slug: "googlesheets", name: "Google Sheets", icon: "📊", desc: "Auto-log UPI budgets, expenses & leads" },
-  { slug: "googledrive", name: "Google Drive", icon: "📁", desc: "Search PDFs, resumes & invoices" },
-  { slug: "slack", name: "Slack", icon: "💬", desc: "Catch urgent work pings on WhatsApp" },
+const BENTO_INTEGRATIONS = [
+  {
+    name: "Gmail & Email",
+    slug: "gmail",
+    icon: "📧",
+    title: "Search, summarize, and draft emails from your texts",
+    description: "Read receipts, check IRCTC train confirmations, or draft replies to clients without opening your inbox.",
+  },
+  {
+    name: "Google Calendar",
+    slug: "calendar",
+    icon: "📅",
+    title: "Book Google Meets & manage schedule effortlessly",
+    description: "Just voice-note 'Schedule a 30m call with Priya next Tuesday' — invites and Meet links are handled.",
+  },
+  {
+    name: "Notion & Second Brain",
+    slug: "notion",
+    icon: "📝",
+    title: "Access and organize notes & databases from WhatsApp",
+    description: "Dump voice notes, meeting thoughts, or startup ideas. Yell AI structures and syncs them straight to Notion.",
+  },
+  {
+    name: "Startup Outreach (Backdoor)",
+    slug: "founder-outreach",
+    icon: "🚀",
+    title: "Skip job boards. DM funded startup founders directly",
+    description: "Match with CTOs in Bengaluru, Gurgaon & Hyderabad. Yell AI crafts personalized cold intros referencing your GitHub.",
+  },
+  {
+    name: "Swiggy, Blinkit & Food",
+    slug: "swiggy",
+    icon: "🍔",
+    title: "Track monthly food expenses & order receipts",
+    description: "Automatically tally Swiggy, Zomato, and Blinkit spends from your bills and keep your monthly budget in check.",
+  },
+  {
+    name: "IRCTC & Travel",
+    slug: "travel",
+    icon: "🚆",
+    title: "Live train PNR status, flight alerts & bookings",
+    description: "Track live train delays, platform numbers, and flight boarding gates proactively before you reach the station.",
+  },
 ];
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState(0);
-  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [activeRecipe, setActiveRecipe] = useState(0);
+  const [qrUrl, setQrUrl] = useState<string>("");
 
   const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi Yell AI!")}`;
 
   useEffect(() => {
     QRCode.toDataURL(waLink, {
-      width: 180,
+      width: 140,
       margin: 1,
-      color: { dark: "#000000", light: "#25D366" },
+      color: { dark: "#1C1C1C", light: "#FFFFFF" },
     })
-      .then((url) => setQrDataUrl(url))
-      .catch((err) => console.error("QR generation error:", err));
+      .then(setQrUrl)
+      .catch((e) => console.error("QR Error:", e));
   }, [waLink]);
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-black font-sans">
-      {/* Top Announcement Banner */}
-      <div className="bg-gradient-to-r from-orange-500/20 via-emerald-500/20 to-sky-500/20 border-b border-white/10 px-4 py-2 text-center text-xs md:text-sm text-slate-200">
-        🇮🇳 <span className="font-semibold text-emerald-400">Built for Bharat:</span> Zero app download. Text on WhatsApp to manage emails, schedule meets, draft founder pitches & track your life. <Link href="/brands" className="underline font-medium ml-1 text-white hover:text-emerald-300">Brands Portal →</Link>
+    <div className="min-h-screen bg-[#FAF8F5] text-[#1C1C1C] flex flex-col font-sans selection:bg-[#25D366] selection:text-black antialiased">
+      {/* Top Banner (Poke style pill) */}
+      <div className="bg-[#F3EFEA] border-b border-[#E6E1DA] px-4 py-2 text-center text-xs text-[#5C5752] flex items-center justify-center gap-2">
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#E5E0D8] text-[#1C1C1C] font-semibold text-[11px]">
+          🇮🇳 India Beta
+        </span>
+        <span>Meet Yell — your proactive executive assistant on WhatsApp.</span>
+        <Link href="/brands" className="font-semibold text-[#1C1C1C] underline hover:text-[#25D366] ml-1">
+          Brands Portal →
+        </Link>
       </div>
 
-      {/* Navbar */}
-      <header className="sticky top-0 z-30 backdrop-blur-md bg-[#070b14]/80 border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-black font-black text-lg shadow-lg shadow-emerald-500/20">
+      {/* Header */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-[#FAF8F5]/85 border-b border-[#EAE6DE]">
+        <div className="max-w-6xl mx-auto px-6 h-18 flex items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5 outline-none group">
+            <div className="h-8 w-8 rounded-xl bg-[#1C1C1C] text-[#FAF8F5] font-black flex items-center justify-center text-base tracking-tighter shadow-sm group-hover:scale-105 transition-transform">
               Y
             </div>
-            <div>
-              <span className="text-xl font-bold tracking-tight text-white">Yell AI</span>
-              <span className="ml-2 text-[11px] font-semibold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full px-2.5 py-0.5">
-                India Beta
-              </span>
-            </div>
-          </div>
+            <span className="font-bold text-xl tracking-tight text-[#1C1C1C]">Yell</span>
+          </Link>
 
-          <nav className="hidden md:flex items-center gap-7 text-sm text-slate-300">
-            <a href="#how-it-works" className="hover:text-white transition">How it Works</a>
-            <a href="#connectors" className="hover:text-white transition">Composio Connectors</a>
-            <a href="#pricing" className="hover:text-white transition">Pricing (₹)</a>
-            <Link href="/brands" className="hover:text-emerald-400 transition font-medium flex items-center gap-1">
-              ⚡ Brands Portal
+          {/* Nav links */}
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#5C5752]">
+            <a href="#experience" className="hover:text-[#1C1C1C] transition-colors">Experience</a>
+            <a href="#recipes" className="hover:text-[#1C1C1C] transition-colors">Recipes</a>
+            <a href="#pricing" className="hover:text-[#1C1C1C] transition-colors">Pricing</a>
+            <Link href="/brands" className="hover:text-[#1C1C1C] transition-colors flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#25D366]" />
+              Brands & Ads
             </Link>
           </nav>
 
-          <div className="flex items-center gap-3">
+          {/* Action buttons */}
+          <div className="flex items-center gap-3.5">
             <Link
               href={APP_URL}
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-sm font-medium transition"
+              className="hidden sm:inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium text-[#1C1C1C] hover:bg-[#EFECE6] transition-colors"
             >
-              🔌 Yell App
+              Yell App
             </Link>
             <a
               href={waLink}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-black font-bold px-4 py-2 rounded-xl text-sm shadow-lg shadow-[#25D366]/25 transition"
+              className="inline-flex items-center justify-center font-medium whitespace-nowrap transition-all duration-150 active:scale-[0.98] text-white bg-[linear-gradient(180deg,#2D2D2D_0%,#1C1C1C_100%)] hover:bg-[#000] shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_12px_rgba(0,0,0,0.08)] h-10 rounded-xl px-5 text-sm gap-2"
             >
-              <span>💬 Chat on WhatsApp</span>
+              <span className="h-2 w-2 rounded-full bg-[#25D366]" />
+              <span>Chat on WhatsApp</span>
             </a>
           </div>
         </div>
       </header>
 
       <main className="flex-1">
-        {/* Clean Hero Section */}
-        <section className="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24 px-4">
-          <div className="max-w-5xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs md:text-sm text-slate-300 mb-6">
-              <span className="h-2 w-2 rounded-full bg-[#25D366] animate-pulse" />
-              No login wall. No new app. Lives 100% inside your WhatsApp.
-            </div>
-
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.08] text-white">
-              Your Entire Digital Life.
-              <span className="block mt-2 bg-gradient-to-r from-[#25D366] via-emerald-300 to-teal-400 bg-clip-text text-transparent">
-                Inside WhatsApp. 🇮🇳
-              </span>
-            </h1>
-
-            <p className="mt-6 text-base md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              Manage Gmail, book Google Calendar meets, backdoor cold-email startup founders, and track IRCTC trains & Swiggy spends — all through voice notes & Hinglish texts.
-            </p>
-
-            {/* Frictionless Dual Launch Action */}
-            <div className="mt-10 max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href={waLink}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full sm:w-auto bg-[#25D366] hover:bg-[#1ebe5d] text-black font-extrabold px-8 py-4 rounded-2xl text-lg transition flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/25"
-              >
-                <span className="text-2xl">💬</span>
-                <span>Chat on WhatsApp Now →</span>
-              </a>
-
-              <Link
-                href="/brands"
-                className="w-full sm:w-auto px-6 py-4 rounded-2xl border border-white/20 bg-white/5 hover:bg-white/10 text-white font-semibold text-base transition flex items-center justify-center gap-2"
-              >
-                <span>⚡ Brands & Ads Portal →</span>
-              </Link>
-            </div>
-
-            {/* Desktop Scan to Chat QR Callout */}
-            {qrDataUrl && (
-              <div className="hidden md:inline-flex items-center gap-4 mt-8 px-5 py-3 rounded-2xl bg-white/[0.03] border border-white/10 text-left">
-                <img
-                  src={qrDataUrl}
-                  alt="Scan to Chat on WhatsApp"
-                  className="w-16 h-16 rounded-xl border border-white/10 shadow"
-                />
-                <div className="text-xs">
-                  <div className="font-bold text-white flex items-center gap-1.5">
-                    <span>📱 Scan on Desktop</span>
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono">+1 555-210-7308</span>
-                  </div>
-                  <p className="text-slate-400 mt-0.5">Point your phone camera to start chatting on WhatsApp instantly.</p>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400">
-              <span>⚡ Powered by Composio OAuth</span>
-              <span>•</span>
-              <span>🗣️ Speaks English, Hinglish & Hindi</span>
-              <span>•</span>
-              <span>🔒 Zero Password / Instant Access</span>
-            </div>
+        {/* Hero Section */}
+        <section className="pt-16 pb-20 md:pt-24 md:pb-32 px-6 max-w-5xl mx-auto text-center">
+          {/* Top Poke Pill Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F0ECE4] border border-[#DDD8CF] text-xs font-medium text-[#4A4540] mb-8 shadow-xs">
+            <span className="h-2 w-2 rounded-full bg-[#25D366] animate-pulse" />
+            <span>Works 100% inside your WhatsApp. No app download.</span>
           </div>
 
-          {/* Interactive Demo Cards */}
-          <div className="max-w-4xl mx-auto mt-16">
-            <div className="flex justify-center gap-2 mb-4 overflow-x-auto pb-2">
-              {INDIA_USE_CASES.map((uc, i) => (
+          {/* Hero Main Heading (Poke Typography) */}
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-[#141210] leading-[1.08] max-w-4xl mx-auto">
+            Meet Yell, your new <br className="hidden sm:inline" />
+            <span className="text-[#25D366] selection:text-white">favorite contact</span>.
+          </h1>
+
+          <p className="mt-6 text-base sm:text-xl text-[#5C5752] max-w-2xl mx-auto leading-relaxed font-normal">
+            The proactive AI assistant on WhatsApp. Texts like a human in English & Hinglish, really knows you, and integrates with your life in dozens of ways.
+          </p>
+
+          {/* Hero CTAs */}
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full sm:w-auto inline-flex items-center justify-center font-bold text-base text-black bg-[#25D366] hover:bg-[#20ba59] transition-all shadow-[0_2px_10px_rgba(37,211,102,0.35)] h-13 px-8 rounded-2xl gap-2.5 active:scale-[0.98]"
+            >
+              <span className="text-xl">💬</span>
+              <span>Say "Hi" on WhatsApp</span>
+            </a>
+
+            <Link
+              href="/brands"
+              className="w-full sm:w-auto inline-flex items-center justify-center font-semibold text-base text-[#1C1C1C] bg-[#EDE9E1] hover:bg-[#E4DFD5] border border-[#DDD7CE] transition-all h-13 px-7 rounded-2xl gap-2"
+            >
+              <span>⚡ For Brands & Advertisers →</span>
+            </Link>
+          </div>
+
+          {/* Desktop QR Scan Bubble (Poke Style) */}
+          {qrUrl && (
+            <div className="hidden md:inline-flex items-center gap-4 mt-10 p-3 pr-6 rounded-2xl bg-[#FFFFFF] border border-[#E3DED5] shadow-[0_4px_20px_rgba(0,0,0,0.04)] text-left">
+              <img src={qrUrl} alt="Scan on WhatsApp" className="w-16 h-16 rounded-xl border border-[#EEE] shadow-xs" />
+              <div className="text-xs">
+                <div className="font-bold text-[#1C1C1C] flex items-center gap-2">
+                  <span>📱 Scan with Phone</span>
+                  <span className="font-mono text-[10px] bg-[#EFECE5] text-[#555] px-1.5 py-0.5 rounded">+1 555-210-7308</span>
+                </div>
+                <p className="text-[#706B65] mt-0.5">Point your phone camera to start chatting instantly.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Centered Phone Canvas Showcase (Poke Signature) */}
+          <div id="experience" className="mt-16 max-w-xl mx-auto">
+            <div className="relative rounded-[40px] p-3.5 bg-[#1C1C1C] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] border-[4px] border-[#383838]">
+              {/* iPhone Notch / Speaker Bar */}
+              <div className="absolute top-7 left-1/2 -translate-x-1/2 w-28 h-4.5 bg-[#1C1C1C] rounded-full z-20 flex items-center justify-center">
+                <div className="w-10 h-1 bg-[#2C2C2C] rounded-full" />
+              </div>
+
+              {/* Screen Body */}
+              <div className="bg-[#EFEAE2] rounded-[32px] overflow-hidden pt-12 pb-6 px-4 text-left font-sans">
+                {/* Header inside Phone */}
+                <div className="flex items-center justify-between pb-3 border-b border-[#DCD5CB] mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-full bg-[#25D366] text-black font-extrabold flex items-center justify-center text-xs">
+                      Y
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[#1C1C1C] flex items-center gap-1">
+                        <span>Yell AI</span>
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#25D366]" />
+                      </div>
+                      <div className="text-[10px] text-[#756F68]">online • WhatsApp Business</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-[#8C857D] font-mono">10:42 AM</span>
+                </div>
+
+                {/* Chat Flow */}
+                <div className="space-y-3.5 text-xs">
+                  {/* User Message */}
+                  <div className="flex justify-end">
+                    <div className="bg-[#D9FDD3] text-[#111B21] rounded-2xl rounded-tr-xs px-3.5 py-2.5 max-w-[85%] shadow-xs leading-relaxed">
+                      Bhai, kal 11 baje Rahul ke saath Google Meet schedule karo aur mera IRCTC PNR status bhi check karo.
+                      <div className="text-[9px] text-[#667781] text-right mt-1">10:42 AM ✓✓</div>
+                    </div>
+                  </div>
+
+                  {/* AI Reply */}
+                  <div className="flex justify-start">
+                    <div className="bg-[#FFFFFF] text-[#111B21] rounded-2xl rounded-tl-xs px-3.5 py-2.5 max-w-[90%] shadow-xs space-y-2">
+                      <p className="leading-relaxed">
+                        ✅ <strong>Done boss!</strong> Google Calendar invite sent to rahul@startup.in for 11:00 AM IST tomorrow with Google Meet link.
+                      </p>
+                      <p className="leading-relaxed">
+                        🚆 <strong>Train 12951 Rajdhani:</strong> Confirmed! Coach B4, Berth 21. Departs 17:00 IST from New Delhi.
+                      </p>
+                      
+                      {/* Native Contextual Sponsor Perk */}
+                      <div className="pt-2 border-t border-[#F0ECE5] text-[11px] text-[#555]">
+                        <div className="font-bold text-[#008069] flex items-center gap-1 mb-0.5">
+                          <span>⚡ Sponsored • Ixigo</span>
+                        </div>
+                        <p className="text-[#333]">Zero Payment Gateway Charges on your IRCTC train booking via UPI with code YELLZERO.</p>
+                      </div>
+
+                      <div className="text-[9px] text-[#667781] text-right mt-1">10:42 AM</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Fits into your life (Poke Style Bento Grid) */}
+        <section className="py-20 px-6 border-t border-[#EAE6DE] bg-[#F5F2EB]">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center max-w-2xl mx-auto mb-16">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#857F77]">
+                (1) Ecosystem
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#141210] tracking-tight mt-2">
+                Yell fits into your life, <br className="hidden sm:inline" />
+                not the other way around.
+              </h2>
+              <p className="text-[#5C5752] mt-4 text-sm sm:text-base leading-relaxed">
+                Integrate all of your everyday tools and services with a familiar interface (WhatsApp) and zero friction.
+              </p>
+            </div>
+
+            {/* Bento Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {BENTO_INTEGRATIONS.map((b) => (
+                <div
+                  key={b.slug}
+                  className="bg-[#FFFFFF] border border-[#E3DED5] rounded-3xl p-7 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between group"
+                >
+                  <div>
+                    <div className="text-3xl mb-4 group-hover:scale-110 transition-transform origin-left">{b.icon}</div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#857F77] mb-1">
+                      {b.name}
+                    </div>
+                    <h3 className="text-lg font-bold text-[#141210] leading-snug mb-2">
+                      {b.title}
+                    </h3>
+                    <p className="text-xs text-[#5C5752] leading-relaxed">
+                      {b.description}
+                    </p>
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-[#F2EEE6] flex items-center justify-between text-xs font-semibold text-[#1C1C1C]">
+                    <span>1-Tap Connect</span>
+                    <span>→</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Adapts to your needs with Recipes (Poke Style) */}
+        <section id="recipes" className="py-20 px-6 border-t border-[#EAE6DE] bg-[#FAF8F5]">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center max-w-2xl mx-auto mb-14">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#857F77]">
+                (2) Capabilities
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#141210] tracking-tight mt-2">
+                Adapts to your needs with Yell Recipes.
+              </h2>
+              <p className="text-[#5C5752] mt-4 text-sm sm:text-base">
+                Set up workflows once, trigger them with simple natural speech, and never open 10 separate apps again.
+              </p>
+            </div>
+
+            {/* Recipe Tabs */}
+            <div className="flex justify-center gap-2 mb-8 overflow-x-auto pb-2">
+              {RECIPES.map((r, idx) => (
                 <button
-                  key={i}
-                  onClick={() => setActiveTab(i)}
-                  className={`px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition whitespace-nowrap ${
-                    activeTab === i
-                      ? "bg-[#25D366] text-black shadow-lg shadow-[#25D366]/20"
-                      : "bg-white/5 text-slate-400 hover:text-white border border-white/10"
+                  key={r.id}
+                  onClick={() => setActiveRecipe(idx)}
+                  className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                    activeRecipe === idx
+                      ? "bg-[#1C1C1C] text-white shadow-sm"
+                      : "bg-[#EFECE5] text-[#555] hover:text-[#1C1C1C] border border-[#DDD7CE]"
                   }`}
                 >
-                  {uc.tag.split(" • ")[1] || uc.tag}
+                  {r.icon} {r.title}
                 </button>
               ))}
             </div>
 
-            <div className="rounded-3xl border border-white/15 bg-gradient-to-b from-slate-900/90 to-black/90 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
-              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
-                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                  {INDIA_USE_CASES[activeTab].tag}
+            {/* Active Recipe Display */}
+            <div className="bg-[#FFFFFF] border border-[#E3DED5] rounded-3xl p-8 shadow-xs max-w-3xl mx-auto">
+              <div className="flex items-center justify-between pb-4 border-b border-[#F0ECE5] mb-6">
+                <span className="text-xs font-bold text-[#25D366] uppercase tracking-wider">
+                  {RECIPES[activeRecipe].badge}
                 </span>
                 <div className="flex gap-1.5">
-                  {INDIA_USE_CASES[activeTab].connectors.map((c) => (
-                    <span
-                      key={c}
-                      className="text-[10px] bg-white/10 text-slate-300 px-2 py-0.5 rounded-full font-medium"
-                    >
-                      {c}
+                  {RECIPES[activeRecipe].apps.map((app) => (
+                    <span key={app} className="text-[11px] bg-[#F3EFEA] text-[#555] px-2.5 py-0.5 rounded-full font-medium">
+                      {app}
                     </span>
                   ))}
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-end">
-                  <div className="bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tr-none px-4 py-3 max-w-[85%] text-sm shadow-md">
-                    <p className="font-medium">{INDIA_USE_CASES[activeTab].prompt}</p>
-                  </div>
+              <div className="space-y-4 text-sm">
+                <div className="bg-[#F5F2EB] p-4 rounded-2xl border border-[#E7E2D8]">
+                  <div className="text-xs font-bold text-[#777] uppercase tracking-wider mb-1">You text:</div>
+                  <p className="font-medium text-[#1C1C1C]">{RECIPES[activeRecipe].prompt}</p>
                 </div>
 
-                <div className="flex justify-start">
-                  <div className="bg-[#202c33] text-[#e9edef] rounded-2xl rounded-tl-none px-4 py-3 max-w-[90%] text-sm shadow-md space-y-2">
-                    <p className="whitespace-pre-line leading-relaxed">
-                      {INDIA_USE_CASES[activeTab].reply}
-                    </p>
-                    <div className="text-[10px] text-slate-400 text-right">Delivered via WhatsApp</div>
-                  </div>
+                <div className="bg-[#FAF8F5] p-4 rounded-2xl border border-[#25D366]/30">
+                  <div className="text-xs font-bold text-[#008069] uppercase tracking-wider mb-1">Yell AI executes:</div>
+                  <p className="whitespace-pre-line leading-relaxed text-[#222]">{RECIPES[activeRecipe].reply}</p>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 1-Tap Connectors Section */}
-        <section id="connectors" className="py-16 px-4 border-t border-white/10 bg-slate-950/50">
-          <div className="max-w-5xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white">
-              Connect Once. Control Forever.
-            </h2>
-            <p className="text-slate-400 mt-2 text-sm md:text-base max-w-xl mx-auto">
-              Link your everyday tools securely via Composio OAuth. Yell AI acts on your behalf only when instructed.
-            </p>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-10">
-              {CONNECTORS.map((c) => (
-                <div
-                  key={c.slug}
-                  className="rounded-2xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] p-5 text-left transition duration-200"
-                >
-                  <div className="text-3xl mb-3">{c.icon}</div>
-                  <div className="font-bold text-white text-base">{c.name}</div>
-                  <div className="text-xs text-slate-400 mt-1 leading-relaxed">{c.desc}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* How it works in 3 steps */}
-        <section id="how-it-works" className="py-20 px-4 border-t border-white/10">
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-center text-white mb-12">
-              Start in 30 Seconds. Zero Friction.
-            </h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-6">
-                <span className="text-xs font-bold text-emerald-400 uppercase">Step 01</span>
-                <h3 className="text-xl font-bold text-white mt-2">Text "Hi" on WhatsApp</h3>
-                <p className="text-sm text-slate-400 mt-2">
-                  No password to remember. No app store download. Tap the WhatsApp link or scan the QR code to begin chatting.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-6">
-                <span className="text-xs font-bold text-emerald-400 uppercase">Step 02</span>
-                <h3 className="text-xl font-bold text-white mt-2">Connect Your Apps (Optional)</h3>
-                <p className="text-sm text-slate-400 mt-2">
-                  Whenever you want Yell AI to check your emails, book meetings, or draft pitches, tap your 1-click magic link.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-6">
-                <span className="text-xs font-bold text-emerald-400 uppercase">Step 03</span>
-                <h3 className="text-xl font-bold text-white mt-2">Automate Your Life</h3>
-                <p className="text-sm text-slate-400 mt-2">
-                  Send voice notes or texts in Hinglish. Yell AI answers questions, sends emails, and alerts you proactively.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* India Pricing & Sponsor Callout */}
-        <section id="pricing" className="py-20 px-4 border-t border-white/10 bg-[#0a101d]">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-12">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white">
-                Built for Every Indian Smartphone
+        {/* Section: Simple Pricing (Poke Style) */}
+        <section id="pricing" className="py-20 px-6 border-t border-[#EAE6DE] bg-[#F5F2EB]">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center max-w-xl mx-auto mb-14">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#857F77]">
+                (3) Simple Pricing
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#141210] tracking-tight mt-2">
+                Choose a plan to get started.
               </h2>
-              <p className="text-slate-400 mt-3 text-sm md:text-base">
-                Start free forever (supported by non-intrusive Indian brand perks), or go Pro via UPI for unlimited power.
+              <p className="text-[#5C5752] mt-3 text-sm sm:text-base">
+                Every plan gets all of Yell. Start free, then step up for unlimited headroom.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-              {/* Free Plan */}
-              <div className="rounded-3xl border border-white/15 bg-slate-900/70 p-8 flex flex-col justify-between">
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Bharat Free Tier */}
+              <div className="bg-[#FFFFFF] border border-[#DDD7CE] rounded-3xl p-8 flex flex-col justify-between shadow-xs">
                 <div>
-                  <span className="text-xs uppercase font-bold tracking-wider text-slate-400">Bharat Free Tier</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#7A746D]">Bharat Free</span>
                   <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-4xl font-extrabold text-white">₹0</span>
-                    <span className="text-sm text-slate-400">/ forever (Ad-Supported)</span>
+                    <span className="text-4xl font-extrabold text-[#141210]">₹0</span>
+                    <span className="text-xs text-[#7A746D]">/ forever (Ad-supported)</span>
                   </div>
-                  <ul className="mt-6 space-y-3 text-sm text-slate-300">
-                    <li>✓ 25 AI tasks & WhatsApp messages every day</li>
-                    <li>✓ Connect Gmail, Google Calendar & Notion via Composio</li>
-                    <li>✓ IRCTC train/flight helper, UPI budget planner & Hinglish chat</li>
-                    <li>✓ Curated 1-line partner perks (Swiggy, Ixigo, CRED, Zepto)</li>
+                  <p className="text-xs text-[#5C5752] mt-2">Supported by curated 1-line perks from Swiggy, Ixigo & CRED.</p>
+                  <ul className="mt-6 space-y-3 text-xs text-[#3D3A36]">
+                    <li className="flex items-center gap-2">✓ 25 AI queries & tasks per day</li>
+                    <li className="flex items-center gap-2">✓ Connect Gmail, Calendar, Notion & GitHub</li>
+                    <li className="flex items-center gap-2">✓ IRCTC train/flight helper & Swiggy spend calculator</li>
+                    <li className="flex items-center gap-2">✓ English, Hinglish & Hindi voice & text</li>
                   </ul>
                 </div>
                 <a
                   href={waLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-8 block text-center w-full py-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold transition"
+                  className="mt-8 block text-center w-full py-3.5 rounded-xl bg-[#EDE9E1] hover:bg-[#E4DFD5] text-[#1C1C1C] font-semibold text-sm transition-colors"
                 >
                   Start Free on WhatsApp →
                 </a>
               </div>
 
               {/* Pro Plan */}
-              <div className="rounded-3xl border-2 border-[#25D366] bg-gradient-to-b from-emerald-950/40 to-slate-900 p-8 flex flex-col justify-between relative">
-                <span className="absolute -top-3 right-6 bg-[#25D366] text-black text-xs font-extrabold px-3 py-1 rounded-full">
-                  MOST POPULAR • UPI AUTOPAY
+              <div className="bg-[#FFFFFF] border-2 border-[#1C1C1C] rounded-3xl p-8 flex flex-col justify-between shadow-md relative">
+                <span className="absolute -top-3 right-6 bg-[#1C1C1C] text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                  PRO • UPI AUTOPAY
                 </span>
                 <div>
-                  <span className="text-xs uppercase font-bold tracking-wider text-emerald-400">Yell AI Pro</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#25D366]">Yell Pro</span>
                   <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-4xl font-extrabold text-white">₹199</span>
-                    <span className="text-sm text-slate-400">/ month (via UPI / Razorpay)</span>
+                    <span className="text-4xl font-extrabold text-[#141210]">₹199</span>
+                    <span className="text-xs text-[#7A746D]">/ month (via UPI / Razorpay)</span>
                   </div>
-                  <ul className="mt-6 space-y-3 text-sm text-slate-200">
-                    <li>✓ <strong>1,000 AI actions/day</strong> & priority Gemini 3.8 Flash execution</li>
-                    <li>✓ All 8+ Composio Connectors (Gmail, Calendar, GitHub, LinkedIn, Drive)</li>
-                    <li>✓ Automated <strong>Backdoor Founder Cold-Outreach</strong> & follow-ups</li>
-                    <li>✓ <strong>100% Ad-Free</strong> experience + proactive morning briefings</li>
+                  <p className="text-xs text-[#5C5752] mt-2">For founders, operators, and power users who want maximum throughput.</p>
+                  <ul className="mt-6 space-y-3 text-xs text-[#3D3A36]">
+                    <li className="flex items-center gap-2">✓ <strong>1,000 actions/day</strong> on Gemini 3.8 Flash</li>
+                    <li className="flex items-center gap-2">✓ Automated Backdoor Founder Cold-Outreach</li>
+                    <li className="flex items-center gap-2">✓ <strong>100% Ad-Free</strong> experience</li>
+                    <li className="flex items-center gap-2">✓ Proactive morning briefings & priority execution</li>
                   </ul>
                 </div>
                 <Link
                   href={APP_URL}
-                  className="mt-8 block text-center w-full py-3.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] text-black font-bold transition shadow-lg shadow-[#25D366]/20"
+                  className="mt-8 block text-center w-full py-3.5 rounded-xl bg-[#1C1C1C] hover:bg-[#000] text-white font-bold text-sm transition-colors shadow-sm"
                 >
-                  Connect Apps & Go Pro →
+                  Upgrade to Pro →
                 </Link>
               </div>
             </div>
 
-            {/* Direct Brand Advertiser Portal Link */}
-            <div id="ads" className="mt-14 rounded-3xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-slate-900 to-sky-500/10 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="space-y-2 text-left">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                  ⚡ Brands & Advertisers • Intent-Driven WhatsApp Sponsorship
+            {/* Brands Callout Banner inside Pricing */}
+            <div className="mt-10 bg-[#FFFFFF] border border-[#DDD7CE] rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xs">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#008069]">
+                  For Brands & Advertisers
                 </span>
-                <h3 className="text-xl md:text-2xl font-bold text-white">
-                  Reach Indian consumers right when they ask to travel, order food, or invest.
+                <h3 className="text-xl font-bold text-[#141210] mt-1">
+                  Monetize high-intent WhatsApp queries.
                 </h3>
-                <p className="text-sm text-slate-300 max-w-2xl">
-                  Launch self-serve contextual ads in 60 seconds with prepaid Razorpay wallets, live impression tracking, and guaranteed CTR.
+                <p className="text-xs text-[#5C5752] mt-1 max-w-xl">
+                  Reach Indian consumers with 1-line contextual perks right when they search for travel, food, jobs, or finance.
                 </p>
               </div>
               <Link
                 href="/brands"
-                className="shrink-0 px-6 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-black font-bold text-sm transition shadow-lg shadow-emerald-500/20"
+                className="shrink-0 px-6 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-black font-bold text-xs transition-colors shadow-xs"
               >
                 Launch Brand Campaign →
               </Link>
@@ -377,20 +472,15 @@ export default function HomePage() {
         </section>
       </main>
 
-      <section id="contact" className="py-16 px-4 border-t border-white/10">
-        <div className="max-w-3xl mx-auto">
-          <ContactChannels />
-        </div>
-      </section>
-
-      <footer className="border-t border-white/10 py-8 px-4 text-center text-xs text-slate-500">
+      {/* Footer (Poke style) */}
+      <footer className="border-t border-[#EAE6DE] py-10 px-6 text-xs text-[#7A746D] bg-[#FAF8F5]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© 2026 Yell AI by Nhancio. Built for India 🇮🇳</p>
-          <div className="flex gap-6">
-            <Link href={APP_URL} className="hover:text-slate-300">Yell App</Link>
-            <Link href="/brands" className="hover:text-slate-300">Brands Portal</Link>
-            <a href={waLink} target="_blank" rel="noreferrer" className="hover:text-slate-300">WhatsApp Bot</a>
-            <a href="mailto:hello@nhancio.com" className="hover:text-slate-300">Contact & Ads</a>
+          <div className="flex gap-6 font-medium text-[#5C5752]">
+            <Link href={APP_URL} className="hover:text-[#1C1C1C]">Yell App</Link>
+            <Link href="/brands" className="hover:text-[#1C1C1C]">Brands Portal</Link>
+            <a href={waLink} target="_blank" rel="noreferrer" className="hover:text-[#1C1C1C]">WhatsApp Bot</a>
+            <a href="mailto:nithindidigam@nhancio.com" className="hover:text-[#1C1C1C]">Contact</a>
           </div>
         </div>
       </footer>
