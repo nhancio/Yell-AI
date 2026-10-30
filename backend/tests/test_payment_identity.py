@@ -41,3 +41,47 @@ class PaymentIdentityTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(user.plan_tier, "business")
         finally:
             await engine.dispose()
+
+    async def test_direct_razorpay_payment_creates_and_upgrades_user_from_razorpay_customer_details(self):
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        sessions = async_sessionmaker(engine, expire_on_commit=False)
+        try:
+            async with engine.begin() as connection:
+                await connection.run_sync(Base.metadata.create_all)
+            svc = payment.PaymentService()
+            svc.client = MagicMock()
+            svc.client.payment_link.create.return_value = {"short_url": "https://rzp.io/i/direct"}
+            # 1. Direct checkout without phone omits customer block so Razorpay collects contact
+            url = await svc.create_payment_link("", None, "pro")
+            self.assertEqual(url, "https://rzp.io/i/direct")
+            create_payload = svc.client.payment_link.create.call_args.args[0]
+            self.assertNotIn("customer", create_payload)
+            self.assertEqual(create_payload["notes"]["product"], payment.PRODUCT_TAG)
+            self.assertEqual(create_payload["notes"]["plan_tier"], "pro")
+
+            # 2. Callback fetches customer contact & name from Razorpay and creates/activates user before login
+            svc.client.payment_link.fetch.return_value = {
+                "status": "paid",
+                "notes": {"product": payment.PRODUCT_TAG, "plan_tier": "business"},
+                "customer": {"contact": "+91 98765-43210", "name": "Aarav Sharma", "email": "aarav@example.com"},
+            }
+            with patch.object(payment, "async_session", sessions), \
+                 patch.object(payment, "ensure_tables", MagicMock(return_value=None)):
+                # make ensure_tables awaitable
+                async def _noop():
+                    return None
+                with patch.object(payment, "ensure_tables", _noop):
+                    details = await svc.complete_callback({"razorpay_payment_link_id": "plink_123"})
+            self.assertEqual(details["phone_number"], PHONE)
+            self.assertEqual(details["name"], "Aarav Sharma")
+            self.assertEqual(details["email"], "aarav@example.com")
+            self.assertEqual(details["plan_tier"], "business")
+            async with sessions() as session:
+                user = await session.scalar(select(User).where(User.phone_number == PHONE))
+                self.assertIsNotNone(user)
+                self.assertTrue(user.is_premium)
+                self.assertEqual(user.plan_tier, "business")
+                self.assertEqual(user.name, "Aarav Sharma")
+        finally:
+            await engine.dispose()
+

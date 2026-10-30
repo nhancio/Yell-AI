@@ -74,7 +74,21 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
   const [challenge, setChallenge] = useState<WhatsAppChallenge | null>(null);
   const [waLoading, setWaLoading] = useState(false);
   const [waOpened, setWaOpened] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const raw = (new URLSearchParams(window.location.search).get("phone") || "").replace(/\D/g, "");
+    return raw.length === 12 && raw.startsWith("91") ? raw.slice(2) : raw.slice(-10);
+  });
+  const [paidInfo] = useState<{ plan: string; name: string; phone: string } | null>(() => {
+    if (typeof window === "undefined") return null;
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("paid") !== "1") return null;
+    return {
+      plan: p.get("plan") === "business" ? "Business" : "Pro",
+      name: p.get("name") || "",
+      phone: p.get("phone") || "",
+    };
+  });
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [busy, setBusy] = useState(false);
@@ -178,8 +192,13 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
   }
 
   if (mode === "whatsapp") {
-    return <SetupFrame index={waOpened ? 1 : 0}>
+    return <SetupFrame index={waOpened ? 1 : 0} showProgress={false}>
       <section className={setupStyles.content}>
+        {paidInfo && (
+          <div className="mb-4 rounded-xl px-4 py-3 text-sm" style={{ background: "#eaf6ee", border: "1px solid #98c7ab", color: "#175234" }}>
+            🎉 Payment received for <strong>Astra {paidInfo.plan}</strong>{paidInfo.name ? ` (${paidInfo.name})` : ""}! Sign in below to access your account.
+          </div>
+        )}
         <h1 className={setupStyles.heading}>{waOpened ? <>Send the message<br />on WhatsApp.</> : <>Your Astra starts<br />with a hello.</>}</h1>
         {waOpened && (
           <p className={setupStyles.description}>
@@ -230,8 +249,13 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
     </SetupFrame>;
   }
 
-  return <SetupFrame index={step === "phone" ? 0 : 1}>
+  return <SetupFrame index={step === "phone" ? 0 : 1} showProgress={false}>
     <section className={setupStyles.content}>
+      {paidInfo && (
+        <div className="mb-4 rounded-xl px-4 py-3 text-sm" style={{ background: "#eaf6ee", border: "1px solid #98c7ab", color: "#175234" }}>
+          🎉 Payment received for <strong>Astra {paidInfo.plan}</strong>{paidInfo.name ? ` (${paidInfo.name})` : ""}! Sign in below to access your account.
+        </div>
+      )}
       <h1 className={setupStyles.heading}>{step === "phone" ? <>Sign in with<br />SMS code.</> : <>One little code.<br />Then you’re in.</>}</h1>
       <p className={setupStyles.description}>{step === "phone"
         ? "Enter your WhatsApp phone number and we’ll text you a 6-digit verification code."
@@ -278,18 +302,25 @@ function friendly(err: any): string {
   return err?.message || "Something went wrong. Please try again.";
 }
 
-function Dashboard({ user, onSetup, prompt, requestedPlan }: { user: SessionUser; onSetup: () => Promise<void>; prompt: string; requestedPlan?: "pro" | "business" }) {
-  const [me, setMe] = useState<Me | null>(null);
+function Dashboard({ user, initialMe, onSetup, prompt, requestedPlan }: { user: SessionUser; initialMe?: Me | null; onSetup: () => Promise<void>; prompt: string; requestedPlan?: "pro" | "business" }) {
+  const [me, setMe] = useState<Me | null>(initialMe ?? null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [busySlug, setBusySlug] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (initialMe) setMe(initialMe);
+  }, [initialMe]);
+
   const load = useCallback(async () => {
     try {
-      setMe(await api<Me>(user, "/api/me"));
+      const profile = await api<Me>(user, "/api/me");
+      setMe(profile);
       setError(null);
+      return profile;
     } catch (e: any) {
       setError(e.message);
+      return null;
     }
   }, [user]);
 
@@ -297,11 +328,31 @@ function Dashboard({ user, onSetup, prompt, requestedPlan }: { user: SessionUser
     const params = new URLSearchParams(window.location.search);
     const connected = params.get("connected");
     if (connected) {
-      setToast(`Checking ${connected} authorization status...`);
+      setToast(`Verifying ${connected} connection…`);
       window.history.replaceState({}, "", window.location.pathname);
+      void (async () => {
+        try {
+          await api(user, "/api/me/connectors/confirm", {
+            method: "POST",
+            body: JSON.stringify({ toolkit: connected }),
+          });
+        } catch {
+          // Fallback to /api/me check below
+        }
+        const refreshed = await load();
+        const app = refreshed?.connections.find((c) => c.slug === connected);
+        if (app?.status === "active") {
+          setToast(`✓ ${app.name} connected! You can now use it on WhatsApp.`);
+        } else {
+          setToast(`${app?.name || connected} status updated.`);
+        }
+      })();
+      return;
     }
-    load();
-  }, [load]);
+    if (!initialMe) {
+      void load();
+    }
+  }, [initialMe, load, user]);
 
   async function connect(slug: string) {
     setBusySlug(slug);
@@ -449,9 +500,33 @@ function Dashboard({ user, onSetup, prompt, requestedPlan }: { user: SessionUser
   );
 }
 
+function AppLoadingScreen({ title, description, error, onRetry }: { title: string; description: string; error?: string; onRetry?: () => void }) {
+  return (
+    <div className={homeStyles.site}>
+      <header style={{ borderBottom: "1px solid #d8e4dc", background: "rgba(255, 253, 250, 0.92)", backdropFilter: "blur(18px)" }} className="sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+          <Logo />
+        </div>
+      </header>
+      <main className="flex-1 max-w-xl w-full mx-auto px-4 py-20 text-center space-y-4">
+        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#1b7a4e" }}>Your Astra</p>
+        <h1 className="text-2xl md:text-3xl font-bold" style={{ color: "#18241d" }}>{title}</h1>
+        <p className="text-sm" style={{ color: error ? "#8c2d2d" : "#5e6d63" }}>{error || description}</p>
+        {error && onRetry && (
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button onClick={onRetry} className={`${homeStyles.button} ${homeStyles.darkButton}`}>Try again</button>
+            <button onClick={logoutSession} className={`${homeStyles.button} ${homeStyles.lightButton}`}>Sign out</button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
 export function AccountEntry({ user }: { user: SessionUser }) {
   const [account, setAccount] = useState<Me | null>(null);
   const [setup, setSetup] = useState<Setup | null>(null);
+  const [editingSetup, setEditingSetup] = useState(false);
   const [error, setError] = useState("");
   const [prompt, setPrompt] = useState(GREETING);
   const [requestedPlan, setRequestedPlan] = useState<"pro" | "business" | undefined>();
@@ -465,19 +540,44 @@ export function AccountEntry({ user }: { user: SessionUser }) {
     } catch { /* Storage may be disabled; login and chat still work. */ }
     const savedPrompt = typeof resume.prompt === "string" ? resume.prompt : "";
     const prompt = (params.get("prompt") || savedPrompt).slice(0, 2000) || GREETING;
-    const plan = params.get("plan") || resume.plan;
+    const paid = params.get("paid") === "1";
+    const plan = paid ? undefined : (params.get("plan") || resume.plan);
     setPrompt(prompt);
     if (plan === "pro" || plan === "business") setRequestedPlan(plan);
     try { sessionStorage.setItem(key, JSON.stringify({ prompt, plan })); } catch { /* Optional resume only. */ }
   }, [user.uid]);
   const load = useCallback(async () => {
     setError("");
+    const onboardedKey = `astra:onboarded:${user.uid}`;
+    const returningFromOAuth = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("connected");
+    let alreadyOnboarded = returningFromOAuth;
+    try {
+      if (localStorage.getItem(onboardedKey) === "1") alreadyOnboarded = true;
+    } catch { /* ignore */ }
     try {
       await api(user, "/api/me/session", { method: "POST" });
       const [profile, preferences] = await Promise.all([
         api<Me>(user, "/api/me"), api<Setup>(user, "/api/me/onboarding"),
       ]);
-      setAccount(profile); setSetup(preferences);
+      const hasExistingActivity =
+        alreadyOnboarded ||
+        preferences.completed ||
+        Boolean(profile.name) ||
+        profile.plan.is_premium ||
+        profile.connections.some((c) => c.status === "active");
+      let resolvedSetup = preferences;
+      if (hasExistingActivity && !preferences.completed) {
+        resolvedSetup = { ...preferences, step: "complete", completed: true };
+        void api<Setup>(user, "/api/me/onboarding", {
+          method: "PATCH",
+          body: JSON.stringify({ step: "complete" }),
+        }).catch(() => {});
+      }
+      if (resolvedSetup.completed) {
+        try { localStorage.setItem(onboardedKey, "1"); } catch { /* ignore */ }
+      }
+      setAccount(profile);
+      setSetup(resolvedSetup);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Couldn’t load your account"); }
   }, [user]);
   useEffect(() => { void load(); }, [load]);
@@ -501,26 +601,44 @@ export function AccountEntry({ user }: { user: SessionUser }) {
 
   async function save(patch: SetupPatch) {
     const saved = await api<Setup>(user, "/api/me/onboarding", { method: "PATCH", body: JSON.stringify(patch) });
+    if (saved.completed) {
+      try { localStorage.setItem(`astra:onboarded:${user.uid}`, "1"); } catch { /* ignore */ }
+    }
     setSetup(saved);
     return saved;
   }
   async function reopen() {
-    const preferences = await api<Setup>(user, "/api/me/onboarding", { method: "PATCH", body: JSON.stringify({ step: "name" }) });
-    const profile = await api<Me>(user, "/api/me");
-    setAccount(profile); setSetup(preferences);
+    setEditingSetup(true);
   }
 
-  if (checkingOut) return <SetupFrame index={2}>
-    <h1 className={setupStyles.heading}>Opening secure checkout…</h1>
-    <p className={setupStyles.description}>Taking you to Razorpay to finish your {requestedPlan === "business" ? "Business" : "Pro"} plan.</p>
-  </SetupFrame>;
-  if (setup?.completed) return <Dashboard user={user} onSetup={reopen} prompt={prompt} requestedPlan={requestedPlan} />;
-  if (!account || !setup) return <SetupFrame index={2}>
-    <h1 className={setupStyles.heading}>{error ? "Let’s try that again." : "Making room for you…"}</h1>
-    <p className={setupStyles.description}>{error || "Getting your account and saved preferences ready."}</p>
-    {error && <><button className={setupStyles.primary} onClick={() => void load()}>Try again</button><div className={setupStyles.footer}><button className={setupStyles.textButton} onClick={logoutSession}>Sign out</button></div></>}
-  </SetupFrame>;
-  return <Onboarding account={account} setup={setup} save={save} onComplete={setSetup} requestedPlan={requestedPlan}
+  if (checkingOut) {
+    return (
+      <AppLoadingScreen
+        title="Opening secure checkout…"
+        description={`Taking you to Razorpay to finish your ${requestedPlan === "business" ? "Business" : "Pro"} plan.`}
+      />
+    );
+  }
+  if (setup?.completed && !editingSetup) {
+    return <Dashboard user={user} initialMe={account} onSetup={reopen} prompt={prompt} requestedPlan={requestedPlan} />;
+  }
+  if (!account || !setup) {
+    const isOAuthReturn = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("connected");
+    return (
+      <AppLoadingScreen
+        title={error ? "Let’s try that again." : isOAuthReturn ? "Finishing app connection…" : "Loading your Astra…"}
+        description="Getting your account and connected apps ready."
+        error={error}
+        onRetry={() => void load()}
+      />
+    );
+  }
+  return <Onboarding account={account} setup={editingSetup ? { ...setup, step: "name", completed: false } : setup} save={save}
+    onComplete={(state) => {
+      setEditingSetup(false);
+      setSetup({ ...state, completed: true, step: "complete" });
+    }}
+    requestedPlan={requestedPlan}
     connect={async (slug) => {
       const result = await api<{ auth_url: string }>(user, "/api/me/connectors/link", { method: "POST", body: JSON.stringify({ toolkit: slug }) });
       if (!result.auth_url) throw new Error("No connection link was returned. Please try again.");
@@ -541,8 +659,12 @@ export default function AstraApp() {
 
   useEffect(() => onAuthStateChanged(auth, setFirebaseUser), []);
   useEffect(() => {
-    setWaUser(loadWhatsAppSession());
-    return subscribeWhatsAppSession(() => setWaUser(loadWhatsAppSession()));
+    const sync = () => {
+      const next = loadWhatsAppSession();
+      setWaUser((prev) => (prev?.uid === next?.uid ? prev : next));
+    };
+    sync();
+    return subscribeWhatsAppSession(sync);
   }, []);
 
   useEffect(() => {
@@ -567,8 +689,17 @@ export default function AstraApp() {
   }, []);
 
   const activeUser: SessionUser | null | undefined = waUser || firebaseUser;
+  useEffect(() => {
+    if (activeUser !== null) return;
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get("plan");
+    if (params.get("paid") !== "1" && (plan === "pro" || plan === "business")) {
+      window.location.replace(`/payment/checkout?plan=${plan}`);
+    }
+  }, [activeUser]);
+
   if (exchanging || (activeUser === undefined && !waUser)) {
-    return <SetupFrame index={0}><h1 className={setupStyles.heading}>A little less to do.<br />A little more you.</h1><p className={setupStyles.description}>Opening Astra…</p></SetupFrame>;
+    return <AppLoadingScreen title="Opening Astra…" description="Checking your sign-in session." />;
   }
   return activeUser ? <AccountEntry key={activeUser.uid} user={activeUser} /> : <Login onBack={() => window.location.assign("/")} />;
 }

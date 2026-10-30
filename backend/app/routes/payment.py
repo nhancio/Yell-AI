@@ -2,18 +2,18 @@
 
 import json
 import logging
+from typing import Literal
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
-
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
-from fastapi import HTTPException
+
 from app.config import get_settings
-from app.services.payment import PRODUCT_TAG, PaymentService
-from app.services.usage import UsageService
 from app.services.auth import current_phone
 from app.services.composio_service import normalize_phone
-from typing import Literal
+from app.services.payment import PRODUCT_TAG, PaymentService
+from app.services.usage import UsageService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -48,27 +48,43 @@ async def create_public_payment_link(req: PublicPaymentLinkRequest, owner: str =
         "phone_number": norm_phone
     }
 
-@router.get("/success", response_class=HTMLResponse)
-async def payment_success():
-    """Show a success message when the user returns from Razorpay."""
-    return """
-    <html>
-        <head>
-            <title>Payment Successful - Astra AI</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body { font-family: -apple-system, sans-serif; text-align: center; padding: 40px 20px; background: #0A0A0A; color: #fff; }
-                h1 { color: #facc15; }
-                p { color: #a1a1aa; }
-            </style>
-        </head>
-        <body>
-            <h1>Payment Successful! 🎉</h1>
-            <p>Your Astra AI Pro subscription is now active.</p>
-            <p>You can close this window and return to WhatsApp.</p>
-        </body>
-    </html>
-    """
+@router.get("/checkout")
+async def direct_checkout(plan: Literal["pro", "business"] = "pro", phone: str = "") -> RedirectResponse:
+    """Redirect directly to Razorpay checkout without an intermediate screen."""
+    norm_phone = normalize_phone(phone) if phone else ""
+    url = await payment_service.create_payment_link(
+        f"+{norm_phone}" if norm_phone else "",
+        user_id=None,
+        plan=plan,
+    )
+    if not url:
+        raise HTTPException(status_code=503, detail="Razorpay payment initiation failed")
+    return RedirectResponse(
+        url=url,
+        status_code=302,
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+    )
+
+
+@router.get("/success")
+async def payment_success(request: Request) -> RedirectResponse:
+    """Capture user details from Razorpay callback, activate subscription, and send to login."""
+    details = await payment_service.complete_callback(dict(request.query_params))
+    query: dict[str, str] = {
+        "paid": "1",
+        "plan": details.get("plan_tier") or "pro",
+    }
+    if details.get("phone_number"):
+        query["phone"] = details["phone_number"]
+    if details.get("name"):
+        query["name"] = details["name"]
+    if details.get("email"):
+        query["email"] = details["email"]
+    return RedirectResponse(
+        url=f"/app?{urlencode(query)}",
+        status_code=302,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.post("/webhook")
@@ -86,16 +102,22 @@ async def razorpay_webhook(request: Request) -> dict:
         event = payload.get("event", "")
 
         if event == "payment_link.paid":
-            payment_entity = payload.get("payload", {}).get("payment_link", {}).get("entity", {})
-            notes = payment_entity.get("notes", {})
+            pl_payload = payload.get("payload", {})
+            payment_link_entity = pl_payload.get("payment_link", {}).get("entity", {})
+            payment_entity = pl_payload.get("payment", {}).get("entity", {})
+            notes = payment_link_entity.get("notes", {})
             if notes.get("product") != PRODUCT_TAG:
                 logger.info("Ignoring payment_link.paid for another product")
                 return {"status": "ignored"}
-            phone_number = notes.get("phone_number", "")
 
+            details = payment_service.extract_customer_details(payment_link_entity, payment_entity)
+            phone_number = details["phone_number"]
             if phone_number:
-                plan_tier = notes.get("plan_tier", "pro")
-                success = await payment_service.activate_premium(phone_number, plan_tier=plan_tier)
+                plan_tier = details["plan_tier"]
+                kwargs = {"plan_tier": plan_tier}
+                if details.get("name"):
+                    kwargs["name"] = details["name"]
+                success = await payment_service.activate_premium(phone_number, **kwargs)
                 # No WhatsApp confirmation: the bot only replies, it never messages first.
                 if success:
                     logger.info("Premium (%s) activated via webhook for %s", plan_tier, phone_number)

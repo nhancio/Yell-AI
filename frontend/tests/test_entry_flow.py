@@ -38,10 +38,10 @@ class PublicEntryTests(unittest.TestCase):
         self.assertTrue(any("prompt=" in link["href"] for link in entries))
         self.assertTrue(all(link.get("target") != "_blank" for link in entries))
 
-    def test_both_paid_plans_begin_at_authenticated_account(self):
+    def test_both_paid_plans_go_directly_to_razorpay_checkout(self):
         paths = {link.get("href") for link in self.links}
-        self.assertIn("/app?plan=pro", paths)
-        self.assertIn("/app?plan=business", paths)
+        self.assertIn("/payment/checkout?plan=pro", paths)
+        self.assertIn("/payment/checkout?plan=business", paths)
         self.assertNotIn("checkout.razorpay.com/v1/checkout.js", self.html)
 
     def test_brands_portal_is_mobile_responsive_and_unlocked_for_inquiries(self):

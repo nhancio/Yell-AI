@@ -749,7 +749,7 @@ export default function HomePage() {
                 ))}
               </ul>
               <a
-                href="/app?plan=pro"
+                href="/payment/checkout?plan=pro"
                 className={`${styles.button} ${styles.darkButton}`}
               >
                 Get Pro (₹99) <Icon name="arrow" size={17} />
@@ -783,7 +783,7 @@ export default function HomePage() {
                 ))}
               </ul>
               <a
-                href="/app?plan=business"
+                href="/payment/checkout?plan=business"
                 className={`${styles.button} ${styles.darkButton}`}
               >
                 Get Business (₹299) <Icon name="arrow" size={17} />
