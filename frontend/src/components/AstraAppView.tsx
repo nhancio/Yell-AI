@@ -226,7 +226,6 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
             </button>
           </div>
         )}
-        <p className={setupStyles.smallNote}>Instant & free on WhatsApp. No SMS carrier delays.</p>
       </section>
     </SetupFrame>;
   }
