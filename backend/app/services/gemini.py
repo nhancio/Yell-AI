@@ -1,5 +1,6 @@
 """Google Gemini API wrapper for LLM calls."""
 
+import asyncio
 import json
 import logging
 from typing import Any, Optional
@@ -20,6 +21,7 @@ class GeminiService:
     """Wrapper around Google Gemini for text and JSON generation."""
 
     MODEL_NAME = "gemini-3.8-flash"
+    REQUEST_TIMEOUT_SECONDS = 20
 
     def __init__(self) -> None:
         if settings.GEMINI_API_KEY:
@@ -61,7 +63,11 @@ class GeminiService:
             contents.append({"role": "user", "parts": [{"text": user_message}]})
 
             model = self._get_model(system_instruction=system_prompt)
-            response = model.generate_content(contents)
+            async with asyncio.timeout(self.REQUEST_TIMEOUT_SECONDS):
+                response = await model.generate_content_async(
+                    contents,
+                    request_options={"timeout": self.REQUEST_TIMEOUT_SECONDS, "retry": None},
+                )
 
             text = response.text.strip() if response.text else FALLBACK_RESPONSE
             return text

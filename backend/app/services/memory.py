@@ -3,6 +3,7 @@
 import json
 import logging
 import asyncio
+import time
 from typing import Any, Optional
 
 import redis.asyncio as aioredis
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 SESSION_TTL_SECONDS = 24 * 60 * 60  # 24 hours
+REDIS_RETRY_INTERVAL_SECONDS = 30
 
 
 class MemoryUnavailable(RuntimeError):
@@ -30,6 +32,7 @@ class MemoryService:
         self._redis = redis_client
         self._local_storage: dict[str, list[str]] = {}
         self._connect_lock = asyncio.Lock()
+        self._retry_after = 0.0
 
     async def _get_redis(self) -> Optional[aioredis.Redis]:
         if self._redis is not None:
@@ -37,6 +40,10 @@ class MemoryService:
         async with self._connect_lock:
             if self._redis is not None:
                 return self._redis
+            if time.monotonic() < self._retry_after:
+                if not settings.memory_fallback_allowed:
+                    raise MemoryUnavailable("Redis connection is required")
+                return None
             client = None
             try:
                 client = aioredis.from_url(
@@ -44,9 +51,11 @@ class MemoryService:
                     socket_connect_timeout=2, socket_timeout=2,
                     health_check_interval=30,
                 )
-                await client.ping()
+                async with asyncio.timeout(1):
+                    await client.ping()
                 self._redis = client
             except Exception as exc:
+                self._retry_after = time.monotonic() + REDIS_RETRY_INTERVAL_SECONDS
                 if client is not None:
                     await client.aclose()
                 logger.warning("Redis connection unavailable (%s)", type(exc).__name__)

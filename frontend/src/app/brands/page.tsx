@@ -747,7 +747,7 @@ export default function BrandsPortal() {
                       {headline || "Your compelling ad headline will appear right here."}
                     </p>
                     <div style={{ color: "#155e3b", fontWeight: 600, textDecoration: "underline" }}>
-                      👉 {ctaText || "Claim Offer"}: https://astra.nhancio.com/r/101
+                      👉 {ctaText || "Claim Offer"}: https://tryastra.web.app/r/101
                     </div>
                   </div>
 

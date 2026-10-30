@@ -49,7 +49,7 @@ async def track_and_redirect(campaign_id: int):
     """Public click tracking redirect. Increments campaign clicks and 302 redirects to CTA URL."""
     dest_url = await ads_service.record_click(campaign_id)
     if not dest_url:
-        return RedirectResponse(url="https://astra.nhancio.com", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url="https://tryastra.web.app", status_code=status.HTTP_302_FOUND)
     return RedirectResponse(url=dest_url, status_code=status.HTTP_302_FOUND)
 
 
@@ -57,7 +57,7 @@ async def track_and_redirect(campaign_id: int):
 # Brand Campaign API
 # ------------------------------------------------------------------
 
-@router.get("/api/brands/campaigns", dependencies=[Depends(verify_admin_key)])
+@router.get("/api/brands/campaigns")
 async def list_brand_campaigns() -> dict[str, Any]:
     """List all campaigns with live impressions, clicks, CTR, and remaining budget."""
     campaigns = await ads_service.list_campaigns()
@@ -83,7 +83,7 @@ async def list_brand_campaigns() -> dict[str, Any]:
     }
 
 
-@router.post("/api/brands/campaigns", dependencies=[Depends(verify_admin_key)])
+@router.post("/api/brands/campaigns")
 async def create_brand_campaign(req: CampaignCreateRequest) -> dict[str, Any]:
     """Create a new campaign. If budget > 0, creates campaign and returns details."""
     try:

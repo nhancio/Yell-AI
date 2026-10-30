@@ -17,18 +17,22 @@ python3 -c '
 import subprocess, pathlib
 
 env_vars = {}
-for line in open(".env"):
-    line = line.strip()
-    if not line or line.startswith("#") or "=" not in line:
+for env_path in (pathlib.Path(".env"), pathlib.Path("backend/.env")):
+    if not env_path.exists():
         continue
-    k, v = line.split("=", 1)
-    k, v = k.strip(), v.strip()
-    if k in ("WHATSAPP_PROVIDER", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TOKEN", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_DISPLAY_NUMBER", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
-        env_vars[k] = v
+    for line in env_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        k, v = k.strip(), v.strip()
+        if k in ("WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TOKEN", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_DISPLAY_NUMBER", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
+            env_vars[k] = v
 
 env_vars["DATABASE_URL"] = "sqlite+aiosqlite:////tmp/astra.db"
-env_vars["APP_URL"] = "https://astra.nhancio.com"
-env_vars["FRONTEND_URL"] = "https://astra.nhancio.com"
+env_vars["APP_URL"] = "https://tryastra.web.app"
+env_vars["FRONTEND_URL"] = "https://tryastra.web.app"
+env_vars["APP_FRONTEND_URL"] = "https://tryastra.web.app"
 env_vars["ADS_ENABLED"] = "true"
 env_vars["MONTHLY_PRICE_PAISE"] = "9900"
 env_vars["BUSINESS_PRICE_PAISE"] = "99900"

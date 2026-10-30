@@ -86,14 +86,9 @@ async def process_user_message(
     except Exception:
         pass
 
-    try:
-        await whatsapp.mark_as_read(message_id)
-    except Exception:
-        pass
-
     clean_text = text.lower().strip()
     norm_phone = normalize_phone(sender)
-    connect_hub_url = f"{settings.FRONTEND_URL}/connect?phone={norm_phone}"
+    connect_hub_url = "https://tryastra.web.app"
 
     # 1. Onboarding / Greeting Command
     if clean_text in ("/start", "hi", "hello", "hey", "namaste", "yo"):
@@ -292,6 +287,9 @@ async def handle_webhook(request: Request, background_tasks: BackgroundTasks) ->
     message_id = parsed.get("message_id", "")
     if check_and_record_message(message_id):
         return {"status": "already_processed"}
+
+    # Display feedback before database/tool work. This also marks the message read.
+    await whatsapp.send_typing_indicator(message_id)
 
     sender = parsed["sender"]
     text = parsed["text"]

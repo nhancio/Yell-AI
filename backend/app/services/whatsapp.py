@@ -1,5 +1,6 @@
 """WhatsApp integration — Meta WhatsApp Cloud API (Graph API)."""
 
+import asyncio
 import hashlib
 import hmac
 import logging
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # API base URLs
-GRAPH_API_URL = "https://graph.facebook.com/v19.0"
+GRAPH_API_URL = "https://graph.facebook.com/v26.0"
 
 
 class WhatsAppService:
@@ -99,6 +100,23 @@ class WhatsAppService:
             await self._post(payload)
         except Exception:
             logger.warning("Failed to mark message %s as read", message_id)
+
+    async def send_typing_indicator(self, message_id: str) -> bool:
+        """Show Meta's native typing indicator; feedback must never hold up a reply."""
+        if not message_id:
+            return False
+        try:
+            async with asyncio.timeout(2):
+                result = await self._post({
+                    "messaging_product": "whatsapp",
+                    "status": "read",
+                    "message_id": message_id,
+                    "typing_indicator": {"type": "text"},
+                }, timeout=2)
+            return bool(result.get("success"))
+        except Exception as exc:
+            logger.warning("Typing indicator unavailable (%s)", type(exc).__name__)
+            return False
 
     # ------------------------------------------------------------------
     # Parsing (Meta webhook format)
@@ -256,8 +274,8 @@ class WhatsAppService:
     # Internal
     # ------------------------------------------------------------------
 
-    async def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=30) as client:
+    async def _post(self, payload: dict[str, Any], *, timeout: float = 30) -> dict[str, Any]:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
                 self.base_url,
                 json=payload,
