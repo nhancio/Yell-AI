@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     WHATSAPP_TOKEN: str = ""
     WHATSAPP_VERIFY_TOKEN: str = ""
     WHATSAPP_PHONE_NUMBER_ID: str = ""
-    WHATSAPP_DISPLAY_NUMBER: str = "12057820175"
+    WHATSAPP_DISPLAY_NUMBER: str = "918790968218"
 
     # Gemini
     GEMINI_API_KEY: str = ""

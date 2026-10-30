@@ -247,11 +247,43 @@ export default function HomePage() {
     QRCode.toDataURL(WA_LINK, {
       width: 180,
       margin: 1,
-      color: { dark: "#252525", light: "#FFFFFF" },
+      color: { dark: "#18241d", light: "#FFFFFF" },
     })
       .then(setQrUrl)
       .catch(() => setQrUrl(""));
+
+    if (!document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
   }, []);
+
+  const openDirectCheckout = (plan: "pro" | "business") => {
+    const isBiz = plan === "business";
+    const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SQ23jUEivTVeq7";
+    if (typeof window !== "undefined" && (window as any).Razorpay) {
+      const rzp = new (window as any).Razorpay({
+        key: rzpKey,
+        amount: isBiz ? 99900 : 9900,
+        currency: "INR",
+        name: "Astra AI",
+        description: isBiz
+          ? "Astra Business (1,000 tasks/day) — 30 Days"
+          : "Astra Pro (80 tasks/day FUP) — 30 Days",
+        theme: { color: "#1b7a4e" },
+        handler: () => {
+          window.location.href = "/payment/success";
+        },
+      });
+      rzp.open();
+    } else {
+      setSelectedPlan(plan);
+      setCheckoutError("");
+      setShowUpgradeModal(true);
+    }
+  };
 
   useEffect(() => {
     const updateHeader = () => setScrolled(window.scrollY > 70);
@@ -864,11 +896,7 @@ export default function HomePage() {
                 ))}
               </ul>
               <button
-                onClick={() => {
-                  setSelectedPlan("pro");
-                  setCheckoutError("");
-                  setShowUpgradeModal(true);
-                }}
+                onClick={() => openDirectCheckout("pro")}
                 className={`${styles.button} ${styles.darkButton}`}
               >
                 Get Pro (₹99) <Icon name="arrow" size={17} />
@@ -904,11 +932,7 @@ export default function HomePage() {
                 ))}
               </ul>
               <button
-                onClick={() => {
-                  setSelectedPlan("business");
-                  setCheckoutError("");
-                  setShowUpgradeModal(true);
-                }}
+                onClick={() => openDirectCheckout("business")}
                 className={`${styles.button} ${styles.darkButton}`}
               >
                 Get Business (₹999) <Icon name="arrow" size={17} />

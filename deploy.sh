@@ -23,7 +23,7 @@ for line in open(".env"):
         continue
     k, v = line.split("=", 1)
     k, v = k.strip(), v.strip()
-    if k in ("WHATSAPP_PROVIDER", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TOKEN", "WHATSAPP_VERIFY_TOKEN", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
+    if k in ("WHATSAPP_PROVIDER", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TOKEN", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_DISPLAY_NUMBER", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
         env_vars[k] = v
 
 env_vars["DATABASE_URL"] = "sqlite+aiosqlite:////tmp/astra.db"

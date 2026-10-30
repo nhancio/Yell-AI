@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0f172a;
-  --surface: #1e293b;
-  --accent: #38bdf8;
-  --muted: #64748b;
-  --text: #f1f5f9;
+  --bg: #fffdfa;
+  --surface: #f5faf7;
+  --accent: #1b7a4e;
+  --muted: #5e6d63;
+  --text: #18241d;
 }
 
 body {
@@ -15,6 +15,16 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Hide floating Google reCAPTCHA badge (terms notice is displayed inline) */
+.grecaptcha-badge {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 @layer utilities {
