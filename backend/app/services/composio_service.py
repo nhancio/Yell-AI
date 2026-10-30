@@ -32,7 +32,7 @@ SUPPORTED_TOOLKITS: dict[str, dict[str, str]] = {
     "gmail": {
         "name": "Gmail",
         "icon": "📧",
-        "description": "Read emails, send replies, track flight/train PNR & Swiggy/Zomato/Amazon receipts",
+        "description": "Read, search, draft, and send emails automatically from WhatsApp",
         "category": "Google Workspace",
         "auth_config_id": "ac_UdLuaJwehTmn",
     },

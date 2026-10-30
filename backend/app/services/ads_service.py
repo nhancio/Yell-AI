@@ -15,12 +15,12 @@ settings = get_settings()
 
 DEFAULT_INDIA_CAMPAIGNS: list[dict[str, Any]] = [
     {
-        "brand_name": "Ixigo Trains & Flights",
+        "brand_name": "Skyscanner & MakeMyTrip",
         "category": "travel",
         "target_intent": "railway/flight",
-        "headline": "Zero Payment Gateway Charges on your first IRCTC Train or Domestic Flight booking via UPI!",
-        "cta_text": "Use code ASTRAZERO on Ixigo",
-        "cta_url": "https://www.ixigo.com/?utm_source=astra_ai_whatsapp",
+        "headline": "Flat ₹1,200 OFF on domestic flights & boutique stays when you book via UPI!",
+        "cta_text": "Use code ASTRAFLY",
+        "cta_url": "https://www.makemytrip.com/?utm_source=astra_ai_whatsapp",
         "cpm_inr": 320,
         "budget_paise": 500000,  # ₹5,000 seeded wallet
         "spent_paise": 0,

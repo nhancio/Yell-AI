@@ -59,9 +59,9 @@ const recipes = [
     name: "Everyday life",
     icon: "gmailapp.webp",
     title: "All the little things, taken care of.",
-    description: "Travel plans, expenses, and everything in between.",
+    description: "Inbox triage, action items, and everything in between.",
     prompt:
-      "Check my IRCTC PNR from Gmail and total my Swiggy + Blinkit spend this month.",
+      "Summarize my unread emails from today and turn the action items into a Notion checklist.",
   },
 ];
 const conversationIdeas = [
@@ -82,7 +82,7 @@ const conversationIdeas = [
   ],
   [
     "A little help getting there",
-    "Find my train booking in Gmail and remind me to leave for the station on time.",
+    "Find my flight itinerary in Gmail and remind me to leave for the airport on time.",
     "gmailapp.webp",
   ],
   [
@@ -156,7 +156,7 @@ function Phone() {
     <div
       className={styles.phone}
       role="img"
-      aria-label="Example WhatsApp conversation with Astra AI about scheduling a meeting and checking a train booking"
+      aria-label="Example WhatsApp conversation with Astra AI about scheduling a meeting and organizing your day"
     >
       <div className={styles.phoneScreen}>
         <div className={styles.statusBar}>
@@ -193,7 +193,7 @@ function Phone() {
             done boss! invite sent, Meet link included
           </p>
           <p className={styles.incoming}>
-            btw your Rajdhani ticket is confirmed. B4, berth 21 🚆
+            btw I summarized your 3 unread threads &amp; saved the notes to Notion ✨
           </p>
           <p className={styles.outgoing}>you remembered 😭</p>
           <p className={styles.incoming}>that&apos;s what I&apos;m here for</p>
@@ -731,8 +731,8 @@ export default function HomePage() {
                     Astra <span>now</span>
                   </b>
                   <p>
-                    Your train leaves at 5. Leave a little early — traffic looks
-                    busy.
+                    Your 5 PM call starts in 15 mins — here are the 3 key
+                    talking points from your last thread.
                   </p>
                 </div>
               </div>
@@ -745,9 +745,9 @@ export default function HomePage() {
                 you in the loop
               </h2>
               <p>
-                A heads-up before your train. A morning briefing before your
-                coffee. Astra remembers the little things, and reaches out when
-                it matters.
+                A heads-up before your next meeting. A morning briefing before
+                your coffee. Astra remembers the little things, and reaches out
+                when it matters.
               </p>
               <a
                 href={WA_LINK}
@@ -848,7 +848,7 @@ export default function HomePage() {
                 {[
                   "15 AI tasks per day (Ad-supported)",
                   "Connect Gmail, Calendar, Notion & GitHub",
-                  "IRCTC train, travel & Swiggy expense tracker",
+                  "Smart reminders, research & daily briefings",
                   "English, Hinglish & Hindi voice and text",
                 ].map((f) => (
                   <li key={f}>

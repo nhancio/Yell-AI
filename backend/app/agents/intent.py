@@ -16,7 +16,7 @@ Available intents:
 - calendar_action: User wants to check schedule, book a meeting, set a reminder, or create a Google Calendar event
 - notion_action: User wants to save notes, update a Notion page, or manage workspace docs
 - founder_outreach: User wants "Backdoor" style hiring help — cold emailing startup founders, finding YC/Indian startup roles, or referrals
-- travel_irctc: User asks about Indian Railways (IRCTC PNR, Tatkal, train routes), domestic flights (IndiGo/Air India), buses, or trip planning
+- travel_irctc: User asks about flights, hotels, travel itineraries, or trip planning
 - food_commerce: User asks about ordering food (Swiggy/Zomato), quick commerce groceries (Blinkit/Zepto/Instamart), or comparing prices on Amazon/Flipkart
 - email_draft: User wants help writing a professional email/message without necessarily triggering live Gmail send
 - job_search: User wants career change, job hunting help (Naukri, Instahyre, LinkedIn), or interview prep

@@ -38,19 +38,19 @@ interface Metrics {
 }
 
 const CATEGORIES = [
-  { id: "travel", name: "Travel & Mobility", icon: "🚆", desc: "IRCTC, flights, cabs & hotels" },
-  { id: "food", name: "Food & Quick-Commerce", icon: "🍔", desc: "Swiggy, Zomato, Blinkit, Zepto" },
-  { id: "career", name: "Career & Founder Hiring", icon: "🚀", desc: "Jobs, engineering, YC founder outreach" },
-  { id: "finance", name: "FinTech & UPI", icon: "💸", desc: "Credit cards, bill pay, investments" },
-  { id: "shopping", name: "Shopping & E-Commerce", icon: "🛍️", desc: "D2C, electronics, fashion & groceries" },
+  { id: "travel", name: "Travel & Hospitality", icon: "✈️", desc: "Flights, hotels & getaways" },
+  { id: "food", name: "Dining & Quick-Commerce", icon: "🍔", desc: "Food delivery, cafes & essentials" },
+  { id: "career", name: "SaaS, AI & Tech Hiring", icon: "🚀", desc: "Developer tools, SaaS & startup roles" },
+  { id: "finance", name: "FinTech & Wealth", icon: "💸", desc: "Cards, payments & personal finance" },
+  { id: "shopping", name: "Consumer & D2C Brands", icon: "🛍️", desc: "D2C, electronics & lifestyle" },
   { id: "general", name: "Universal / General", icon: "🌐", desc: "All high-intent conversational turns" },
 ];
 
 const INTENTS = [
-  { id: "railway/flight", label: "🚆 IRCTC, Trains & Flight Search", category: "travel" },
-  { id: "food_order", label: "🍔 Swiggy, Blinkit & Food Delivery", category: "food" },
-  { id: "founder_pitch", label: "🚀 Startup Founder Hiring & Job Pitch", category: "career" },
-  { id: "tax/upi", label: "💸 UPI Spends, Credit Cards & Tax", category: "finance" },
+  { id: "railway/flight", label: "✈️ Flights, Hotels & Travel Planning", category: "travel" },
+  { id: "food_order", label: "🍔 Dining, Coffee & Quick Delivery", category: "food" },
+  { id: "founder_pitch", label: "🚀 Tech, Productivity & Startup Tools", category: "career" },
+  { id: "tax/upi", label: "💸 FinTech, Payments & Wealth", category: "finance" },
   { id: "all", label: "🌐 Run Across All Daily Conversational Turns", category: "general" },
 ];
 
@@ -118,10 +118,10 @@ export default function BrandsPortal() {
   const [category, setCategory] = useState("travel");
   const [targetIntent, setTargetIntent] = useState("railway/flight");
   const [headline, setHeadline] = useState(
-    "Zero Payment Gateway Charges on your first IRCTC Train or Domestic Flight booking via UPI!"
+    "Get 20% off your next domestic flight or hotel booking when you pay via UPI!"
   );
-  const [ctaText, setCtaText] = useState("Claim on Ixigo");
-  const [ctaUrl, setCtaUrl] = useState("https://www.ixigo.com/?utm_source=astra_ai");
+  const [ctaText, setCtaText] = useState("Claim Offer");
+  const [ctaUrl, setCtaUrl] = useState("https://tryastra.web.app/?utm_source=astra_ai");
   const [cpmInr, setCpmInr] = useState(300);
   const [budgetInr, setBudgetInr] = useState(5000);
   const [contactEmail, setContactEmail] = useState("");
@@ -705,7 +705,7 @@ export default function BrandsPortal() {
                     maxWidth: "85%",
                   }}
                 >
-                  {category === "travel" && "Check 12951 Rajdhani train timing and seat availability tomorrow"}
+                  {category === "travel" && "Find the best morning flights to Bengaluru tomorrow and block my calendar"}
                   {category === "food" && "Order some quick midnight snacks from Blinkit or Swiggy"}
                   {category === "career" && "Find top funded AI startups in Bengaluru hiring engineers"}
                   {category === "finance" && "How do I save tax under new tax regime 2026?"}
