@@ -3,8 +3,10 @@
 import json
 import logging
 import asyncio
+import os
 import time
 from typing import Any, Optional
+from urllib.parse import urlsplit
 
 import redis.asyncio as aioredis
 
@@ -40,6 +42,14 @@ class MemoryService:
     async def _get_redis(self) -> Optional[aioredis.Redis]:
         if self._redis is not None:
             return self._redis
+        # On Cloud Run (K_SERVICE set), if REDIS_URL points to localhost, there is no local
+        # Redis daemon inside the container—skip the 1-2s TCP timeout retry loop entirely.
+        if (
+            os.environ.get("K_SERVICE")
+            and settings.memory_fallback_allowed
+            and urlsplit(settings.REDIS_URL).hostname in {None, "localhost", "127.0.0.1", "::1"}
+        ):
+            return None
         async with self._connect_lock:
             if self._redis is not None:
                 return self._redis

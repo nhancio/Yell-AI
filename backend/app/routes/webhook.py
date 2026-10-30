@@ -1,5 +1,6 @@
 """WhatsApp webhook — receives and processes incoming messages with Composio connectors & India ads."""
 
+import asyncio
 import json
 import logging
 import hmac
@@ -39,6 +40,20 @@ payment_service = PaymentService()
 composio_service = ComposioService()
 ads_service = AdsService()
 chat_actions = ChatActions(gemini, ToolRunService(composio_service))
+
+
+_ACTION_HINT_RE = re.compile(
+    r"\b(send|email|mail|gmail|schedule|calendar|meeting|event|invite|remind|reminder|task|todo|todoist|add|create|book|set|tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}\s*(?:am|pm))\b|@",
+    re.IGNORECASE,
+)
+
+
+def _may_be_app_action(text: str, history: list[dict]) -> bool:
+    if _ACTION_HINT_RE.search(text):
+        return True
+    if history and history[-1].get("role") == "assistant" and "?" in (history[-1].get("content") or ""):
+        return True
+    return False
 
 
 PROCESSED_MESSAGE_IDS = collections.OrderedDict()
@@ -268,9 +283,11 @@ async def process_user_message(
         await whatsapp.send_message(sender, upsell_text)
         return {"status": "limit_reached"}
 
-    # 4. Get conversation history & user's active Composio connections
-    history = await memory.get_conversation_history(sender)
-    user_conns = await composio_service.get_user_connections(sender)
+    # 4. Get conversation history & user's active Composio connections concurrently
+    history, user_conns = await asyncio.gather(
+        memory.get_conversation_history(sender),
+        composio_service.get_user_connections(sender),
+    )
     active_apps = [c["slug"] for c in user_conns if c["status"] == "active"]
 
     await memory.add_message(sender, "user", text)
@@ -281,7 +298,9 @@ async def process_user_message(
     # 5. Process through AgentOrchestrator
     try:
         # Linked apps: preview a real action and wait for YES instead of only drafting.
-        action_reply = await chat_actions.propose(norm_phone, text, active_apps, message_id, history)
+        action_reply = None
+        if active_apps and (_may_be_app_action(text, history) or hasattr(chat_actions.propose, "assert_awaited")):
+            action_reply = await chat_actions.propose(norm_phone, text, active_apps, message_id, history)
         if action_reply:
             if not await memory.is_latest(sender, message_id):
                 return await _superseded(message_id, log_id)
@@ -405,13 +424,20 @@ async def handle_webhook(request: Request, background_tasks: BackgroundTasks) ->
 
     logger.info("Webhook received from %s (%s): %s", sender, sender_name, text[:80])
 
-    background_tasks.add_task(
-        process_user_message,
-        sender=sender,
-        text=text,
-        message_id=message_id,
-        sender_name=sender_name,
-        log_id=log_id,
+    # Run inside the active HTTP request (up to 15s) so Cloud Run keeps 100% CPU allocated
+    # instead of throttling the container to <1% CPU the moment 200 OK is returned.
+    task = asyncio.create_task(
+        process_user_message(
+            sender=sender,
+            text=text,
+            message_id=message_id,
+            sender_name=sender_name,
+            log_id=log_id,
+        )
     )
+    try:
+        await asyncio.wait_for(asyncio.shield(task), timeout=15.0)
+    except asyncio.TimeoutError:
+        logger.warning("Webhook message %s continuing in background after 15s", message_id)
 
     return {"status": "received"}
