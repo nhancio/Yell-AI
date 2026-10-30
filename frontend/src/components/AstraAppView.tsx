@@ -15,6 +15,7 @@ import { CHANNELS, GREETING } from "@/lib/channels";
 import { accountApi as api, type Account as Me, type Setup, type SetupPatch } from "@/lib/account";
 import Onboarding, { SetupFrame } from "@/components/onboarding/Onboarding";
 import setupStyles from "@/components/onboarding/onboarding.module.css";
+import homeStyles from "@/app/home.module.css";
 
 function Logo({ onBack }: { onBack?: () => void }) {
   return (
@@ -26,10 +27,21 @@ function Logo({ onBack }: { onBack?: () => void }) {
           onBack();
         }
       }}
-      className="flex items-center gap-2.5"
+      style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 600, fontSize: "18px", color: "#18241d" }}
     >
-      <div className="h-8 w-8 rounded-lg bg-[#25D366] text-black font-black flex items-center justify-center">A</div>
-      <span className="font-bold text-lg text-white">Astra AI</span>
+      <span className={homeStyles.mark} aria-hidden="true">
+        <svg viewBox="0 0 40 44" fill="none">
+          <path
+            d="M20 5 7 38M20 5l13 33M11.5 27h17"
+            stroke="currentColor"
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path d="M20 14l4.5 9h-9L20 14Z" fill="currentColor" opacity="0.28" />
+        </svg>
+      </span>
+      <span>Astra AI</span>
     </a>
   );
 }
@@ -190,14 +202,14 @@ function Dashboard({ user, onSetup }: { user: User; onSetup: () => Promise<void>
   const pct = me ? Math.min(100, Math.round((me.usage.used_today / Math.max(1, me.usage.daily_limit)) * 100)) : 0;
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col">
-      <header className="border-b border-white/10 bg-[#070b14]/90 backdrop-blur sticky top-0 z-20">
+    <div className={homeStyles.site}>
+      <header style={{ borderBottom: "1px solid #d8e4dc", background: "rgba(255, 253, 250, 0.92)", backdropFilter: "blur(18px)" }} className="sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <Logo />
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline text-xs text-slate-400">{user.phoneNumber}</span>
-            <button onClick={() => { void onSetup().catch((cause) => setToast(cause instanceof Error ? cause.message : "Couldn’t reopen setup")); }} className="text-xs px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10">Personalize</button>
-            <button onClick={() => signOut(auth)} className="text-xs px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10">
+            <span className="hidden sm:inline text-xs" style={{ color: "#5e6d63" }}>{user.phoneNumber}</span>
+            <button onClick={() => { void onSetup().catch((cause) => setToast(cause instanceof Error ? cause.message : "Couldn’t reopen setup")); }} className="text-xs px-3 py-2 rounded-lg" style={{ border: "1px solid #cce0d4", background: "#fff", color: "#18241d" }}>Personalize</button>
+            <button onClick={() => signOut(auth)} className="text-xs px-3 py-2 rounded-lg" style={{ border: "1px solid #cce0d4", background: "#fff", color: "#18241d" }}>
               Log out
             </button>
           </div>
@@ -207,82 +219,82 @@ function Dashboard({ user, onSetup }: { user: User; onSetup: () => Promise<void>
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-10 space-y-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <p className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Your Astra</p>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-white mt-1">Hey{me?.name ? ` ${me.name}` : ""} 👋</h1>
-            <p className="text-slate-400 text-sm mt-1">Everything Astra can do for you on WhatsApp, in one place.</p>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: "#1b7a4e" }}>Your Astra</p>
+            <h1 className="text-3xl md:text-4xl mt-1" style={{ color: "#18241d" }}>Hey{me?.name ? ` ${me.name}` : ""} 👋</h1>
+            <p className="text-sm mt-1" style={{ color: "#5e6d63" }}>Everything Astra can do for you on WhatsApp, in one place.</p>
           </div>
-          <a href={waLink} target="_blank" rel="noreferrer" className="inline-flex justify-center bg-[#25D366] hover:bg-[#1ebe5d] text-black font-bold px-5 py-3 rounded-xl transition">
+          <a href={waLink} target="_blank" rel="noreferrer" className={`${homeStyles.button} ${homeStyles.darkButton}`}>
             💬 Chat with Astra on WhatsApp
           </a>
         </div>
 
-        {toast && <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-4 py-3 text-sm text-emerald-300">{toast}</div>}
+        {toast && <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "#eaf6ee", border: "1px solid #98c7ab", color: "#175234" }}>{toast}</div>}
         {error && (
-          <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-300">
+          <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "#fdf2f2", border: "1px solid #e0b4b4", color: "#8c2d2d" }}>
             Couldn't load your account: {error} <button onClick={load} className="underline ml-2">Retry</button>
           </div>
         )}
 
         <section className="grid sm:grid-cols-3 gap-4">
-          <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-            <p className="text-xs text-slate-400">Plan</p>
-            <p className="text-2xl font-bold text-white mt-1">{me ? me.plan.name : "—"}</p>
+          <div className="rounded-2xl p-5" style={{ border: "1px solid #cce0d4", background: "linear-gradient(150deg, #fffefa, #f5faf7)" }}>
+            <p className="text-xs" style={{ color: "#5e6d63" }}>Plan</p>
+            <p className="text-2xl font-bold mt-1" style={{ color: "#18241d" }}>{me ? me.plan.name : "—"}</p>
             {me && !me.plan.is_premium && (
-              <button onClick={upgrade} className="mt-3 text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-400 text-black hover:bg-amber-300">
+              <button onClick={upgrade} className="mt-3 text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#1b7a4e", color: "#fff" }}>
                 Upgrade · ₹{me.plan.price_inr}/mo
               </button>
             )}
-            {me?.plan.expires_at && <p className="text-xs text-slate-500 mt-2">Renews {new Date(me.plan.expires_at).toLocaleDateString("en-IN")}</p>}
+            {me?.plan.expires_at && <p className="text-xs mt-2" style={{ color: "#5e6d63" }}>Renews {new Date(me.plan.expires_at).toLocaleDateString("en-IN")}</p>}
           </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-            <p className="text-xs text-slate-400">Messages today</p>
-            <p className="text-2xl font-bold text-white mt-1">{me ? `${me.usage.used_today} / ${me.usage.daily_limit}` : "—"}</p>
-            <div className="mt-3 h-1.5 rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full bg-[#25D366]" style={{ width: `${pct}%` }} />
+          <div className="rounded-2xl p-5" style={{ border: "1px solid #cce0d4", background: "linear-gradient(150deg, #fffefa, #f5faf7)" }}>
+            <p className="text-xs" style={{ color: "#5e6d63" }}>Messages today</p>
+            <p className="text-2xl font-bold mt-1" style={{ color: "#18241d" }}>{me ? `${me.usage.used_today} / ${me.usage.daily_limit}` : "—"}</p>
+            <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: "#dfeee5" }}>
+              <div className="h-full" style={{ width: `${pct}%`, background: "#1b7a4e" }} />
             </div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-            <p className="text-xs text-slate-400">Connected apps</p>
-            <p className="text-2xl font-bold text-white mt-1">{me ? `${connectedCount} / ${me.connections.length}` : "—"}</p>
-            <p className="text-xs text-slate-500 mt-2">Linked to {user.phoneNumber}</p>
+          <div className="rounded-2xl p-5" style={{ border: "1px solid #cce0d4", background: "linear-gradient(150deg, #fffefa, #f5faf7)" }}>
+            <p className="text-xs" style={{ color: "#5e6d63" }}>Connected apps</p>
+            <p className="text-2xl font-bold mt-1" style={{ color: "#18241d" }}>{me ? `${connectedCount} / ${me.connections.length}` : "—"}</p>
+            <p className="text-xs mt-2" style={{ color: "#5e6d63" }}>Linked to {user.phoneNumber}</p>
           </div>
         </section>
 
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">Your apps</h2>
-            <button onClick={load} className="text-xs text-slate-400 hover:text-white">↻ Refresh</button>
+            <h2 className="text-2xl" style={{ color: "#18241d" }}>Your apps</h2>
+            <button onClick={load} className="text-xs" style={{ color: "#1b7a4e", fontWeight: 600 }}>↻ Refresh</button>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             {(me?.connections ?? []).map((c) => {
               const on = c.status === "active";
               return (
-                <div key={c.slug} className={`rounded-2xl border p-5 flex flex-col justify-between ${on ? "border-emerald-500/50 bg-emerald-950/20" : "border-white/10 bg-slate-900/60"}`}>
+                <div key={c.slug} className="rounded-2xl p-5 flex flex-col justify-between" style={{ border: on ? "1px solid #8fc4a4" : "1px solid #cce0d4", background: on ? "linear-gradient(140deg, #f2fbf5, #e3f3e9)" : "linear-gradient(150deg, #fffefa, #f5faf7)" }}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <span className="text-3xl">{c.icon}</span>
                       <div>
-                        <h3 className="font-bold text-white">{c.name}</h3>
-                        <span className="text-[11px] text-slate-400">{c.category}</span>
+                        <h3 className="font-bold" style={{ color: "#18241d" }}>{c.name}</h3>
+                        <span className="text-[11px]" style={{ color: "#5e6d63" }}>{c.category}</span>
                       </div>
                     </div>
-                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${on ? "bg-emerald-500/20 text-emerald-300" : c.status === "pending" ? "bg-amber-500/15 text-amber-300" : "bg-white/5 text-slate-400"}`}>
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: on ? "#dcf2e4" : "#eef4f0", color: on ? "#195936" : "#5e6d63", border: on ? "1px solid #a3d4b5" : "1px solid #d5e3da" }}>
                       {on ? "✓ Connected" : c.status === "pending" ? "Pending" : c.status === "unknown" ? "Status unavailable" : "Not linked"}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-300 mt-3 leading-relaxed">{c.description}</p>
+                  <p className="text-xs mt-3 leading-relaxed" style={{ color: "#4f6256" }}>{c.description}</p>
                   <button
                     onClick={() => connect(c.slug)}
                     disabled={busySlug === c.slug || !c.configured}
-                    className={`mt-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed ${on ? "bg-white/10 hover:bg-white/15 text-white" : "bg-[#25D366] hover:bg-[#1ebe5d] text-black"}`}
+                    className={`mt-4 ${homeStyles.button} ${on ? homeStyles.lightButton : homeStyles.darkButton}`}
+                    style={{ width: "100%", height: "42px", fontSize: "13px" }}
                   >
                     {busySlug === c.slug ? "Please wait..." : !c.configured ? "Coming soon" : on ? "Reconnect" : `Connect ${c.name} →`}
                   </button>
-                  {on && <button onClick={() => disconnect(c.slug)} disabled={busySlug === c.slug} className="mt-2 text-xs text-slate-400 hover:text-white disabled:opacity-50">Disconnect</button>}
+                  {on && <button onClick={() => disconnect(c.slug)} disabled={busySlug === c.slug} className="mt-2 text-xs" style={{ color: "#5e6d63" }}>Disconnect</button>}
                 </div>
               );
             })}
-            {!me && !error && Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-40 rounded-2xl bg-slate-900/60 animate-pulse" />)}
           </div>
         </section>
 

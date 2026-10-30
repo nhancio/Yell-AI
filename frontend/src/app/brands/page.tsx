@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import styles from "../home.module.css";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
@@ -59,6 +60,52 @@ declare global {
   }
 }
 
+function AstraMark() {
+  return (
+    <span className={styles.mark} aria-hidden="true">
+      <svg viewBox="0 0 40 44" fill="none">
+        <path
+          d="M20 5 7 38M20 5l13 33M11.5 27h17"
+          stroke="currentColor"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M20 14l4.5 9h-9L20 14Z" fill="currentColor" opacity="0.28" />
+      </svg>
+    </span>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  background: "#ffffff",
+  border: "1px solid #cce0d4",
+  borderRadius: "14px",
+  padding: "11px 15px",
+  color: "#22221f",
+  fontSize: "14px",
+  outline: "none",
+  boxShadow: "inset 0 1px 2px rgba(27, 77, 49, 0.04)",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "11px",
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  color: "#55685c",
+  marginBottom: "7px",
+};
+
+const cardStyle: React.CSSProperties = {
+  border: "1px solid #cce0d4",
+  borderRadius: "24px",
+  background: "linear-gradient(150deg, #fffefa, #f5faf7)",
+  boxShadow: "inset 0 1px 2px #fff, 0 4px 14px rgba(24, 90, 57, 0.06)",
+};
+
 export default function BrandsPortal() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -70,7 +117,9 @@ export default function BrandsPortal() {
   const [brandName, setBrandName] = useState("");
   const [category, setCategory] = useState("travel");
   const [targetIntent, setTargetIntent] = useState("railway/flight");
-  const [headline, setHeadline] = useState("Zero Payment Gateway Charges on your first IRCTC Train or Domestic Flight booking via UPI!");
+  const [headline, setHeadline] = useState(
+    "Zero Payment Gateway Charges on your first IRCTC Train or Domestic Flight booking via UPI!"
+  );
   const [ctaText, setCtaText] = useState("Claim on Ixigo");
   const [ctaUrl, setCtaUrl] = useState("https://www.ixigo.com/?utm_source=astra_ai");
   const [cpmInr, setCpmInr] = useState(300);
@@ -80,7 +129,6 @@ export default function BrandsPortal() {
 
   const [notification, setNotification] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-  // Fetch campaigns
   const fetchCampaigns = async () => {
     try {
       setLoading(true);
@@ -99,7 +147,6 @@ export default function BrandsPortal() {
 
   useEffect(() => {
     fetchCampaigns();
-    // Load Razorpay Script dynamically
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
@@ -109,10 +156,8 @@ export default function BrandsPortal() {
     };
   }, []);
 
-  // Estimated Impressions Calculation
   const estimatedImpressions = Math.round((budgetInr / cpmInr) * 1000);
 
-  // Handle Create Campaign
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!brandName || !headline || !ctaText || !ctaUrl) {
@@ -144,13 +189,12 @@ export default function BrandsPortal() {
         throw new Error(err.detail || "Failed to create campaign");
       }
 
-      const data = await res.json();
+      await res.json();
       setNotification({
         type: "success",
-        msg: `🎉 Campaign for "${brandName}" created successfully with ₹${budgetInr.toLocaleString("en-IN")} pre-allocated budget!`,
+        msg: `🎉 Campaign for "${brandName}" created with ₹${budgetInr.toLocaleString("en-IN")} pre-allocated budget!`,
       });
 
-      // Reset form
       setBrandName("");
       fetchCampaigns();
     } catch (err: any) {
@@ -160,7 +204,6 @@ export default function BrandsPortal() {
     }
   };
 
-  // Handle Toggle
   const handleToggle = async (id: number) => {
     try {
       const res = await fetch(`${BACKEND_URL}/api/brands/campaigns/${id}/toggle`, { method: "PATCH" });
@@ -172,7 +215,6 @@ export default function BrandsPortal() {
     }
   };
 
-  // Handle Razorpay Top-Up Prepay
   const handleTopUp = async (camp: Campaign, amountInr: number = 5000) => {
     try {
       setPayingId(camp.id);
@@ -225,7 +267,7 @@ export default function BrandsPortal() {
           email: camp.contact_email || "advertiser@nhancio.com",
           contact: camp.contact_phone || "",
         },
-        theme: { color: "#25D366" },
+        theme: { color: "#1b7a4e" },
       };
 
       const rzp = new window.Razorpay(options);
@@ -238,137 +280,233 @@ export default function BrandsPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-black font-sans">
-      {/* Top Navbar */}
-      <header className="border-b border-white/10 bg-[#070b14]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-[#25D366] text-black font-black flex items-center justify-center text-lg">Y</div>
-            <span className="font-bold text-xl text-white tracking-tight">Astra AI</span>
-          </Link>
-          <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            Brands & Ads Portal
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-sm">
-          <Link href="/" className="text-slate-400 hover:text-white transition-colors">
-            ← Back to Home
-          </Link>
-          <a
-            href="https://wa.me/15552107308?text=Hi%20Astra"
-            target="_blank"
-            rel="noreferrer"
-            className="bg-[#25D366] text-black font-semibold px-4 py-1.5 rounded-lg hover:bg-[#20ba59] transition-all flex items-center gap-1.5 text-xs"
-          >
-            💬 Test on WhatsApp
-          </a>
+    <div className={styles.site}>
+      {/* Top Header matching Landing Page */}
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 30,
+          background: "rgba(255, 253, 250, 0.92)",
+          backdropFilter: "blur(18px)",
+          borderBottom: "1px solid #d8e4dc",
+        }}
+      >
+        <div
+          className={styles.container}
+          style={{
+            height: "76px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "20px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <Link
+              href="/"
+              style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 600, fontSize: "18px" }}
+            >
+              <AstraMark />
+              <span>Astra AI</span>
+            </Link>
+            <span
+              style={{
+                background: "#dcf2e4",
+                border: "1px solid #a3d4b5",
+                color: "#195936",
+                fontSize: "11px",
+                fontWeight: 600,
+                padding: "4px 11px",
+                borderRadius: "30px",
+                letterSpacing: "0.03em",
+              }}
+            >
+              Brands & Ads Portal
+            </span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "18px", fontSize: "14px" }}>
+            <Link href="/" style={{ color: "#4f6256", fontWeight: 500 }}>
+              ← Back to Home
+            </Link>
+            <a
+              href="https://wa.me/918790968218?text=Hi%20Astra!"
+              target="_blank"
+              rel="noreferrer"
+              className={`${styles.button} ${styles.darkButton} ${styles.smallButton}`}
+            >
+              💬 Test on WhatsApp
+            </a>
+          </div>
         </div>
       </header>
 
-      {/* Hero Headline */}
-      <div className="max-w-7xl mx-auto px-6 pt-10 pb-6 w-full">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      {/* Main Content */}
+      <main className={styles.container} style={{ paddingTop: "52px", paddingBottom: "90px" }}>
+        {/* Hero Headline */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            gap: "20px",
+          }}
+        >
           <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-              Monetize Bharat on <span className="text-[#25D366]">WhatsApp</span>
-            </h1>
-            <p className="text-slate-400 text-sm md:text-base mt-1.5 max-w-2xl">
-              Reach high-intent Indian consumers right inside their private WhatsApp conversations. 
-              Zero banner blindness. 100% contextual intent matching. Pay-as-you-go CPM.
-            </p>
-          </div>
-          <div className="text-right">
-            <span className="inline-flex items-center gap-2 text-xs font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-3 py-1.5 rounded-full">
-              <span className="h-2 w-2 rounded-full bg-[#25D366] animate-pulse" />
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "#e8f4ec",
+                border: "1px solid #c5dfd0",
+                color: "#1f5c3a",
+                borderRadius: "30px",
+                padding: "5px 14px",
+                fontSize: "12px",
+                fontWeight: 500,
+                marginBottom: "16px",
+              }}
+            >
+              <span
+                style={{
+                  width: "7px",
+                  height: "7px",
+                  borderRadius: "50%",
+                  background: "#1b7a4e",
+                }}
+              />
               Contextual Intent Matching Engine Active
             </span>
+            <h1 style={{ fontSize: "clamp(34px, 4.5vw, 48px)", lineHeight: 1.08, color: "#15261d" }}>
+              Monetize Bharat on <span style={{ color: "#1b7a4e" }}>WhatsApp</span>
+            </h1>
+            <p style={{ color: "#5e6d63", fontSize: "16px", maxWidth: "640px", marginTop: "14px" }}>
+              Reach high-intent Indian consumers right inside their everyday WhatsApp workflows. Zero banner
+              blindness, 100% contextual intent matching, and transparent pay-as-you-go CPM.
+            </p>
           </div>
         </div>
 
         {/* Global Performance Metrics */}
         {metrics && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mt-8">
-            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 font-medium uppercase">Total Delivered</div>
-              <div className="text-2xl font-bold text-white mt-1">
-                {metrics.total_impressions.toLocaleString("en-IN")}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(185px, 1fr))",
+              gap: "16px",
+              marginTop: "36px",
+            }}
+          >
+            {[
+              {
+                label: "Total Delivered",
+                value: metrics.total_impressions.toLocaleString("en-IN"),
+                sub: "WhatsApp Impressions",
+              },
+              {
+                label: "Direct Taps",
+                value: metrics.total_clicks.toLocaleString("en-IN"),
+                sub: "Verified User Clicks",
+              },
+              {
+                label: "Average CTR",
+                value: `${metrics.avg_ctr_percent}%`,
+                sub: "vs 0.8% Display Avg",
+                highlight: true,
+              },
+              {
+                label: "Live Campaigns",
+                value: `${metrics.active_campaigns} / ${metrics.total_campaigns}`,
+                sub: "Active Brand Sponsors",
+              },
+              {
+                label: "Total Ad Spend",
+                value: `₹${metrics.total_spent_inr.toLocaleString("en-IN")}`,
+                sub: `₹${metrics.total_budget_inr.toLocaleString("en-IN")} Total Funded`,
+              },
+            ].map((m) => (
+              <div key={m.label} style={{ ...cardStyle, padding: "20px 22px", borderRadius: "20px" }}>
+                <div style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#687a6e" }}>
+                  {m.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: "26px",
+                    fontWeight: 600,
+                    color: m.highlight ? "#1b7a4e" : "#18241d",
+                    marginTop: "6px",
+                    letterSpacing: "-0.03em",
+                  }}
+                >
+                  {m.value}
+                </div>
+                <div style={{ fontSize: "12px", color: "#1b7a4e", marginTop: "3px" }}>{m.sub}</div>
               </div>
-              <div className="text-[11px] text-emerald-400 mt-0.5">WhatsApp Impressions</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 font-medium uppercase">Direct Taps</div>
-              <div className="text-2xl font-bold text-white mt-1">
-                {metrics.total_clicks.toLocaleString("en-IN")}
-              </div>
-              <div className="text-[11px] text-sky-400 mt-0.5">Verified User Clicks</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 font-medium uppercase">Average CTR</div>
-              <div className="text-2xl font-bold text-emerald-400 mt-1">
-                {metrics.avg_ctr_percent}%
-              </div>
-              <div className="text-[11px] text-slate-400 mt-0.5">vs 0.8% Meta Display Avg</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-              <div className="text-xs text-slate-400 font-medium uppercase">Live Campaigns</div>
-              <div className="text-2xl font-bold text-white mt-1">
-                {metrics.active_campaigns} <span className="text-xs font-normal text-slate-400">/ {metrics.total_campaigns}</span>
-              </div>
-              <div className="text-[11px] text-emerald-400 mt-0.5">Active Brands</div>
-            </div>
-            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4 col-span-2 sm:col-span-1">
-              <div className="text-xs text-slate-400 font-medium uppercase">Total Ad Spend</div>
-              <div className="text-2xl font-bold text-white mt-1">
-                ₹{metrics.total_spent_inr.toLocaleString("en-IN")}
-              </div>
-              <div className="text-[11px] text-slate-400 mt-0.5">₹{metrics.total_budget_inr.toLocaleString("en-IN")} Total Funded</div>
-            </div>
+            ))}
           </div>
         )}
 
         {/* Notifications */}
         {notification && (
-          <div className={`mt-6 p-4 rounded-xl border text-sm ${notification.type === "success" ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-200" : "bg-rose-950/60 border-rose-500/40 text-rose-200"}`}>
+          <div
+            style={{
+              marginTop: "24px",
+              padding: "16px 20px",
+              borderRadius: "16px",
+              fontSize: "14px",
+              border: notification.type === "success" ? "1px solid #98c7ab" : "1px solid #e0b4b4",
+              background: notification.type === "success" ? "#eaf6ee" : "#fdf2f2",
+              color: notification.type === "success" ? "#175234" : "#8c2d2d",
+            }}
+          >
             {notification.msg}
           </div>
         )}
 
         {/* Main Grid: Campaign Builder + WhatsApp Live Preview */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-10">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+            gap: "28px",
+            marginTop: "40px",
+            alignItems: "start",
+          }}
+        >
           {/* Left Column: Campaign Builder Form */}
-          <div className="lg:col-span-7 bg-white/[0.02] border border-white/10 rounded-2xl p-6 md:p-8">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="h-6 w-1 rounded-full bg-[#25D366]" />
-              <h2 className="text-xl font-bold text-white">Launch New Sponsored Placement</h2>
+          <div style={{ ...cardStyle, padding: "32px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px" }}>
+              <span
+                style={{
+                  width: "5px",
+                  height: "24px",
+                  borderRadius: "4px",
+                  background: "#1b7a4e",
+                }}
+              />
+              <h2 style={{ fontSize: "26px", color: "#18241d" }}>Launch New Sponsored Placement</h2>
             </div>
 
-            <form onSubmit={handleCreateCampaign} className="space-y-5">
-              {/* Brand Name */}
+            <form onSubmit={handleCreateCampaign} style={{ display: "grid", gap: "18px" }}>
               <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-2">
-                  Brand / Advertiser Name *
-                </label>
+                <label style={labelStyle}>Brand / Advertiser Name *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Swiggy, Ixigo, CRED, Sarvam AI, Zepto"
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
-                  className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#25D366] text-sm"
+                  style={inputStyle}
                 />
               </div>
 
-              {/* Category & Target Intent Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-2">
-                    Industry Category *
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#25D366]"
-                  >
+                  <label style={labelStyle}>Industry Category *</label>
+                  <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
                     {CATEGORIES.map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.icon} {cat.name}
@@ -378,14 +516,8 @@ export default function BrandsPortal() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-2">
-                    Target Intent Trigger *
-                  </label>
-                  <select
-                    value={targetIntent}
-                    onChange={(e) => setTargetIntent(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#25D366]"
-                  >
+                  <label style={labelStyle}>Target Intent Trigger *</label>
+                  <select value={targetIntent} onChange={(e) => setTargetIntent(e.target.value)} style={inputStyle}>
                     {INTENTS.map((intn) => (
                       <option key={intn.id} value={intn.id}>
                         {intn.label}
@@ -395,56 +527,59 @@ export default function BrandsPortal() {
                 </div>
               </div>
 
-              {/* Headline */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-2">
-                  Offer Headline (1–2 sentences) *
-                </label>
+                <label style={labelStyle}>Offer Headline (1–2 sentences) *</label>
                 <textarea
                   required
                   rows={2}
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
                   placeholder="Write a clear, compelling offer (e.g. Flat ₹100 OFF on orders above ₹299 + 10-min free delivery)."
-                  className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#25D366] text-sm resize-none"
+                  style={{ ...inputStyle, resize: "vertical" }}
                 />
               </div>
 
-              {/* CTA Text & URL */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-2">
-                    CTA Button Text *
-                  </label>
+                  <label style={labelStyle}>CTA Button Text *</label>
                   <input
                     type="text"
                     required
                     value={ctaText}
                     onChange={(e) => setCtaText(e.target.value)}
                     placeholder="e.g. Claim on Swiggy, Book on Ixigo"
-                    className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#25D366] text-sm"
+                    style={inputStyle}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-2">
-                    Destination Landing URL *
-                  </label>
+                  <label style={labelStyle}>Destination Landing URL *</label>
                   <input
                     type="url"
                     required
                     value={ctaUrl}
                     onChange={(e) => setCtaUrl(e.target.value)}
                     placeholder="https://brand.com/offer"
-                    className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#25D366] text-sm"
+                    style={inputStyle}
                   />
                 </div>
               </div>
 
               {/* Budget & CPM Slider */}
-              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4 space-y-4">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-300 font-medium">Prepaid Ad Budget (Wallet)</span>
-                  <span className="text-lg font-bold text-[#25D366]">₹{budgetInr.toLocaleString("en-IN")}</span>
+              <div
+                style={{
+                  background: "#eef7f1",
+                  border: "1px solid #bddbc8",
+                  borderRadius: "18px",
+                  padding: "18px 20px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "#223b2c" }}>
+                    Prepaid Ad Budget (Wallet)
+                  </span>
+                  <span style={{ fontSize: "20px", fontWeight: 700, color: "#1b7a4e" }}>
+                    ₹{budgetInr.toLocaleString("en-IN")}
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -453,222 +588,339 @@ export default function BrandsPortal() {
                   step={1000}
                   value={budgetInr}
                   onChange={(e) => setBudgetInr(Number(e.target.value))}
-                  className="w-full accent-[#25D366] cursor-pointer"
+                  style={{ width: "100%", accentColor: "#1b7a4e", margin: "12px 0 6px", cursor: "pointer" }}
                 />
-                <div className="flex justify-between text-xs text-slate-400">
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#5e7366" }}>
                   <span>₹1,000 (Starter)</span>
                   <span>₹10,000 (Growth)</span>
                   <span>₹50,000 (Scale)</span>
                 </div>
 
-                <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Rate: <strong className="text-white">₹{cpmInr} CPM</strong> (₹0.30 / view)</span>
-                  <span className="text-emerald-400 font-semibold">
+                <div
+                  style={{
+                    marginTop: "14px",
+                    paddingTop: "12px",
+                    borderTop: "1px solid #cce3d4",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "12px",
+                  }}
+                >
+                  <span style={{ color: "#4f6658" }}>
+                    Rate: <strong style={{ color: "#18241d" }}>₹{cpmInr} CPM</strong> (₹0.30 / view)
+                  </span>
+                  <span style={{ color: "#1b7a4e", fontWeight: 600 }}>
                     Est. {estimatedImpressions.toLocaleString("en-IN")} WhatsApp impressions
                   </span>
                 </div>
               </div>
 
-              {/* Contact Email & Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-2">
-                    Advertiser Email
-                  </label>
+                  <label style={labelStyle}>Advertiser Email</label>
                   <input
                     type="email"
                     placeholder="ads@yourbrand.com"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#25D366] text-sm"
+                    style={inputStyle}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 uppercase tracking-wider mb-2">
-                    WhatsApp Phone (For Alerts)
-                  </label>
+                  <label style={labelStyle}>WhatsApp Phone (For Alerts)</label>
                   <input
                     type="tel"
                     placeholder="+91 98765 43210"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#25D366] text-sm"
+                    style={inputStyle}
                   />
                 </div>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-[#25D366] text-black font-bold py-3.5 rounded-xl hover:bg-[#20ba59] transition-all shadow-lg shadow-emerald-500/20 text-sm disabled:opacity-50"
+                className={`${styles.button} ${styles.darkButton}`}
+                style={{ width: "100%", height: "50px", marginTop: "6px" }}
               >
-                {submitting ? "Creating Campaign..." : `🚀 Create & Fund Campaign (₹${budgetInr.toLocaleString("en-IN")})`}
+                {submitting
+                  ? "Creating Campaign..."
+                  : `🚀 Create & Fund Campaign (₹${budgetInr.toLocaleString("en-IN")})`}
               </button>
             </form>
           </div>
 
-          {/* Right Column: Live WhatsApp Bubble Mockup */}
-          <div className="lg:col-span-5 flex flex-col gap-6">
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Live WhatsApp Message Preview
-                </div>
-                <div className="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
-                  Real Rendering
+          {/* Right Column: Live WhatsApp Bubble Mockup matching Landing Page Phone */}
+          <div style={{ ...cardStyle, padding: "28px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "18px",
+              }}
+            >
+              <span style={{ fontSize: "12px", fontWeight: 600, textTransform: "uppercase", color: "#55685c" }}>
+                Live WhatsApp Message Preview
+              </span>
+              <span
+                style={{
+                  background: "#dcf2e4",
+                  border: "1px solid #a3d4b5",
+                  color: "#195936",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  padding: "3px 10px",
+                  borderRadius: "20px",
+                }}
+              >
+                Real Rendering
+              </span>
+            </div>
+
+            {/* Warm Light-Mode WhatsApp Conversation Box matching Landing Page */}
+            <div
+              style={{
+                background: "#fffdfa",
+                border: "1px solid #d5e3da",
+                borderRadius: "20px",
+                padding: "20px",
+                boxShadow: "inset 0 1px 3px rgba(0,0,0,0.03)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px",
+              }}
+            >
+              {/* Outgoing User Prompt */}
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <div
+                  style={{
+                    background: "#23784f",
+                    color: "#ffffff",
+                    fontSize: "13px",
+                    lineHeight: 1.45,
+                    padding: "10px 14px",
+                    borderRadius: "18px 18px 4px 18px",
+                    maxWidth: "85%",
+                  }}
+                >
+                  {category === "travel" && "Check 12951 Rajdhani train timing and seat availability tomorrow"}
+                  {category === "food" && "Order some quick midnight snacks from Blinkit or Swiggy"}
+                  {category === "career" && "Find top funded AI startups in Bengaluru hiring engineers"}
+                  {category === "finance" && "How do I save tax under new tax regime 2026?"}
+                  {(category === "shopping" || category === "general") &&
+                    "Can you help me buy fresh groceries in 10 mins?"}
                 </div>
               </div>
 
-              {/* Realistic WhatsApp Chat Bubble Container */}
-              <div className="bg-[#0b141a] rounded-xl p-4 border border-white/5 space-y-3 font-sans">
-                {/* Mock Inbound User Prompt */}
-                <div className="flex justify-end">
-                  <div className="bg-[#005c4b] text-[#e9edef] text-xs px-3.5 py-2 rounded-2xl rounded-tr-none max-w-[85%]">
-                    {category === "travel" && "Check 12951 Rajdhani train timing and seat availability tomorrow"}
-                    {category === "food" && "Order some quick midnight snacks from Blinkit or Swiggy"}
-                    {category === "career" && "Find top funded AI startups in Bengaluru hiring engineers"}
-                    {category === "finance" && "How do I save tax under new tax regime 2026?"}
-                    {(category === "shopping" || category === "general") && "Can you help me buy fresh groceries in 10 mins?"}
-                  </div>
-                </div>
+              {/* Incoming Astra Reply with Sponsored Native Placement */}
+              <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                <div
+                  style={{
+                    background: "#f1f6f3",
+                    border: "1px solid #d8e8de",
+                    color: "#22221f",
+                    fontSize: "13px",
+                    lineHeight: 1.5,
+                    padding: "12px 15px",
+                    borderRadius: "18px 18px 18px 4px",
+                    maxWidth: "94%",
+                  }}
+                >
+                  <p style={{ margin: 0 }}>
+                    Here is the verified information you requested! Everything is confirmed and ready for your action.
+                  </p>
 
-                {/* Mock Outbound AI Assistant Reply with Native Ad Footer */}
-                <div className="flex justify-start">
-                  <div className="bg-[#202c33] text-[#e9edef] text-xs px-3.5 py-2.5 rounded-2xl rounded-tl-none max-w-[95%] space-y-2">
-                    <p className="leading-relaxed text-slate-200">
-                      Here is the verified information you requested! Everything is confirmed and ready for your action.
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      paddingTop: "10px",
+                      borderTop: "1px solid #cde0d4",
+                      fontSize: "12px",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: "#1b7a4e", marginBottom: "4px" }}>
+                      ⚡ Sponsored • {brandName || "Your Brand"}
+                    </div>
+                    <p style={{ margin: "0 0 6px", color: "#3b4a40" }}>
+                      {headline || "Your compelling ad headline will appear right here."}
                     </p>
-                    
-                    {/* Sponsored Native Card */}
-                    <div className="pt-2 border-t border-white/10 text-[11px] leading-relaxed text-slate-300">
-                      <div className="font-bold text-[#25D366] flex items-center gap-1 mb-1">
-                        <span>⚡ Sponsored • {brandName || "Your Brand"}</span>
-                      </div>
-                      <p className="text-slate-200 mb-1.5">
-                        {headline || "Your compelling ad headline will appear right here."}
-                      </p>
-                      <div className="text-emerald-400 underline font-medium hover:text-emerald-300 cursor-pointer">
-                        👉 {ctaText || "Claim Offer"}: https://astra.nhancio.com/r/101
-                      </div>
-                    </div>
-
-                    <div className="text-[9px] text-slate-400 text-right mt-1">
-                      12:45 PM • Read
+                    <div style={{ color: "#155e3b", fontWeight: 600, textDecoration: "underline" }}>
+                      👉 {ctaText || "Claim Offer"}: https://astra.nhancio.com/r/101
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="mt-4 text-xs text-slate-400 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#25D366]" />
-                  <span>Only served to free-tier users after answering their question.</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#25D366]" />
-                  <span>Auto-debits wallet on each delivered turn. Pauses when ₹0.</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#25D366]" />
-                  <span>Unique tracking link redirects to your landing page & logs CTR.</span>
+                  <div style={{ fontSize: "10px", color: "#7a8a80", textAlign: "right", marginTop: "6px" }}>
+                    12:45 PM • Read
+                  </div>
                 </div>
               </div>
             </div>
+
+            <ul
+              style={{
+                listStyle: "none",
+                padding: 0,
+                margin: "20px 0 0",
+                display: "grid",
+                gap: "10px",
+                fontSize: "13px",
+                color: "#55685c",
+              }}
+            >
+              <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1b7a4e" }} />
+                Only served to free-tier users after answering their question.
+              </li>
+              <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1b7a4e" }} />
+                Auto-debits wallet on each delivered turn. Pauses automatically when ₹0.
+              </li>
+              <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1b7a4e" }} />
+                Unique tracking link redirects to your landing page & logs verified CTR.
+              </li>
+            </ul>
           </div>
         </div>
 
-        {/* Existing & Active Campaigns Table */}
-        <div className="mt-12 bg-white/[0.02] border border-white/10 rounded-2xl p-6 md:p-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        {/* Live Brand Campaigns & Analytics Table */}
+        <div style={{ ...cardStyle, padding: "32px", marginTop: "40px" }}>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "14px",
+              marginBottom: "24px",
+            }}
+          >
             <div>
-              <h2 className="text-xl font-bold text-white">Live Brand Campaigns & Analytics</h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <h2 style={{ fontSize: "26px", color: "#18241d" }}>Live Brand Campaigns & Analytics</h2>
+              <p style={{ fontSize: "13px", color: "#687a6e", marginTop: "4px" }}>
                 Monitor real-time impressions, click-through rates, and wallet balances.
               </p>
             </div>
             <button
               onClick={fetchCampaigns}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-slate-300 transition-all"
+              className={`${styles.button} ${styles.lightButton} ${styles.smallButton}`}
             >
-              🔄 Refresh Analytics
+              ↻ Refresh Analytics
             </button>
           </div>
 
           {loading ? (
-            <div className="py-12 text-center text-sm text-slate-400">Loading campaigns...</div>
+            <div style={{ padding: "40px 0", textAlign: "center", color: "#687a6e" }}>Loading campaigns...</div>
           ) : campaigns.length === 0 ? (
-            <div className="py-12 text-center text-sm text-slate-500">No campaigns found. Create your first campaign above!</div>
+            <div style={{ padding: "40px 0", textAlign: "center", color: "#687a6e" }}>
+              No campaigns found. Create your first campaign above!
+            </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
                 <thead>
-                  <tr className="border-b border-white/10 text-slate-400 uppercase text-[10px] tracking-wider">
-                    <th className="pb-3 font-semibold">Brand & Category</th>
-                    <th className="pb-3 font-semibold">Target Intent</th>
-                    <th className="pb-3 font-semibold">Wallet Balance</th>
-                    <th className="pb-3 font-semibold">Impressions</th>
-                    <th className="pb-3 font-semibold">Clicks</th>
-                    <th className="pb-3 font-semibold">CTR</th>
-                    <th className="pb-3 font-semibold text-center">Status</th>
-                    <th className="pb-3 font-semibold text-right">Actions</th>
+                  <tr
+                    style={{
+                      borderBottom: "1px solid #cce0d4",
+                      color: "#55685c",
+                      fontSize: "11px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    <th style={{ paddingBottom: "12px" }}>Brand & Category</th>
+                    <th style={{ paddingBottom: "12px" }}>Target Intent</th>
+                    <th style={{ paddingBottom: "12px" }}>Wallet Balance</th>
+                    <th style={{ paddingBottom: "12px" }}>Impressions</th>
+                    <th style={{ paddingBottom: "12px" }}>Clicks</th>
+                    <th style={{ paddingBottom: "12px" }}>CTR</th>
+                    <th style={{ paddingBottom: "12px", textAlign: "center" }}>Status</th>
+                    <th style={{ paddingBottom: "12px", textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody>
                   {campaigns.map((c) => {
                     const budget = c.budget_inr || 0;
                     const spent = c.spent_inr || 0;
                     const percentSpent = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
 
                     return (
-                      <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-4">
-                          <div className="font-bold text-white text-sm">{c.brand_name}</div>
-                          <div className="text-[11px] text-slate-400 capitalize">{c.category} • ₹{c.cpm_inr} CPM</div>
+                      <tr key={c.id} style={{ borderBottom: "1px solid #e2eee7" }}>
+                        <td style={{ padding: "16px 8px 16px 0" }}>
+                          <div style={{ fontWeight: 600, color: "#18241d", fontSize: "14px" }}>{c.brand_name}</div>
+                          <div style={{ fontSize: "11px", color: "#687a6e", textTransform: "capitalize" }}>
+                            {c.category} • ₹{c.cpm_inr} CPM
+                          </div>
                         </td>
-                        <td className="py-4">
-                          <span className="inline-block bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[11px] text-slate-300">
+                        <td style={{ padding: "16px 8px" }}>
+                          <span
+                            style={{
+                              background: "#e8f4ec",
+                              border: "1px solid #c5dfd0",
+                              color: "#1f5c3a",
+                              padding: "3px 9px",
+                              borderRadius: "20px",
+                              fontSize: "11px",
+                              fontWeight: 500,
+                            }}
+                          >
                             {c.target_intent}
                           </span>
                         </td>
-                        <td className="py-4 min-w-[140px]">
-                          <div className="flex justify-between text-[11px] mb-1">
-                            <span className="text-slate-300">₹{spent.toLocaleString("en-IN")}</span>
-                            <span className="text-slate-400 font-semibold">/ ₹{budget.toLocaleString("en-IN")}</span>
+                        <td style={{ padding: "16px 8px", minWidth: "150px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "5px" }}>
+                            <span style={{ color: "#223b2c", fontWeight: 600 }}>₹{spent.toLocaleString("en-IN")}</span>
+                            <span style={{ color: "#687a6e" }}>/ ₹{budget.toLocaleString("en-IN")}</span>
                           </div>
-                          <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            style={{
+                              width: "100%",
+                              height: "6px",
+                              background: "#dfeee5",
+                              borderRadius: "99px",
+                              overflow: "hidden",
+                            }}
+                          >
                             <div
-                              className={`h-full ${percentSpent >= 90 ? "bg-rose-500" : "bg-[#25D366]"}`}
-                              style={{ width: `${percentSpent}%` }}
+                              style={{
+                                width: `${percentSpent}%`,
+                                height: "100%",
+                                background: percentSpent >= 90 ? "#c94a4a" : "#1b7a4e",
+                              }}
                             />
                           </div>
                         </td>
-                        <td className="py-4 font-semibold text-white">
+                        <td style={{ padding: "16px 8px", fontWeight: 600, color: "#18241d" }}>
                           {c.impressions.toLocaleString("en-IN")}
                         </td>
-                        <td className="py-4 font-semibold text-sky-400">
+                        <td style={{ padding: "16px 8px", fontWeight: 600, color: "#1b7a4e" }}>
                           {c.clicks.toLocaleString("en-IN")}
                         </td>
-                        <td className="py-4 font-bold text-emerald-400">
-                          {c.ctr_percent}%
-                        </td>
-                        <td className="py-4 text-center">
+                        <td style={{ padding: "16px 8px", fontWeight: 700, color: "#155e3b" }}>{c.ctr_percent}%</td>
+                        <td style={{ padding: "16px 8px", textAlign: "center" }}>
                           <button
                             onClick={() => handleToggle(c.id)}
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold border cursor-pointer transition-all ${
-                              c.is_active
-                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-                                : "bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20"
-                            }`}
+                            style={{
+                              padding: "4px 11px",
+                              borderRadius: "20px",
+                              fontSize: "11px",
+                              fontWeight: 600,
+                              border: c.is_active ? "1px solid #98c7ab" : "1px solid #e0b4b4",
+                              background: c.is_active ? "#dcf2e4" : "#fbeaea",
+                              color: c.is_active ? "#195936" : "#8c2d2d",
+                            }}
                           >
                             {c.is_active ? "🟢 LIVE" : "⏸️ PAUSED"}
                           </button>
                         </td>
-                        <td className="py-4 text-right">
+                        <td style={{ padding: "16px 0 16px 8px", textAlign: "right" }}>
                           <button
                             onClick={() => handleTopUp(c, 5000)}
                             disabled={payingId === c.id}
-                            className="bg-[#25D366] text-black font-semibold px-3 py-1.5 rounded-lg hover:bg-[#20ba59] transition-all text-xs disabled:opacity-50"
+                            className={`${styles.button} ${styles.darkButton} ${styles.smallButton}`}
+                            style={{ height: "34px", minWidth: "96px", padding: "0 14px", fontSize: "12px" }}
                           >
                             {payingId === c.id ? "..." : "+ ₹5,000"}
                           </button>
@@ -681,11 +933,14 @@ export default function BrandsPortal() {
             </div>
           )}
         </div>
-      </div>
+      </main>
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-white/10 px-6 py-6 text-center text-xs text-slate-500">
-        Astra AI Ads Engine • Powered by Nhancio • Real-time Conversational Intent Placement
+      {/* Footer matching Landing Page */}
+      <footer className={styles.footer}>
+        <div className={`${styles.container} ${styles.footerMeta}`} style={{ marginTop: 0, paddingBottom: "36px" }}>
+          <span>© {new Date().getFullYear()} Astra AI Ads Engine • Powered by Nhancio</span>
+          <span>Real-time Conversational Intent Placement</span>
+        </div>
       </footer>
     </div>
   );
