@@ -3,6 +3,7 @@
 import json
 import logging
 import hmac
+import re
 
 import collections
 import time
@@ -13,6 +14,7 @@ from app.agents import AgentOrchestrator
 from app.config import get_settings
 from app.models.database import async_session, ensure_tables
 from app.models.user import FlowLog
+from app.services import auth
 from app.services.ads_service import AdsService
 from app.services.chat_actions import ChatActions, connect_hint
 from app.services.composio_service import SUPPORTED_TOOLKITS, ComposioService, normalize_phone
@@ -186,6 +188,28 @@ async def process_user_message(
 
         await whatsapp.send_message(sender, msg)
         return {"status": "ok"}
+
+    # 2c. WhatsApp Login (1-tap challenge from /app or direct /login magic link)
+    login_match = re.search(
+        r"(?:^(?:/?login|sign\s*in)(?:\s+([a-hj-np-z2-9]{8}))?$|(?:sign|log)\s*in\s+to\s+astra\b.*?\b([a-hj-np-z2-9]{8})\b)",
+        clean_text,
+    )
+    if login_match:
+        code = (login_match.group(1) or login_match.group(2) or "").upper() or None
+        ok, magic_url = await auth.complete_whatsapp_login_from_webhook(norm_phone, code=code)
+        if code and not ok:
+            await whatsapp.send_message(
+                sender,
+                f"That sign-in code has expired. Tap here for a fresh one:\n👉 {connect_hub_url}/app",
+            )
+            return {"status": "login_expired"}
+        await usage_service.get_or_create_user(norm_phone, name=sender_name)
+        await whatsapp.send_message(
+            sender,
+            f"✅ You're signed in to *Astra AI* with +{norm_phone}!\n\n"
+            f"Switch back to your browser, or tap your 1-tap login link:\n👉 {magic_url}",
+        )
+        return {"status": "logged_in"}
 
     # 3a. Numbers that never logged in to the app get a small preview, then the onboarding link.
     # The inbound message already proves they own the number; app login (OTP, same number) links it.

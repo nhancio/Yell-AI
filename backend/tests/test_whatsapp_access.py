@@ -9,9 +9,10 @@ from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.models.database import Base, get_db
-from app.routes import me
+from app.routes import me, webhook
 from app.services import auth
 from app.services import usage as usage_module
+from app.services.memory import memory_service
 from app.services.usage import UsageService
 
 PHONE, OTHER = "919876543210", "919876543211"
@@ -63,6 +64,92 @@ class WhatsAppAccessTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue((await service.signup_state(PHONE))[0])
         self.assertTrue(await auth.has_verified_whatsapp_login(PHONE))
         self.assertEqual(await service.signup_state(OTHER), (False, 2))
+
+    async def test_whatsapp_challenge_flow_and_magic_link_ticket(self):
+        with patch.object(memory_service, "_get_redis", AsyncMock(return_value=None)), \
+             patch.object(webhook.whatsapp, "send_message", AsyncMock()) as send_wa, \
+             patch.object(webhook, "async_session", self.sessions):
+            start_res = await self.client.post("/api/me/whatsapp-login/start")
+            self.assertEqual(start_res.status_code, 200)
+            challenge = start_res.json()
+            code = challenge["code"]
+            poll_token = challenge["poll_token"]
+            self.assertIn(code, challenge["whatsapp_url"])
+
+            # Still pending before user sends the WhatsApp message
+            pending_res = await self.client.post(
+                "/api/me/whatsapp-login/poll",
+                json={"code": code, "poll_token": poll_token},
+            )
+            self.assertEqual(pending_res.status_code, 200)
+            self.assertEqual(pending_res.json(), {"status": "pending"})
+
+            # Wrong poll_token is rejected
+            bad_poll = await self.client.post(
+                "/api/me/whatsapp-login/poll",
+                json={"code": code, "poll_token": "wrong-token"},
+            )
+            self.assertEqual(bad_poll.status_code, 403)
+
+            # User sends the pre-filled message on WhatsApp
+            wh_result = await webhook.process_user_message(
+                PHONE,
+                f"Sign in to Astra (code: {code})",
+                "wamid.login1",
+                "Nithi",
+                0,
+            )
+            self.assertEqual(wh_result, {"status": "logged_in"})
+            send_wa.assert_awaited_once()
+            reply_text = send_wa.await_args.args[1]
+            self.assertIn("wa_token=", reply_text)
+
+            # Browser poll now receives the verified WhatsApp session token
+            verified_res = await self.client.post(
+                "/api/me/whatsapp-login/poll",
+                json={"code": code, "poll_token": poll_token},
+            )
+            self.assertEqual(verified_res.status_code, 200)
+            verified_body = verified_res.json()
+            self.assertEqual(verified_body["status"], "verified")
+            self.assertEqual(verified_body["phone_number"], f"+{PHONE}")
+            wa_token = verified_body["token"]
+            self.assertTrue(wa_token.startswith("wa."))
+
+            # Re-polling the consumed challenge fails with 404
+            replay_poll = await self.client.post(
+                "/api/me/whatsapp-login/poll",
+                json={"code": code, "poll_token": poll_token},
+            )
+            self.assertEqual(replay_poll.status_code, 404)
+
+            # The wa.* session token works across authenticated /api/me/session routes
+            session_res = await self.client.post(
+                "/api/me/session",
+                headers={"Authorization": f"Bearer {wa_token}"},
+            )
+            self.assertEqual(session_res.status_code, 200)
+            self.assertTrue(await auth.has_verified_whatsapp_login(PHONE))
+
+            # Tampered or expired wa.* tokens are rejected
+            tampered = wa_token[:-4] + "0000"
+            self.assertEqual(
+                (await self.client.post("/api/me/session", headers={"Authorization": f"Bearer {tampered}"})).status_code,
+                401,
+            )
+            expired = auth.create_whatsapp_session_token(PHONE, ttl_seconds=-10)
+            self.assertEqual(
+                (await self.client.post("/api/me/session", headers={"Authorization": f"Bearer {expired}"})).status_code,
+                401,
+            )
+
+            # 1-tap magic link ticket exchange works once and rejects replay
+            ticket = reply_text.split("wa_token=")[1].split()[0].strip()
+            ex1 = await self.client.post("/api/me/whatsapp-login/exchange", json={"ticket": ticket})
+            self.assertEqual(ex1.status_code, 200)
+            self.assertTrue(ex1.json()["token"].startswith("wa."))
+            ex2 = await self.client.post("/api/me/whatsapp-login/exchange", json={"ticket": ticket})
+            self.assertEqual(ex2.status_code, 401)
 
 
 if __name__ == "__main__":

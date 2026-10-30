@@ -12,7 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.database import async_session, get_db
 from app.models.user import UserUsage, VerifiedWhatsAppAccount
-from app.services.auth import current_phone
+from app.services.auth import (
+    current_phone,
+    exchange_whatsapp_ticket,
+    poll_whatsapp_login_challenge,
+    start_whatsapp_login_challenge,
+)
 from app.services.composio_service import ComposioService
 from app.services.payment import PaymentService
 from app.services.usage import UsageService
@@ -30,6 +35,33 @@ class ToolkitBody(BaseModel):
 
 class UpgradeBody(BaseModel):
     plan: Literal["pro", "business"] = "pro"
+
+
+class WhatsAppPollBody(BaseModel):
+    code: str
+    poll_token: str
+
+
+class WhatsAppExchangeBody(BaseModel):
+    ticket: str
+
+
+@router.post("/whatsapp-login/start")
+async def whatsapp_login_start() -> dict[str, Any]:
+    """Start a passwordless WhatsApp sign-in challenge."""
+    return await start_whatsapp_login_challenge()
+
+
+@router.post("/whatsapp-login/poll")
+async def whatsapp_login_poll(body: WhatsAppPollBody) -> dict[str, Any]:
+    """Poll a pending WhatsApp sign-in challenge; returns a session token once verified."""
+    return await poll_whatsapp_login_challenge(body.code, body.poll_token)
+
+
+@router.post("/whatsapp-login/exchange")
+async def whatsapp_login_exchange(body: WhatsAppExchangeBody) -> dict[str, Any]:
+    """Exchange a 1-tap WhatsApp magic-link ticket for a session token."""
+    return await exchange_whatsapp_ticket(body.ticket)
 
 
 @router.post("/session")

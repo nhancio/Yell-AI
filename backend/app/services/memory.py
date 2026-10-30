@@ -161,6 +161,21 @@ class MemoryService:
         except Exception as exc:
             logger.error("Value write failed (%s)", type(exc).__name__)
 
+    async def get_value(self, key: str) -> Optional[str]:
+        """Read a short-lived value without deleting it."""
+        try:
+            r = await self._get_redis()
+            if r:
+                return await r.get(key)
+            value, expires = self._local_values.get(key, (None, 0))
+            if value is not None and time.time() < expires:
+                return value
+            self._local_values.pop(key, None)
+            return None
+        except Exception as exc:
+            logger.error("Value read failed (%s)", type(exc).__name__)
+            return None
+
     async def pop_value(self, key: str) -> Optional[str]:
         """Read and delete in one step, so a value is only ever acted on once."""
         try:

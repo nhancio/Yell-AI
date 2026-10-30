@@ -12,10 +12,33 @@ import {
 import { auth } from "@/lib/firebase";
 import ContactChannels from "@/components/ContactChannels";
 import { GREETING } from "@/lib/channels";
-import { accountApi as api, type Account as Me, type Setup, type SetupPatch } from "@/lib/account";
+import {
+  accountApi as api,
+  clearWhatsAppSession,
+  loadWhatsAppSession,
+  publicApi,
+  saveWhatsAppSession,
+  subscribeWhatsAppSession,
+  type Account as Me,
+  type SessionUser,
+  type Setup,
+  type SetupPatch,
+} from "@/lib/account";
 import Onboarding, { SetupFrame } from "@/components/onboarding/Onboarding";
 import setupStyles from "@/components/onboarding/onboarding.module.css";
 import homeStyles from "@/app/home.module.css";
+
+interface WhatsAppChallenge {
+  code: string;
+  poll_token: string;
+  whatsapp_url: string;
+  expires_in: number;
+}
+
+function logoutSession() {
+  clearWhatsAppSession();
+  void signOut(auth);
+}
 
 function Logo({ onBack }: { onBack?: () => void }) {
   return (
@@ -47,6 +70,10 @@ function Logo({ onBack }: { onBack?: () => void }) {
 }
 
 export function Login({ onBack }: { onBack?: () => void } = {}) {
+  const [mode, setMode] = useState<"whatsapp" | "sms">("whatsapp");
+  const [challenge, setChallenge] = useState<WhatsAppChallenge | null>(null);
+  const [waLoading, setWaLoading] = useState(false);
+  const [waOpened, setWaOpened] = useState(false);
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "otp">("phone");
@@ -56,8 +83,65 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
   const verifier = useRef<RecaptchaVerifier | null>(null);
   useEffect(() => () => { verifier.current?.clear(); verifier.current = null; }, []);
 
+  const startWaChallenge = useCallback(async () => {
+    setWaLoading(true);
+    setError(null);
+    try {
+      const next = await publicApi<WhatsAppChallenge>("/api/me/whatsapp-login/start", { method: "POST" });
+      setChallenge(next);
+      return next;
+    } catch (err: any) {
+      setError(err?.message || "Couldn’t start WhatsApp sign-in. You can use an SMS code below.");
+      return null;
+    } finally {
+      setWaLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mode === "whatsapp" && !challenge && !waLoading) {
+      void startWaChallenge();
+    }
+  }, [mode, challenge, waLoading, startWaChallenge]);
+
+  useEffect(() => {
+    if (mode !== "whatsapp" || !challenge) return;
+    let cancelled = false;
+    const timer = window.setInterval(async () => {
+      try {
+        const res = await publicApi<{ status: string; token?: string; phone_number?: string }>(
+          "/api/me/whatsapp-login/poll",
+          {
+            method: "POST",
+            body: JSON.stringify({ code: challenge.code, poll_token: challenge.poll_token }),
+          }
+        );
+        if (!cancelled && res.status === "verified" && res.token && res.phone_number) {
+          saveWhatsAppSession(res.token, res.phone_number);
+        }
+      } catch (err: any) {
+        if (!cancelled && String(err?.message || "").includes("expired")) {
+          setChallenge(null);
+          setWaOpened(false);
+        }
+      }
+    }, 2000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [mode, challenge]);
+
   const digits = phone.replace(/\D/g, "");
   const e164 = digits.length === 10 ? `+91${digits}` : digits.startsWith("91") && digits.length === 12 ? `+${digits}` : "";
+
+  async function openWhatsApp() {
+    setError(null);
+    const active = challenge || (await startWaChallenge());
+    if (!active?.whatsapp_url) return;
+    setWaOpened(true);
+    window.open(active.whatsapp_url, "_blank", "noopener,noreferrer");
+  }
 
   async function sendOtp(e: React.FormEvent) {
     e.preventDefault();
@@ -93,11 +177,63 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
     }
   }
 
+  if (mode === "whatsapp") {
+    return <SetupFrame index={waOpened ? 1 : 0}>
+      <section className={setupStyles.content}>
+        <h1 className={setupStyles.heading}>{waOpened ? <>Send the message<br />on WhatsApp.</> : <>Your Astra starts<br />with a hello.</>}</h1>
+        <p className={setupStyles.description}>{waOpened
+          ? `Hit send on the pre-filled WhatsApp message${challenge ? ` (code: ${challenge.code})` : ""} and this page will sign you in automatically.`
+          : "Sign in directly with WhatsApp in one tap. Send the pre-filled message to verify your number instantly—no waiting for SMS codes."}</p>
+        <div className={setupStyles.form}>
+          {challenge?.whatsapp_url ? (
+            <a
+              href={challenge.whatsapp_url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setWaOpened(true)}
+              className={setupStyles.primary}
+            >
+              {waOpened ? "Open WhatsApp again →" : "Continue with WhatsApp"}
+            </a>
+          ) : (
+            <button type="button" disabled={waLoading} onClick={() => void openWhatsApp()} className={setupStyles.primary}>
+              {waLoading ? "Preparing WhatsApp link…" : "Continue with WhatsApp"}
+            </button>
+          )}
+          {waOpened && challenge && (
+            <p className={setupStyles.smallNote} aria-live="polite">
+              Waiting for confirmation from WhatsApp (code <strong>{challenge.code}</strong>)…
+            </p>
+          )}
+          <div className={setupStyles.footer}>
+            <button
+              type="button"
+              onClick={() => { setMode("sms"); setError(null); }}
+              className={setupStyles.textButton}
+            >
+              Use phone SMS OTP instead (backup)
+            </button>
+          </div>
+        </div>
+        {error && <p className={setupStyles.error} role="alert">{error}</p>}
+        <div id="recaptcha-container" />
+        {onBack && (
+          <div className={setupStyles.footer}>
+            <button type="button" onClick={onBack} className={setupStyles.textButton}>
+              ← Back to Astra home
+            </button>
+          </div>
+        )}
+        <p className={setupStyles.smallNote}>Instant & free on WhatsApp. No SMS carrier delays.</p>
+      </section>
+    </SetupFrame>;
+  }
+
   return <SetupFrame index={step === "phone" ? 0 : 1}>
     <section className={setupStyles.content}>
-      <h1 className={setupStyles.heading}>{step === "phone" ? <>Your Astra starts<br />with a hello.</> : <>One little code.<br />Then you’re in.</>}</h1>
+      <h1 className={setupStyles.heading}>{step === "phone" ? <>Sign in with<br />SMS code.</> : <>One little code.<br />Then you’re in.</>}</h1>
       <p className={setupStyles.description}>{step === "phone"
-        ? "Sign in with your WhatsApp number. We’ll text you a code to make sure it’s you."
+        ? "Enter your WhatsApp phone number and we’ll text you a 6-digit verification code."
         : `Enter the six-digit code we sent to ${e164}.`}</p>
       {step === "phone" ? <form onSubmit={sendOtp} className={setupStyles.form}>
         <label className={setupStyles.label} htmlFor="login-phone">Phone number</label>
@@ -105,7 +241,12 @@ export function Login({ onBack }: { onBack?: () => void } = {}) {
           <span aria-label="India country code">+91</span>
           <input id="login-phone" className={setupStyles.input} type="tel" inputMode="tel" autoComplete="tel-national" autoFocus value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="98765 43210" maxLength={14} disabled={busy} />
         </div>
-        <button disabled={busy} className={setupStyles.primary}>{busy ? "Sending code…" : "Continue"}</button>
+        <button disabled={busy} className={setupStyles.primary}>{busy ? "Sending code…" : "Send SMS code"}</button>
+        <div className={setupStyles.footer}>
+          <button type="button" disabled={busy} onClick={() => { setMode("whatsapp"); setError(null); }} className={setupStyles.textButton}>
+            ← Back to WhatsApp login (recommended)
+          </button>
+        </div>
       </form> : <form onSubmit={verifyOtp} className={setupStyles.form}>
         <label className={setupStyles.label} htmlFor="login-code">Verification code</label>
         <input id="login-code" className={`${setupStyles.input} ${setupStyles.otp}`} type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" maxLength={6} disabled={busy} />
@@ -136,7 +277,7 @@ function friendly(err: any): string {
   return err?.message || "Something went wrong. Please try again.";
 }
 
-function Dashboard({ user, onSetup, prompt, requestedPlan }: { user: User; onSetup: () => Promise<void>; prompt: string; requestedPlan?: "pro" | "business" }) {
+function Dashboard({ user, onSetup, prompt, requestedPlan }: { user: SessionUser; onSetup: () => Promise<void>; prompt: string; requestedPlan?: "pro" | "business" }) {
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -212,7 +353,7 @@ function Dashboard({ user, onSetup, prompt, requestedPlan }: { user: User; onSet
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-xs" style={{ color: "#5e6d63" }}>{user.phoneNumber}</span>
             <button onClick={() => { void onSetup().catch((cause) => setToast(cause instanceof Error ? cause.message : "Couldn’t reopen setup")); }} className="text-xs px-3 py-2 rounded-lg" style={{ border: "1px solid #cce0d4", background: "#fff", color: "#18241d" }}>Personalize</button>
-            <button onClick={() => signOut(auth)} className="text-xs px-3 py-2 rounded-lg" style={{ border: "1px solid #cce0d4", background: "#fff", color: "#18241d" }}>
+            <button onClick={logoutSession} className="text-xs px-3 py-2 rounded-lg" style={{ border: "1px solid #cce0d4", background: "#fff", color: "#18241d" }}>
               Log out
             </button>
           </div>
@@ -307,7 +448,7 @@ function Dashboard({ user, onSetup, prompt, requestedPlan }: { user: User; onSet
   );
 }
 
-export function AccountEntry({ user }: { user: User }) {
+export function AccountEntry({ user }: { user: SessionUser }) {
   const [account, setAccount] = useState<Me | null>(null);
   const [setup, setSetup] = useState<Setup | null>(null);
   const [error, setError] = useState("");
@@ -376,7 +517,7 @@ export function AccountEntry({ user }: { user: User }) {
   if (!account || !setup) return <SetupFrame index={2}>
     <h1 className={setupStyles.heading}>{error ? "Let’s try that again." : "Making room for you…"}</h1>
     <p className={setupStyles.description}>{error || "Getting your account and saved preferences ready."}</p>
-    {error && <><button className={setupStyles.primary} onClick={() => void load()}>Try again</button><div className={setupStyles.footer}><button className={setupStyles.textButton} onClick={() => void signOut(auth)}>Sign out</button></div></>}
+    {error && <><button className={setupStyles.primary} onClick={() => void load()}>Try again</button><div className={setupStyles.footer}><button className={setupStyles.textButton} onClick={logoutSession}>Sign out</button></div></>}
   </SetupFrame>;
   return <Onboarding account={account} setup={setup} save={save} onComplete={setSetup} requestedPlan={requestedPlan}
     connect={async (slug) => {
@@ -393,8 +534,40 @@ export function AccountEntry({ user }: { user: User }) {
 }
 
 export default function AstraApp() {
-  const [user, setUser] = useState<User | null | undefined>(undefined);
-  useEffect(() => onAuthStateChanged(auth, setUser), []);
-  if (user === undefined) return <SetupFrame index={0}><h1 className={setupStyles.heading}>A little less to do.<br />A little more you.</h1><p className={setupStyles.description}>Opening Astra…</p></SetupFrame>;
-  return user ? <AccountEntry key={user.uid} user={user} /> : <Login onBack={() => window.location.assign("/")} />;
+  const [firebaseUser, setFirebaseUser] = useState<User | null | undefined>(undefined);
+  const [waUser, setWaUser] = useState<SessionUser | null>(() => loadWhatsAppSession());
+  const [exchanging, setExchanging] = useState(false);
+
+  useEffect(() => onAuthStateChanged(auth, setFirebaseUser), []);
+  useEffect(() => {
+    setWaUser(loadWhatsAppSession());
+    return subscribeWhatsAppSession(() => setWaUser(loadWhatsAppSession()));
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ticket = params.get("wa_token");
+    if (!ticket) return;
+    params.delete("wa_token");
+    const rest = params.toString();
+    window.history.replaceState({}, "", `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+    setExchanging(true);
+    publicApi<{ token: string; phone_number: string }>("/api/me/whatsapp-login/exchange", {
+      method: "POST",
+      body: JSON.stringify({ ticket }),
+    })
+      .then((res) => {
+        if (res.token && res.phone_number) {
+          saveWhatsAppSession(res.token, res.phone_number);
+        }
+      })
+      .catch(() => { /* Expired link falls back to Login screen */ })
+      .finally(() => setExchanging(false));
+  }, []);
+
+  const activeUser: SessionUser | null | undefined = waUser || firebaseUser;
+  if (exchanging || (activeUser === undefined && !waUser)) {
+    return <SetupFrame index={0}><h1 className={setupStyles.heading}>A little less to do.<br />A little more you.</h1><p className={setupStyles.description}>Opening Astra…</p></SetupFrame>;
+  }
+  return activeUser ? <AccountEntry key={activeUser.uid} user={activeUser} /> : <Login onBack={() => window.location.assign("/")} />;
 }
