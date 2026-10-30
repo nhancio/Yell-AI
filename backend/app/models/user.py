@@ -76,13 +76,18 @@ class SponsoredCampaign(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     brand_name = Column(String(128), nullable=False)
     category = Column(String(64), nullable=False, index=True)  # travel, food, finance, career, shopping, general
+    target_intent = Column(String(64), default="all", nullable=False)  # railway/flight, food_order, founder_pitch, tax/upi, all
     headline = Column(String(256), nullable=False)
     cta_text = Column(String(128), nullable=False)
     cta_url = Column(Text, nullable=False)
-    cpm_inr = Column(Integer, default=250, nullable=False)
+    cpm_inr = Column(Integer, default=300, nullable=False)  # default ₹300 CPM
+    budget_paise = Column(Integer, default=0, nullable=False)  # Prepaid wallet balance (in paise)
+    spent_paise = Column(Integer, default=0, nullable=False)  # Total spent so far
     impressions = Column(Integer, default=0, nullable=False)
     clicks = Column(Integer, default=0, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    contact_email = Column(String(128), nullable=True)
+    contact_phone = Column(String(32), nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
 
 

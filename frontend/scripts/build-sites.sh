@@ -20,6 +20,8 @@ cp out/app.html out-app/index.html
 cat > out-app/_redirects <<'EOF'
 /api/*      https://yell-ai-nhancio.web.app/api/:splat  200!
 /health     https://yell-ai-nhancio.web.app/health      200!
+/brands     /brands.html  200
+/ads        /ads.html     200
 /connect    /   301!
 /app        /   301!
 /*          /index.html  200

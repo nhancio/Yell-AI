@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.models.database import Base, engine
-from app.routes import admin, connectors, health, me, payment, webhook
+from app.routes import admin, brands, connectors, health, me, payment, webhook
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,3 +82,4 @@ app.include_router(me.router)
 app.include_router(payment.router)
 app.include_router(health.router)
 app.include_router(admin.router)
+app.include_router(brands.router)

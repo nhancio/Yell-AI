@@ -16,6 +16,13 @@
         }
       },
       {
+        "source": "/r/**",
+        "run": {
+          "serviceId": "yell-ai-api",
+          "region": "asia-south1"
+        }
+      },
+      {
         "source": "/webhook{,/**}",
         "run": {
           "serviceId": "yell-ai-api",
