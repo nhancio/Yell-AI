@@ -11,39 +11,35 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-if settings.GEMINI_API_KEY:
-    try:
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-    except Exception as exc:
-        logger.warning("Gemini configure warning: %s", exc)
-
 FALLBACK_RESPONSE = (
-    "I'm here for you, but I'm having a moment. Try again in a bit?"
+    "I am here for you, but I am having a moment. Try again in a bit?"
 )
 
 
 class GeminiService:
-    """Thin wrapper around Gemini 2.0 Flash for text generation."""
+    """Wrapper around Google Gemini for text and JSON generation."""
 
-    MODEL_NAME = "gemini-2.5-flash"
+    MODEL_NAME = "gemini-3.8-flash"
 
     def __init__(self) -> None:
-        self._model = None
-
-    @property
-    def model(self):
-        if self._model is None:
-            if settings.GEMINI_API_KEY:
+        if settings.GEMINI_API_KEY:
+            try:
                 genai.configure(api_key=settings.GEMINI_API_KEY)
-            self._model = genai.GenerativeModel(
-                model_name=self.MODEL_NAME,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.7,
-                    top_p=0.95,
-                    max_output_tokens=1024,
-                ),
-            )
-        return self._model
+            except Exception as exc:
+                logger.warning("Gemini configure warning: %s", exc)
+
+    def _get_model(self, system_instruction: Optional[str] = None):
+        if settings.GEMINI_API_KEY:
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+        return genai.GenerativeModel(
+            model_name=self.MODEL_NAME,
+            system_instruction=system_instruction if system_instruction else None,
+            generation_config=genai.GenerationConfig(
+                temperature=0.7,
+                top_p=0.95,
+                max_output_tokens=1024,
+            ),
+        )
 
     async def generate_response(
         self,
@@ -64,15 +60,8 @@ class GeminiService:
                     )
             contents.append({"role": "user", "parts": [{"text": user_message}]})
 
-            response = self.model.generate_content(
-                contents,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.7,
-                    top_p=0.95,
-                    max_output_tokens=1024,
-                ),
-                system_instruction=system_prompt,
-            )
+            model = self._get_model(system_instruction=system_prompt)
+            response = model.generate_content(contents)
 
             text = response.text.strip() if response.text else FALLBACK_RESPONSE
             return text
