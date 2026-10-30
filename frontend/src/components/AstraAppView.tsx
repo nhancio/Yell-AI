@@ -11,7 +11,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import ContactChannels from "@/components/ContactChannels";
-import { CHANNELS, GREETING } from "@/lib/channels";
+import { GREETING } from "@/lib/channels";
 import { accountApi as api, type Account as Me, type Setup, type SetupPatch } from "@/lib/account";
 import Onboarding, { SetupFrame } from "@/components/onboarding/Onboarding";
 import setupStyles from "@/components/onboarding/onboarding.module.css";
@@ -136,7 +136,7 @@ function friendly(err: any): string {
   return err?.message || "Something went wrong. Please try again.";
 }
 
-function Dashboard({ user, onSetup }: { user: User; onSetup: () => Promise<void> }) {
+function Dashboard({ user, onSetup, prompt, requestedPlan }: { user: User; onSetup: () => Promise<void>; prompt: string; requestedPlan?: "pro" | "business" }) {
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -190,15 +190,18 @@ function Dashboard({ user, onSetup }: { user: User; onSetup: () => Promise<void>
 
   async function upgrade() {
     try {
-      const res = await api<{ payment_url: string }>(user, "/api/me/upgrade", { method: "POST" });
+      const res = await api<{ payment_url: string }>(user, "/api/me/upgrade", {
+        method: "POST", body: JSON.stringify({ plan: requestedPlan || "pro" }),
+      });
       window.location.href = res.payment_url;
     } catch (e: any) {
       setToast(`⚠️ ${e.message}`);
     }
   }
 
-  const waLink = `https://wa.me/${CHANNELS.whatsapp}?text=${encodeURIComponent(GREETING)}`;
+  const waLink = me?.whatsapp_number ? `https://wa.me/${me.whatsapp_number}?text=${encodeURIComponent(prompt)}` : "";
   const connectedCount = me?.connections.filter((c) => c.status === "active").length ?? 0;
+  const upgradePlan = me?.available_plans.find((plan) => plan.id === (requestedPlan || "pro"));
   const pct = me ? Math.min(100, Math.round((me.usage.used_today / Math.max(1, me.usage.daily_limit)) * 100)) : 0;
 
   return (
@@ -223,9 +226,9 @@ function Dashboard({ user, onSetup }: { user: User; onSetup: () => Promise<void>
             <h1 className="text-3xl md:text-4xl mt-1" style={{ color: "#18241d" }}>Hey{me?.name ? ` ${me.name}` : ""} 👋</h1>
             <p className="text-sm mt-1" style={{ color: "#5e6d63" }}>Everything Astra can do for you on WhatsApp, in one place.</p>
           </div>
-          <a href={waLink} target="_blank" rel="noreferrer" className={`${homeStyles.button} ${homeStyles.darkButton}`}>
+          {waLink && <a href={waLink} target="_blank" rel="noreferrer" className={`${homeStyles.button} ${homeStyles.darkButton}`}>
             💬 Chat with Astra on WhatsApp
-          </a>
+          </a>}
         </div>
 
         {toast && <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "#eaf6ee", border: "1px solid #98c7ab", color: "#175234" }}>{toast}</div>}
@@ -239,9 +242,9 @@ function Dashboard({ user, onSetup }: { user: User; onSetup: () => Promise<void>
           <div className="rounded-2xl p-5" style={{ border: "1px solid #cce0d4", background: "linear-gradient(150deg, #fffefa, #f5faf7)" }}>
             <p className="text-xs" style={{ color: "#5e6d63" }}>Plan</p>
             <p className="text-2xl font-bold mt-1" style={{ color: "#18241d" }}>{me ? me.plan.name : "—"}</p>
-            {me && !me.plan.is_premium && (
+            {me && upgradePlan && (!me.plan.is_premium || (requestedPlan && me.plan.name.toLowerCase() !== requestedPlan)) && (
               <button onClick={upgrade} className="mt-3 text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background: "#1b7a4e", color: "#fff" }}>
-                Upgrade · ₹{me.plan.price_inr}/mo
+                {requestedPlan ? `Continue with ${upgradePlan.name}` : "Upgrade"} · ₹{upgradePlan.price_inr}/mo
               </button>
             )}
             {me?.plan.expires_at && <p className="text-xs mt-2" style={{ color: "#5e6d63" }}>Renews {new Date(me.plan.expires_at).toLocaleDateString("en-IN")}</p>}
@@ -298,7 +301,7 @@ function Dashboard({ user, onSetup }: { user: User; onSetup: () => Promise<void>
           </div>
         </section>
 
-        <ContactChannels subtitle="Text Astra from any of these — same assistant, same connected apps." />
+        {me?.whatsapp_number && <ContactChannels number={me.whatsapp_number} prompt={prompt} subtitle={`Use the WhatsApp number you verified: ${user.phoneNumber}.`} />}
       </main>
     </div>
   );
@@ -308,9 +311,27 @@ export function AccountEntry({ user }: { user: User }) {
   const [account, setAccount] = useState<Me | null>(null);
   const [setup, setSetup] = useState<Setup | null>(null);
   const [error, setError] = useState("");
+  const [prompt, setPrompt] = useState(GREETING);
+  const [requestedPlan, setRequestedPlan] = useState<"pro" | "business" | undefined>();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const key = `astra:entry:${user.uid}`;
+    let resume: { prompt?: string; plan?: string } = {};
+    try {
+      // Resume the chosen recipe/plan after OAuth, without carrying it across users.
+      if (params.has("connected")) resume = JSON.parse(sessionStorage.getItem(key) || "{}") || {};
+    } catch { /* Storage may be disabled; login and chat still work. */ }
+    const savedPrompt = typeof resume.prompt === "string" ? resume.prompt : "";
+    const prompt = (params.get("prompt") || savedPrompt).slice(0, 2000) || GREETING;
+    const plan = params.get("plan") || resume.plan;
+    setPrompt(prompt);
+    if (plan === "pro" || plan === "business") setRequestedPlan(plan);
+    try { sessionStorage.setItem(key, JSON.stringify({ prompt, plan })); } catch { /* Optional resume only. */ }
+  }, [user.uid]);
   const load = useCallback(async () => {
     setError("");
     try {
+      await api(user, "/api/me/session", { method: "POST" });
       const [profile, preferences] = await Promise.all([
         api<Me>(user, "/api/me"), api<Setup>(user, "/api/me/onboarding"),
       ]);
@@ -330,13 +351,13 @@ export function AccountEntry({ user }: { user: User }) {
     setAccount(profile); setSetup(preferences);
   }
 
-  if (setup?.completed) return <Dashboard user={user} onSetup={reopen} />;
+  if (setup?.completed) return <Dashboard user={user} onSetup={reopen} prompt={prompt} requestedPlan={requestedPlan} />;
   if (!account || !setup) return <SetupFrame index={2}>
     <h1 className={setupStyles.heading}>{error ? "Let’s try that again." : "Making room for you…"}</h1>
     <p className={setupStyles.description}>{error || "Getting your account and saved preferences ready."}</p>
     {error && <><button className={setupStyles.primary} onClick={() => void load()}>Try again</button><div className={setupStyles.footer}><button className={setupStyles.textButton} onClick={() => void signOut(auth)}>Sign out</button></div></>}
   </SetupFrame>;
-  return <Onboarding account={account} setup={setup} save={save} onComplete={setSetup}
+  return <Onboarding account={account} setup={setup} save={save} onComplete={setSetup} prompt={prompt} requestedPlan={requestedPlan}
     connect={async (slug) => {
       const result = await api<{ auth_url: string }>(user, "/api/me/connectors/link", { method: "POST", body: JSON.stringify({ toolkit: slug }) });
       if (!result.auth_url) throw new Error("No connection link was returned. Please try again.");
@@ -354,5 +375,5 @@ export default function AstraApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   useEffect(() => onAuthStateChanged(auth, setUser), []);
   if (user === undefined) return <SetupFrame index={0}><h1 className={setupStyles.heading}>A little less to do.<br />A little more you.</h1><p className={setupStyles.description}>Opening Astra…</p></SetupFrame>;
-  return user ? <AccountEntry key={user.uid} user={user} /> : <Login />;
+  return user ? <AccountEntry key={user.uid} user={user} /> : <Login onBack={() => window.location.assign("/")} />;
 }

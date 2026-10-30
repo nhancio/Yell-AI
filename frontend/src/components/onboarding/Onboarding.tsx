@@ -35,13 +35,15 @@ interface Props {
   connect: (slug: string) => Promise<void>;
   checkout: (plan: Plan["id"]) => Promise<void>;
   onComplete: (state: Setup) => void;
+  prompt?: string;
+  requestedPlan?: Plan["id"];
 }
 
-export default function Onboarding({ account, setup, save, connect, checkout, onComplete }: Props) {
+export default function Onboarding({ account, setup, save, connect, checkout, onComplete, prompt = "Hi Astra!", requestedPlan }: Props) {
   const [step, setStep] = useState<SetupStep>(setup.step === "complete" ? "name" : setup.step);
   const [name, setName] = useState(setup.name || "");
   const [selected, setSelected] = useState<Interest[]>(setup.interests);
-  const [selectedPlan, setSelectedPlan] = useState<Plan["id"]>("pro");
+  const [selectedPlan, setSelectedPlan] = useState<Plan["id"]>(requestedPlan || "pro");
   const [busy, setBusy] = useState(false);
   const [busyApp, setBusyApp] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -57,6 +59,7 @@ export default function Onboarding({ account, setup, save, connect, checkout, on
     window.scrollTo({ top: 0, behavior: "instant" });
     if (step !== "name") content.current?.querySelector("h1")?.focus({ preventScroll: true });
   }, [step]);
+  useEffect(() => { if (requestedPlan) setSelectedPlan(requestedPlan); }, [requestedPlan]);
 
   async function advance(next: SetupStep) {
     setBusy(true);
@@ -154,7 +157,6 @@ export default function Onboarding({ account, setup, save, connect, checkout, on
           <div className={s.summaryRow}><Icon name="link" size={20} />{connectedCount ? `${connectedCount} ${connectedCount === 1 ? "app" : "apps"} connected` : "Connect your apps when you’re ready"}</div>
         </div>
         <button className={s.primary} onClick={() => void advance("plan")} disabled={busy}>{busy ? "Saving…" : "Continue"}</button>
-        {account.whatsapp_number && <div className={s.footer}><a className={s.textButton} href={`https://wa.me/${account.whatsapp_number}?text=${encodeURIComponent("Hi Astra!")}`} target="_blank" rel="noreferrer">Open WhatsApp ↗</a></div>}
       </>}
 
       {step === "plan" && <>
@@ -184,6 +186,10 @@ export default function Onboarding({ account, setup, save, connect, checkout, on
       </>}
 
       {error && <p className={s.error} role="alert">{error}</p>}
+      {account.whatsapp_number && <div>
+        <div className={s.footer}><a className={s.textButton} href={`https://wa.me/${account.whatsapp_number}?text=${encodeURIComponent(prompt)}`} target="_blank" rel="noreferrer">Chat now on WhatsApp ↗</a></div>
+        <p className={s.smallNote}>Your number is verified. Personalization is optional.</p>
+      </div>}
       {index > 0 && <div className={s.footer}><button className={s.textButton} onClick={goBack} disabled={busy}>← Back</button></div>}
     </section>
   </SetupFrame>;

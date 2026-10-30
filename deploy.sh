@@ -29,7 +29,8 @@ for env_path in (pathlib.Path(".env"), pathlib.Path("backend/.env")):
         if k in ("WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TOKEN", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_DISPLAY_NUMBER", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
             env_vars[k] = v
 
-env_vars["DATABASE_URL"] = "sqlite+aiosqlite:////tmp/astra.db"
+# Database URL/Cloud SQL binding are managed in Cloud Run + Secret Manager.
+# Preserve them on subsequent application releases.
 env_vars["APP_URL"] = "https://tryastra.web.app"
 env_vars["FRONTEND_URL"] = "https://tryastra.web.app"
 env_vars["APP_FRONTEND_URL"] = "https://tryastra.web.app"
@@ -39,23 +40,24 @@ env_vars["BUSINESS_PRICE_PAISE"] = "99900"
 
 env_arg = ",".join(f"{k}={v}" for k, v in env_vars.items())
 
-subprocess.run([
+result = subprocess.run([
     "gcloud", "run", "deploy", "yell-ai-api",
     "--source", "backend",
     "--region", "'"$REGION"'",
     "--allow-unauthenticated",
     "--project", "'"$PROJECT"'",
     "--account", "'"$ACCOUNT"'",
-    "--set-env-vars", env_arg,
+    "--update-env-vars", env_arg,
     "--quiet"
-], check=True)
+])
+raise SystemExit(result.returncode)
 '
 
 echo "==> 2/3 Building Next.js Static Export (frontend/out)..."
 (cd frontend && npm run build:sites)
 
 echo "==> 3/3 Deploying Multi-Site Hosting to Firebase ($PROJECT)..."
-firebase deploy --only hosting --project "$PROJECT"
+npx -y firebase-tools@latest deploy --only hosting:astra --project "$PROJECT" --account "$ACCOUNT" --non-interactive
 
 echo "✅ Deployment complete 100% on Firebase & Cloud Run!"
 echo "   Landing (Firebase): https://tryastra.web.app"

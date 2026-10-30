@@ -389,6 +389,11 @@
   gap: 12px;
   margin-top: 40px;
 }
+.entryNote {
+  margin-top: 16px;
+  font-size: 13px;
+  color: #555b59;
+}
 .phoneStage {
   position: relative;
   width: 460px;

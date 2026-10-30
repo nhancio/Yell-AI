@@ -1,16 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { User, onAuthStateChanged } from "firebase/auth";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { auth } from "@/lib/firebase";
-import { AccountEntry, Login } from "@/components/AstraAppView";
 import styles from "./home.module.css";
-const WA_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "918790968218";
-const whatsapp = (text = "Hi Astra!") =>
-  `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`;
-const WA_LINK = whatsapp();
+const APP_ENTRY = "/app";
+const startWithPrompt = (text: string) => `${APP_ENTRY}?prompt=${encodeURIComponent(text)}`;
 const asset = (name: string) => `/poke/${name}`;
 const apps = [
   ["Strava", "stravaapp.webp"],
@@ -221,30 +216,18 @@ function Phone() {
 }
 
 export default function HomePage() {
-  const [authUser, setAuthUser] = useState<User | null | undefined>(undefined);
-  const [showAppLogin, setShowAppLogin] = useState(false);
   const [activeRecipe, setActiveRecipe] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setAuthUser(u);
-      if (u) setShowAppLogin(false);
-    });
-    return unsub;
-  }, []);
   const [scrolled, setScrolled] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
   const [showQr, setShowQr] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<"pro" | "business">("pro");
-  const [upgradePhone, setUpgradePhone] = useState("");
-  const [upgrading, setUpgrading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState("");
-  const upgradeDialog = useRef<HTMLDialogElement>(null);
-
   useEffect(() => {
-    QRCode.toDataURL(WA_LINK, {
+    if (window.location.hash === "#login" || new URLSearchParams(window.location.search).has("connected")) {
+      window.location.replace(`/app${window.location.search}`);
+      return;
+    }
+    QRCode.toDataURL(new URL(APP_ENTRY, window.location.origin).href, {
       width: 180,
       margin: 1,
       color: { dark: "#18241d", light: "#FFFFFF" },
@@ -252,38 +235,7 @@ export default function HomePage() {
       .then(setQrUrl)
       .catch(() => setQrUrl(""));
 
-    if (!document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.async = true;
-      document.body.appendChild(script);
-    }
   }, []);
-
-  const openDirectCheckout = (plan: "pro" | "business") => {
-    const isBiz = plan === "business";
-    const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SQ23jUEivTVeq7";
-    if (typeof window !== "undefined" && (window as any).Razorpay) {
-      const rzp = new (window as any).Razorpay({
-        key: rzpKey,
-        amount: isBiz ? 99900 : 9900,
-        currency: "INR",
-        name: "Astra AI",
-        description: isBiz
-          ? "Astra Business (1,000 tasks/day) — 30 Days"
-          : "Astra Pro (80 tasks/day FUP) — 30 Days",
-        theme: { color: "#1b7a4e" },
-        handler: () => {
-          window.location.href = "/payment/success";
-        },
-      });
-      rzp.open();
-    } else {
-      setSelectedPlan(plan);
-      setCheckoutError("");
-      setShowUpgradeModal(true);
-    }
-  };
 
   useEffect(() => {
     const updateHeader = () => setScrolled(window.scrollY > 70);
@@ -291,58 +243,6 @@ export default function HomePage() {
     window.addEventListener("scroll", updateHeader, { passive: true });
     return () => window.removeEventListener("scroll", updateHeader);
   }, []);
-
-  useEffect(() => {
-    if (showUpgradeModal) upgradeDialog.current?.showModal();
-    else upgradeDialog.current?.close();
-  }, [showUpgradeModal]);
-
-  const handleProUpgrade = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = upgradePhone.replace(/\D/g, "");
-    if (clean.length < 10 || clean.length > 15) {
-      setCheckoutError(
-        "Enter your WhatsApp number with 10–15 digits, including your country code.",
-      );
-      return;
-    }
-    setCheckoutError("");
-    setUpgrading(true);
-    try {
-      const res = await fetch(
-        "/payment/create-link",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone_number: clean, plan: selectedPlan }),
-        },
-      );
-      if (!res.ok)
-        throw new Error(
-          "Couldn’t start checkout. Please try again, or text UPGRADE on WhatsApp.",
-        );
-      const data = await res.json();
-      if (!data.payment_url)
-        throw new Error("No checkout link was returned. Please try again.");
-      window.location.href = data.payment_url;
-    } catch (err: unknown) {
-      setCheckoutError(
-        err instanceof Error
-          ? err.message
-          : "Couldn’t connect. Please try again, or text UPGRADE on WhatsApp.",
-      );
-    } finally {
-      setUpgrading(false);
-    }
-  };
-
-  if (authUser) {
-    return <AccountEntry key={authUser.uid} user={authUser} />;
-  }
-
-  if (showAppLogin) {
-    return <Login onBack={() => setShowAppLogin(false)} />;
-  }
 
   return (
     <div className={styles.site}>
@@ -371,11 +271,7 @@ export default function HomePage() {
                 <a href="#experience">Meet Astra</a>
                 <a href="#recipes">Recipes</a>
                 <a
-                  href="#login"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowAppLogin(true);
-                  }}
+                  href={APP_ENTRY}
                 >
                   Astra App <Icon name="arrow" size={14} />
                 </a>
@@ -396,19 +292,13 @@ export default function HomePage() {
           </nav>
           <div className={styles.headerActions}>
             <a
-              href="#login"
-              onClick={(e) => {
-                e.preventDefault();
-                setShowAppLogin(true);
-              }}
+              href={APP_ENTRY}
               className={styles.login}
             >
               Log in
             </a>
             <a
-              href={WA_LINK}
-              target="_blank"
-              rel="noreferrer"
+              href={APP_ENTRY}
               className={`${styles.button} ${styles.darkButton} ${styles.smallButton}`}
             >
               Get Started
@@ -436,11 +326,7 @@ export default function HomePage() {
               <a href="#faq">FAQs</a>
               <Link href="/brands">For Brands</Link>
               <a
-                href="#login"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowAppLogin(true);
-                }}
+                href={APP_ENTRY}
               >
                 Log in
               </a>
@@ -466,9 +352,7 @@ export default function HomePage() {
           </p>
           <div className={styles.heroActions}>
             <a
-              href={WA_LINK}
-              target="_blank"
-              rel="noreferrer"
+              href={APP_ENTRY}
               className={`${styles.button} ${styles.darkButton}`}
             >
               Get Started
@@ -480,6 +364,7 @@ export default function HomePage() {
               Explore
             </a>
           </div>
+          <p className={styles.entryNote}>Verify your number once, then chat on WhatsApp.</p>
           <div className={styles.phoneStage}>
             <Phone />
             {qrUrl && (
@@ -501,7 +386,7 @@ export default function HomePage() {
                   >
                     <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h3v3h-3zm4 4h3v3h-3zm3-4v2m-7 3v2M6 6h1m10 0h1M6 17h1" />
                   </svg>{" "}
-                  Scan to say hi <Icon name="chevron" size={13} />
+                  Scan to get started <Icon name="chevron" size={13} />
                 </button>
                 {showQr && (
                   <div className={styles.qrPanel} id="whatsapp-qr">
@@ -509,12 +394,12 @@ export default function HomePage() {
                       src={qrUrl}
                       width="160"
                       height="160"
-                      alt="Scan this QR code to chat with Astra on WhatsApp"
+                      alt="Scan this QR code to sign in to Astra"
                     />
                     <p>
                       Open your camera.
                       <br />
-                      Meet your new favorite contact.
+                      Sign in, then open WhatsApp.
                     </p>
                   </div>
                 )}
@@ -576,9 +461,7 @@ export default function HomePage() {
               real as a friend.
             </p>
             <a
-              href={WA_LINK}
-              target="_blank"
-              rel="noreferrer"
+              href={APP_ENTRY}
               className={styles.textLink}
             >
               Find your flow <Icon name="arrow" size={18} />
@@ -632,9 +515,7 @@ export default function HomePage() {
                 {recipes[activeRecipe].title}
               </p>
               <a
-                href={whatsapp(recipes[activeRecipe].prompt)}
-                target="_blank"
-                rel="noreferrer"
+                href={startWithPrompt(recipes[activeRecipe].prompt)}
                 className={styles.textLink}
               >
                 Try this recipe <Icon name="arrow" size={18} />
@@ -687,9 +568,7 @@ export default function HomePage() {
                 Hinglish.
               </p>
               <a
-                href={WA_LINK}
-                target="_blank"
-                rel="noreferrer"
+                href={APP_ENTRY}
                 className={styles.textLink}
               >
                 Leave it with Astra <Icon name="arrow" size={18} />
@@ -750,9 +629,7 @@ export default function HomePage() {
                 when it matters.
               </p>
               <a
-                href={WA_LINK}
-                target="_blank"
-                rel="noreferrer"
+                href={APP_ENTRY}
                 className={styles.textLink}
               >
                 Meet your assistant <Icon name="arrow" size={18} />
@@ -807,11 +684,7 @@ export default function HomePage() {
                 to work together, right inside your WhatsApp.
               </p>
               <a
-                href="#login"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowAppLogin(true);
-                }}
+                href={APP_ENTRY}
                 className={styles.textLink}
               >
                 Explore Astra App <Icon name="arrow" size={18} />
@@ -858,12 +731,10 @@ export default function HomePage() {
                 ))}
               </ul>
               <a
-                href={WA_LINK}
-                target="_blank"
-                rel="noreferrer"
+                href={APP_ENTRY}
                 className={`${styles.button} ${styles.lightButton}`}
               >
-                Start Free on WhatsApp
+                Create free account
               </a>
             </article>
 
@@ -895,12 +766,12 @@ export default function HomePage() {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => openDirectCheckout("pro")}
+              <a
+                href="/app?plan=pro"
                 className={`${styles.button} ${styles.darkButton}`}
               >
                 Get Pro (₹99) <Icon name="arrow" size={17} />
-              </button>
+              </a>
             </article>
 
             {/* Business / Team Plan */}
@@ -931,12 +802,12 @@ export default function HomePage() {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => openDirectCheckout("business")}
+              <a
+                href="/app?plan=business"
                 className={`${styles.button} ${styles.darkButton}`}
               >
                 Get Business (₹999) <Icon name="arrow" size={17} />
-              </button>
+              </a>
             </article>
           </div>
           <div className={styles.brandCallout}>
@@ -960,9 +831,7 @@ export default function HomePage() {
               {conversationIdeas.map(([title, prompt, icon]) => (
                 <a
                   key={title}
-                  href={whatsapp(prompt)}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={startWithPrompt(prompt)}
                   className={styles.storyCard}
                 >
                   <span className={styles.storyHeader}>
@@ -1029,15 +898,13 @@ export default function HomePage() {
           <img src={asset("waves.2t7xwl857n24q.webp")} alt="" loading="lazy" />
           <div>
             <h2 id="cta-title">
-              Get started
+              Verify your number
               <br />
-              with just a text
+              then start with a text
             </h2>
             <div className={styles.heroActions}>
               <a
-                href={WA_LINK}
-                target="_blank"
-                rel="noreferrer"
+                href={APP_ENTRY}
                 className={`${styles.button} ${styles.darkButton}`}
               >
                 Get Started
@@ -1065,11 +932,7 @@ export default function HomePage() {
           <div>
             <b>Product</b>
             <a
-              href="#login"
-              onClick={(e) => {
-                e.preventDefault();
-                setShowAppLogin(true);
-              }}
+              href={APP_ENTRY}
             >
               Log in
             </a>
@@ -1080,7 +943,7 @@ export default function HomePage() {
             <b>Resources</b>
             <a href="#integrations">Integrations</a>
             <a href="#faq">FAQs</a>
-            <a href={WA_LINK} target="_blank" rel="noreferrer">
+            <a href={APP_ENTRY}>
               WhatsApp
             </a>
           </div>
@@ -1105,113 +968,7 @@ export default function HomePage() {
         </div>
       </footer>
 
-      <dialog
-        ref={upgradeDialog}
-        className={styles.upgradeDialog}
-        onCancel={() => setShowUpgradeModal(false)}
-        onClose={() => setShowUpgradeModal(false)}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setShowUpgradeModal(false);
-        }}
-        aria-labelledby="upgrade-title"
-      >
-        <div className={styles.dialogContent}>
-          <button
-            className={styles.closeDialog}
-            aria-label="Close checkout"
-            onClick={() => setShowUpgradeModal(false)}
-          >
-            <Icon name="close" />
-          </button>
-          <Mark app />
-          <span className={styles.dialogEyebrow}>
-            {selectedPlan === "business" ? "Astra Business · ₹999 / month" : "Astra Pro · ₹99 / month"}
-          </span>
-          <h2 id="upgrade-title">
-            {selectedPlan === "business" ? "Enterprise Headroom." : "A little more Astra."}
-          </h2>
-          <p>
-            Enter your WhatsApp number to continue to secure Razorpay checkout.
-            Pay with UPI, cards, or UPI Autopay.
-          </p>
 
-          {/* Plan Selector inside Dialog */}
-          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
-            <button
-              type="button"
-              onClick={() => setSelectedPlan("pro")}
-              style={{
-                flex: 1,
-                padding: "8px",
-                borderRadius: "8px",
-                border: selectedPlan === "pro" ? "2px solid #185a39" : "1px solid #cce0d1",
-                backgroundColor: selectedPlan === "pro" ? "#185a39" : "#FFF",
-                color: selectedPlan === "pro" ? "#FFF" : "#185a39",
-                fontWeight: 600,
-                fontSize: "13px",
-                cursor: "pointer"
-              }}
-            >
-              Pro (₹99 / mo)
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedPlan("business")}
-              style={{
-                flex: 1,
-                padding: "8px",
-                borderRadius: "8px",
-                border: selectedPlan === "business" ? "2px solid #185a39" : "1px solid #cce0d1",
-                backgroundColor: selectedPlan === "business" ? "#185a39" : "#FFF",
-                color: selectedPlan === "business" ? "#FFF" : "#185a39",
-                fontWeight: 600,
-                fontSize: "13px",
-                cursor: "pointer"
-              }}
-            >
-              Business (₹999 / mo)
-            </button>
-          </div>
-
-          <form onSubmit={handleProUpgrade}>
-            <label htmlFor="upgrade-phone">
-              WhatsApp number, with country code
-            </label>
-            <input
-              id="upgrade-phone"
-              type="tel"
-              autoComplete="tel"
-              placeholder="+91 98765 43210"
-              required
-              value={upgradePhone}
-              onChange={(e) => setUpgradePhone(e.target.value)}
-              aria-describedby={checkoutError ? "checkout-error" : undefined}
-              aria-invalid={!!checkoutError}
-            />
-            <div className={styles.checkoutSummary}>
-              <span>{selectedPlan === "business" ? "Astra Business (1,000 tasks/day) · 30 days" : "Astra Pro (80 tasks/day FUP) · 30 days"}</span>
-              <b>{selectedPlan === "business" ? "₹999.00" : "₹99.00"}</b>
-            </div>
-            {checkoutError && (
-              <p
-                id="checkout-error"
-                role="alert"
-                className={styles.checkoutError}
-              >
-                {checkoutError}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={upgrading}
-              className={`${styles.button} ${styles.darkButton}`}
-            >
-              {upgrading ? "Opening checkout…" : "Continue to Razorpay"}
-              <Icon name="arrow" size={17} />
-            </button>
-          </form>
-        </div>
-      </dialog>
     </div>
   );
 }

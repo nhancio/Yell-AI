@@ -1,8 +1,3 @@
-// Ways to reach Astra. Leave a value empty to show the channel as "Coming soon".
-export const CHANNELS = {
-  whatsapp: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "918790968218", // digits only, with country code
-};
-
 export function formatPhone(digits: string): string {
   if (!digits) return "";
   if (digits.startsWith("91") && digits.length === 12) return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;

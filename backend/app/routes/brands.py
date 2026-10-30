@@ -57,7 +57,7 @@ async def track_and_redirect(campaign_id: int):
 # Brand Campaign API
 # ------------------------------------------------------------------
 
-@router.get("/api/brands/campaigns")
+@router.get("/api/brands/campaigns", dependencies=[Depends(verify_admin_key)])
 async def list_brand_campaigns() -> dict[str, Any]:
     """List all campaigns with live impressions, clicks, CTR, and remaining budget."""
     campaigns = await ads_service.list_campaigns()
@@ -83,7 +83,7 @@ async def list_brand_campaigns() -> dict[str, Any]:
     }
 
 
-@router.post("/api/brands/campaigns")
+@router.post("/api/brands/campaigns", dependencies=[Depends(verify_admin_key)])
 async def create_brand_campaign(req: CampaignCreateRequest) -> dict[str, Any]:
     """Create a new campaign. If budget > 0, creates campaign and returns details."""
     try:

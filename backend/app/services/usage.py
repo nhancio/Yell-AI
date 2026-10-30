@@ -49,6 +49,7 @@ class UsageService:
                 and user.premium_expires_at < datetime.utcnow()
             ):
                 user.is_premium = False
+                user.plan_tier = "free"
                 user.premium_expires_at = None
                 await session.commit()
                 await session.refresh(user)
@@ -64,7 +65,7 @@ class UsageService:
             {"allowed": bool, "remaining": int, "is_premium": bool, "plan_tier": str, "limit": int}
         """
         user = await self.get_or_create_user(phone_number)
-        tier = getattr(user, "plan_tier", "pro" if user.is_premium else "free")
+        tier = ("business" if user.plan_tier == "business" else "pro") if user.is_premium else "free"
         if tier == "business":
             limit = settings.BUSINESS_DAILY_LIMIT  # 1,000 tasks/day
         elif tier == "pro" or user.is_premium:

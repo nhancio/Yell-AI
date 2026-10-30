@@ -94,6 +94,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def require_persistent_production_database(self):
+        if self.ENVIRONMENT == "production" and not self.effective_database_url.startswith("postgresql+asyncpg://"):
+            raise ValueError("Production requires a persistent PostgreSQL database")
         return self
 
     def production_environment(self) -> dict[str, str]:

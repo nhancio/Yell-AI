@@ -9,11 +9,20 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
 from app.config import get_settings
+from app.models.database import async_session, ensure_tables
+from app.models.user import VerifiedWhatsAppAccount
 from app.services.composio_service import normalize_phone
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 _request = google_requests.Request()
+
+
+async def has_verified_whatsapp_login(phone: str) -> bool:
+    """An existing usage profile or knowledge of the agent number never grants access."""
+    await ensure_tables()
+    async with async_session() as session:
+        return await session.get(VerifiedWhatsAppAccount, normalize_phone(phone)) is not None
 
 
 async def verify_firebase_token(token: str) -> dict:

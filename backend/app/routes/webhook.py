@@ -14,6 +14,7 @@ from app.config import get_settings
 from app.models.database import async_session, ensure_tables
 from app.models.user import FlowLog
 from app.services.ads_service import AdsService
+from app.services.auth import has_verified_whatsapp_login
 from app.services.composio_service import SUPPORTED_TOOLKITS, ComposioService, normalize_phone
 from app.services.gemini import GeminiService
 from app.services.memory import memory_service as memory
@@ -79,6 +80,19 @@ async def process_user_message(
     log_id: int,
 ) -> None:
     """Process incoming message asynchronously in background task (Meta gets 200 immediately)."""
+    try:
+        verified = await has_verified_whatsapp_login(sender)
+    except Exception as exc:
+        logger.warning("WhatsApp access check unavailable (%s)", type(exc).__name__)
+        await whatsapp.send_message(sender, "Astra can’t verify your account right now. Please try again shortly.")
+        return
+    if not verified:
+        login_url = f"{settings.APP_FRONTEND_URL.rstrip('/')}/app"
+        await whatsapp.send_message(sender,
+            "Before we chat, sign in to Astra with this WhatsApp number and verify the SMS code:\n"
+            f"{login_url}\n\nOnce you’re signed in, come back here and send your message again.")
+        return
+
     try:
         async with async_session() as session:
             await session.execute(update(FlowLog).where(FlowLog.id == log_id).values(sender=sender, status="processing"))

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CHANNELS, GREETING, formatPhone } from "@/lib/channels";
+import { GREETING, formatPhone } from "@/lib/channels";
 
 type Channel = {
   key: string;
@@ -18,21 +18,21 @@ const WhatsAppIcon = (
   </div>
 );
 
-function buildChannels(): Channel[] {
-  const text = encodeURIComponent(GREETING);
+function buildChannels(number: string, prompt: string): Channel[] {
+  const text = encodeURIComponent(prompt);
   return [
     {
       key: "whatsapp",
       title: "WhatsApp",
-      value: CHANNELS.whatsapp ? `+${CHANNELS.whatsapp}` : "",
-      display: formatPhone(CHANNELS.whatsapp),
-      href: CHANNELS.whatsapp ? `https://wa.me/${CHANNELS.whatsapp}?text=${text}` : "",
+      value: number ? `+${number}` : "",
+      display: formatPhone(number),
+      href: number ? `https://wa.me/${number}?text=${text}` : "",
       icon: WhatsAppIcon,
     },
   ];
 }
 
-export default function ContactChannels({ subtitle = "Ways to reach Astra directly" }: { subtitle?: string }) {
+export default function ContactChannels({ number, prompt = GREETING, subtitle = "Ways to reach Astra directly" }: { number: string; prompt?: string; subtitle?: string }) {
   const [copied, setCopied] = useState<string | null>(null);
 
   async function copy(e: React.MouseEvent, key: string, value: string) {
@@ -50,7 +50,7 @@ export default function ContactChannels({ subtitle = "Ways to reach Astra direct
       <h2 className="text-2xl font-bold text-white">Contact</h2>
       <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
       <div className="mt-4 border-t border-white/80">
-        {buildChannels().map((c) => {
+        {buildChannels(number, prompt).map((c) => {
           const live = Boolean(c.href);
           const Row = live ? "a" : "div";
           return (
