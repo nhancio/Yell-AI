@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.config import get_settings
 from app.models.database import async_session
 from app.models.user import User
+from app.services.composio_service import normalize_phone
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -61,7 +62,7 @@ class PaymentService:
                     # The Razorpay account is shared with other products; the webhook only
                     # grants Astra plans for links carrying this marker.
                     "product": PRODUCT_TAG,
-                    "phone_number": phone_number,
+                    "phone_number": normalize_phone(phone_number),
                     "user_id": str(user_id),
                     "plan_tier": "business" if is_biz else "pro",
                 },
@@ -104,6 +105,7 @@ class PaymentService:
 
     async def activate_premium(self, phone_number: str, plan_tier: str = "pro") -> bool:
         """Set a user to premium status (Pro or Business) for 30 days."""
+        phone_number = normalize_phone(phone_number)
         async with async_session() as session:
             result = await session.execute(
                 select(User).where(User.phone_number == phone_number)

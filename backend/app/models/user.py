@@ -19,6 +19,15 @@ from sqlalchemy.orm import relationship
 from app.models.database import Base
 
 
+class VerifiedWhatsAppAccount(Base):
+    """Created only after a verified Firebase phone login, never by an incoming chat."""
+
+    __tablename__ = "verified_whatsapp_accounts"
+
+    phone_number = Column(String(20), primary_key=True)
+    verified_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+
 class User(Base):
     __tablename__ = "users"
 

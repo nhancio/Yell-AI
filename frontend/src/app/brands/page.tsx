@@ -110,6 +110,7 @@ export default function BrandsPortal() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [campaignAccess, setCampaignAccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [payingId, setPayingId] = useState<number | null>(null);
 
@@ -133,13 +134,22 @@ export default function BrandsPortal() {
     try {
       setLoading(true);
       const res = await fetch(`${BACKEND_URL}/api/brands/campaigns`);
+      if (!res.ok) {
+        setCampaignAccess(false);
+        setCampaigns([]);
+        setMetrics(null);
+        throw new Error(res.status === 401 || res.status === 403
+          ? "Campaign management requires authorized access. Contact nithindidigam@nhancio.com to set up a campaign."
+          : "Couldn’t load campaigns. Please try again.");
+      }
       if (res.ok) {
         const data = await res.json();
         setCampaigns(data.campaigns || []);
         setMetrics(data.metrics || null);
+        setCampaignAccess(true);
       }
     } catch (e) {
-      console.error("Failed to load brand campaigns:", e);
+      setNotification({ type: "error", msg: e instanceof Error ? e.message : "Couldn’t load campaigns. Please try again." });
     } finally {
       setLoading(false);
     }
@@ -331,12 +341,10 @@ export default function BrandsPortal() {
               ← Back to Home
             </Link>
             <a
-              href="https://wa.me/918790968218?text=Hi%20Astra!"
-              target="_blank"
-              rel="noreferrer"
+              href="/app"
               className={`${styles.button} ${styles.darkButton} ${styles.smallButton}`}
             >
-              💬 Test on WhatsApp
+              💬 Sign in to try Astra
             </a>
           </div>
         </div>
@@ -640,7 +648,7 @@ export default function BrandsPortal() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !campaignAccess}
                 className={`${styles.button} ${styles.darkButton}`}
                 style={{ width: "100%", height: "50px", marginTop: "6px" }}
               >

@@ -11,8 +11,9 @@ _db_url = settings.effective_database_url
 
 _engine_kw: dict = {"echo": False, "pool_pre_ping": True}
 if _db_url.startswith("postgresql"):
-    _engine_kw["pool_size"] = 10
-    _engine_kw["max_overflow"] = 20
+    # Keep each container within the small managed database's connection budget.
+    _engine_kw["pool_size"] = 2
+    _engine_kw["max_overflow"] = 3
     _engine_kw["connect_args"] = {"timeout": 5}
 
 engine = create_async_engine(_db_url, **_engine_kw)

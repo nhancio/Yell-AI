@@ -6,10 +6,12 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.models.database import async_session
-from app.models.user import UserUsage
+from app.models.database import async_session, get_db
+from app.models.user import UserUsage, VerifiedWhatsAppAccount
 from app.services.auth import current_phone
 from app.services.composio_service import ComposioService
 from app.services.payment import PaymentService
@@ -28,6 +30,20 @@ class ToolkitBody(BaseModel):
 
 class UpgradeBody(BaseModel):
     plan: Literal["pro", "business"] = "pro"
+
+
+@router.post("/session")
+async def register_session(phone: str = Depends(current_phone), db: AsyncSession = Depends(get_db)) -> dict:
+    """Bind WhatsApp access to the token's verified phone, regardless of request input."""
+    if await db.get(VerifiedWhatsAppAccount, phone) is None:
+        db.add(VerifiedWhatsAppAccount(phone_number=phone))
+        try:
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            if await db.get(VerifiedWhatsAppAccount, phone) is None:
+                raise
+    return {"whatsapp_enabled": True}
 
 
 @router.get("")
@@ -73,7 +89,7 @@ async def link_connector(body: ToolkitBody, phone: str = Depends(current_phone))
         return await composio.create_auth_link(
             phone_number=phone,
             toolkit=body.toolkit,
-            redirect_url=f"{settings.APP_FRONTEND_URL}/?connected={body.toolkit}",
+            redirect_url=f"{settings.APP_FRONTEND_URL.rstrip('/')}/app?connected={body.toolkit}",
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

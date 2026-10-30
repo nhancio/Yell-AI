@@ -263,7 +263,7 @@ class ComposioService:
         config_id = self._auth_config(slug)
         if not self.api_key or not config_id:
             raise ConnectorError("This app connection has not been configured", 503)
-        callback = redirect_url or f"{self.config.APP_FRONTEND_URL}/?connected={slug}"
+        callback = redirect_url or f"{self.config.APP_FRONTEND_URL.rstrip('/')}/app?connected={slug}"
         target = urlsplit(callback)
         allowed_origins = {(urlsplit(url).scheme, urlsplit(url).netloc) for url in
                            (self.config.FRONTEND_URL, self.config.APP_FRONTEND_URL)}

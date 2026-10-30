@@ -35,13 +35,14 @@ interface Props {
   connect: (slug: string) => Promise<void>;
   checkout: (plan: Plan["id"]) => Promise<void>;
   onComplete: (state: Setup) => void;
+  requestedPlan?: Plan["id"];
 }
 
-export default function Onboarding({ account, setup, save, connect, checkout, onComplete }: Props) {
+export default function Onboarding({ account, setup, save, connect, checkout, onComplete, requestedPlan }: Props) {
   const [step, setStep] = useState<SetupStep>(setup.step === "complete" ? "name" : setup.step);
   const [name, setName] = useState(setup.name || "");
   const [selected, setSelected] = useState<Interest[]>(setup.interests);
-  const [selectedPlan, setSelectedPlan] = useState<Plan["id"]>("pro");
+  const [selectedPlan, setSelectedPlan] = useState<Plan["id"]>(requestedPlan || "pro");
   const [busy, setBusy] = useState(false);
   const [busyApp, setBusyApp] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -57,6 +58,7 @@ export default function Onboarding({ account, setup, save, connect, checkout, on
     window.scrollTo({ top: 0, behavior: "instant" });
     if (step !== "name") content.current?.querySelector("h1")?.focus({ preventScroll: true });
   }, [step]);
+  useEffect(() => { if (requestedPlan) setSelectedPlan(requestedPlan); }, [requestedPlan]);
 
   async function advance(next: SetupStep) {
     setBusy(true);

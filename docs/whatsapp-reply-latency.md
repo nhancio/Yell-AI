@@ -15,23 +15,21 @@ Reference: https://developers.facebook.com/documentation/business-messaging/what
 
 Seven focused regression tests pass, covering the HTTP payload, feedback deadline, ordering and deduplication, Redis cooldown and recovery, production memory behavior, async generation, and generation deadline.
 
-The full backend suite runs 64 tests and has three existing failure assertions: temporary SQLite is accepted in production, and anonymous GET/POST requests to campaign administration return 200 instead of 403. These behaviors are outside this change. The isolated release was compared against the uploaded source of live revision `yell-ai-api-00021-79g`: only the four intended service/webhook files differ.
+The original isolated latency release was compared against the uploaded source of revision `yell-ai-api-00021-79g`: only the four intended service/webhook files differed. After adding login gating and persistent storage and restoring campaign administration guards, all 74 backend tests pass.
 
 A standalone live Gemini probe returned in 4.3 seconds. This is not a full conversational latency measurement.
 
-## Staged release
+## Activated release
 
-Cloud Run revision `yell-ai-api-00022-jum` is deployed with **zero live traffic**, tagged `typing-preview`:
+The user approved activation before the database move. Login gating and typing support were first activated on revision `yell-ai-api-00024-giw`; PostgreSQL-backed revision `yell-ai-api-00026-piz` completed the initial persistent-storage cutover. Subsequent releases retain PostgreSQL and record their source commit in the Cloud Run `git-sha` label. Temporary rollout preview tags are removed after activation.
 
-https://typing-preview---yell-ai-api-6epx3aakpq-el.a.run.app
-
-Preview smoke checks passed: `/health` returns 200, a correctly signed empty webhook returns 200/ignored, and an unsigned webhook returns 401. `/ready` returns 503 because Redis is still unavailable; the database check passes. Revision `yell-ai-api-00021-79g` continues to receive 100% of live traffic. Activation is pending a decision about the temporary database.
+Live smoke checks passed: `/health` returns 200, a correctly signed empty webhook returns 200/ignored, and an unsigned webhook returns 401. `/ready` still returns 503 because Redis is unavailable; the PostgreSQL database check passes.
 
 ## Remaining latency and rollout constraints
 
 - Action requests still make sequential emotion, intent, and task-generation calls. Tool-provider requests can add further time.
 - The hosted service has no working shared Redis connection. The retry change avoids repeated waits; it does not provision Redis.
 - Cloud Run currently scales to zero and uses request-based CPU. Background processing after an HTTP acknowledgement can be delayed; a durable worker or explicit CPU/scaling configuration needs a separate infrastructure decision.
-- The live database is SQLite in temporary container storage. Replacing the live revision can reset current users, usage, and connection records. Prepare a preview with no traffic before deciding how to activate it.
+- Account storage now uses managed PostgreSQL with backups; verified login bindings and account records survive container replacement. Redis conversation memory is still a separate service.
 - No new WhatsApp test message has been sent during this work. The animation still needs an actual phone-side check after activation.
 

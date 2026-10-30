@@ -8,7 +8,7 @@ export default function ConnectPage() {
   useEffect(() => {
     const connected = new URLSearchParams(window.location.search).get("connected");
     const query = connected ? `?connected=${encodeURIComponent(connected)}` : "";
-    router.replace(`/${query}`);
+    router.replace(`/app${query}`);
   }, [router]);
   return (
     <main style={{ minHeight: "100vh", background: "#fffdfa", color: "#18241d", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }}>

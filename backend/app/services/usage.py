@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.database import async_session, ensure_tables
 from app.models.onboarding import UserOnboarding
-from app.models.user import User, UserUsage
+from app.models.user import User, UserUsage, VerifiedWhatsAppAccount
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -50,6 +50,7 @@ class UsageService:
                 and user.premium_expires_at < datetime.utcnow()
             ):
                 user.is_premium = False
+                user.plan_tier = "free"
                 user.premium_expires_at = None
                 await session.commit()
                 await session.refresh(user)
@@ -60,7 +61,8 @@ class UsageService:
         """(signed_up, preview replies left). Signed up = logged in to the app (same number, OTP) or paid."""
         user = await self.get_or_create_user(phone_number)
         async with async_session() as session:
-            if user.is_premium or await session.get(UserOnboarding, user.id):
+            if (user.is_premium or await session.get(UserOnboarding, user.id)
+                    or await session.get(VerifiedWhatsAppAccount, user.phone_number)):
                 return True, 0
             used = await session.scalar(
                 select(func.coalesce(func.sum(UserUsage.query_count), 0)).where(UserUsage.user_id == user.id)
@@ -76,7 +78,7 @@ class UsageService:
             {"allowed": bool, "remaining": int, "is_premium": bool, "plan_tier": str, "limit": int}
         """
         user = await self.get_or_create_user(phone_number)
-        tier = getattr(user, "plan_tier", "pro" if user.is_premium else "free")
+        tier = ("business" if user.plan_tier == "business" else "pro") if user.is_premium else "free"
         if tier == "business":
             limit = settings.BUSINESS_DAILY_LIMIT  # 1,000 tasks/day
         elif tier == "pro" or user.is_premium:

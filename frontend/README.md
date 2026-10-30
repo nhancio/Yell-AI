@@ -1,89 +1,36 @@
-# Astra AI Frontend
+# Astra web app
 
-Astra AI is a managed deployment app for a WhatsApp-based NanoClaw assistant.
+Next.js 14 and React 18 static frontend for Astra's landing page, phone login,
+optional onboarding, connected apps, subscriptions and WhatsApp entry.
+Firebase Hosting serves the export; FastAPI owns account and database access.
+The frontend does not use Prisma or connect directly to a database.
 
-The intended user flow is:
+## Local development
 
-1. User opens the landing page
-2. User clicks `Deploy Now`
-3. User enters the few inputs required for deployment
-4. The app starts a NanoClaw runtime for that user
-5. The app shows the WhatsApp QR code in the dashboard
-6. The user scans the QR code
-7. The assistant comes online and the user chats on WhatsApp
+Start the FastAPI backend on port 8000, then:
 
-## What the current frontend does
-
-- Next.js 14 app with Google sign-in
-- Protected dashboard
-- Creates a deployment record in Prisma
-- Starts a local NanoClaw runtime under `frontend/.runtime/nanoclaw/<deployment-id>`
-- Starts WhatsApp auth
-- Exposes a QR endpoint for the dashboard UI
-- Registers the user's self-chat as the main NanoClaw chat
-- Starts the NanoClaw bot process
-- Streams setup logs back into the deployment card
-
-## Required inputs
-
-The active deployment form supports:
-
-- `Assistant name`
-- `Claude credential`
-
-The Claude credential can be either:
-
-- an Anthropic API key, or
-- a Claude OAuth token
-
-If the user does not provide one, the server must already have a default credential configured.
-
-## Local setup
-
-```bash
+```sh
 cd frontend
-npm install
-cp ../.env.example .env
-npx prisma generate
-npx prisma db push
-npm run dev
+npm ci
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open http://localhost:3000. Firebase client configuration is in
+`src/lib/firebase-config.json`. Phone OTP login must be enabled for the app's
+Firebase project. Backend secrets stay in server environment variables.
 
-## Environment notes
+## Release checks
 
-Minimum frontend auth requirements:
+```sh
+npm ci
+npm run build
+python3 -m unittest discover -s tests
+```
 
-- `DATABASE_URL`
-- `NEXTAUTH_SECRET`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
+The static export is written to `out/`. The root `firebase.json` routes
+account, payment and webhook requests to the Cloud Run backend. Production
+uses the same origin, so `NEXT_PUBLIC_BACKEND_URL` can be omitted.
 
-Optional default Claude credentials:
-
-- `ASTRAAI_ANTHROPIC_API_KEY`
-- `ASTRAAI_CLAUDE_CODE_OAUTH_TOKEN`
-- `ANTHROPIC_API_KEY`
-- `CLAUDE_CODE_OAUTH_TOKEN`
-
-The active QR-based WhatsApp flow does **not** require the user to paste WhatsApp Business API credentials.
-
-## Important implementation notes
-
-- The active deploy path is `src/app/api/deploy/route.ts`
-- The runtime bootstrap logic is `src/lib/nanoclaw/localDeployment.ts`
-- The dashboard QR endpoint is `src/app/api/deployments/[id]/qr/route.ts`
-- Deployment progress UI is in `src/components/DeploymentCard.tsx`
-
-## Current product direction
-
-This frontend should be treated as the main product surface:
-
-- landing page
-- deploy form
-- QR onboarding
-- live deployment status
-- WhatsApp chat activation
-
-Anything outside that flow should be considered secondary until this path is fully verified end to end.
+Deploy from the repository root using `./deploy.sh`. The script preserves the
+Cloud SQL attachment and Secret Manager database configuration. See
+`../docs/production-storage.md` and `../docs/account-whatsapp-flow.md`.
