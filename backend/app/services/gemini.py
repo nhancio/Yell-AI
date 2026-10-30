@@ -28,6 +28,9 @@ class GeminiService:
 
     MODEL_NAME = "gemini-3.8-flash"
     FAST_MODEL_NAME = "gemini-3.5-flash-lite"
+    # JSON checks (router, action decision): same accuracy as 3.5 on a 24-case A/B, 30% cheaper.
+    # User-facing replies stay on 3.5, which formats for WhatsApp and stays on-brand better.
+    JSON_MODEL_NAME = "gemini-3.1-flash-lite"
     REQUEST_TIMEOUT_SECONDS = 20
 
     async def _generate(self, model: str, thinking: str, body: dict[str, Any]) -> str:
@@ -69,6 +72,8 @@ class GeminiService:
             if json_output:
                 body["generationConfig"]["responseMimeType"] = "application/json"
             model, thinking = (self.FAST_MODEL_NAME, "minimal") if fast else (self.MODEL_NAME, "low")
+            if fast and json_output:
+                model = self.JSON_MODEL_NAME
 
             async with asyncio.timeout(self.REQUEST_TIMEOUT_SECONDS):
                 text = await self._generate(model, thinking, body)

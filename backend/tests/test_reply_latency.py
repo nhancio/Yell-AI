@@ -172,7 +172,7 @@ class AsyncGeminiTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await service.generate_response("answer", "remind me", history), '{"ok": true}')
 
         (fast_path, fast), (main_path, main) = requests
-        self.assertIn("gemini-3.5-flash-lite:", fast_path)
+        self.assertIn("gemini-3.1-flash-lite:", fast_path)
         self.assertEqual(fast["generationConfig"]["thinkingConfig"], {"thinkingLevel": "minimal"})
         self.assertEqual(fast["generationConfig"]["responseMimeType"], "application/json")
         self.assertIn("gemini-3.8-flash:", main_path)
@@ -210,13 +210,13 @@ class AsyncGeminiTests(unittest.IsolatedAsyncioTestCase):
             await orchestrator.process("What is the capital of Karnataka?")
             await orchestrator.process("Founder cold email for a YC fintech role")
 
-        # 1st message: router (Flash-Lite JSON) + simple task answer (Flash-Lite plain text)
-        self.assertIn("gemini-3.5-flash-lite:", requests[0][0])
+        # 1st message: router (3.1 Flash-Lite JSON) + simple task answer (3.5 Flash-Lite plain text)
+        self.assertIn("gemini-3.1-flash-lite:", requests[0][0])
         self.assertEqual(requests[0][1]["generationConfig"].get("responseMimeType"), "application/json")
         self.assertIn("gemini-3.5-flash-lite:", requests[1][0])
         self.assertIsNone(requests[1][1]["generationConfig"].get("responseMimeType"))
-        # 2nd message: router (Flash-Lite JSON) + complex task answer (Flash plain text)
-        self.assertIn("gemini-3.5-flash-lite:", requests[2][0])
+        # 2nd message: router (3.1 Flash-Lite JSON) + complex task answer (Flash plain text)
+        self.assertIn("gemini-3.1-flash-lite:", requests[2][0])
         self.assertIn("gemini-3.8-flash:", requests[3][0])
         self.assertEqual(requests[3][1]["generationConfig"]["thinkingConfig"], {"thinkingLevel": "low"})
 
