@@ -232,7 +232,7 @@
   transform: translateY(-2px);
 }
 .navDropdown[open] summary > span {
-  transform: rotate(180deg);
+  transform: translateY(2px) rotate(180deg);
 }
 .navDropdown > div {
   position: absolute;
@@ -2235,3 +2235,134 @@
     line-height: 1.3;
   }
 }
+
+/* Brands & Ads Portal responsive layout */
+.brandsHeaderInner {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.brandsBrandGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.brandsBrandLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.brandsBadge {
+  background: #dcf2e4;
+  border: 1px solid #a3d4b5;
+  color: #195936;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 30px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.brandsHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.brandsBackLink {
+  color: #4f6256;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.brandsMain {
+  padding-top: 18px;
+  padding-bottom: 24px;
+}
+.brandsMainGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+  margin-top: 14px;
+  align-items: start;
+}
+.brandsCard {
+  border: 1px solid #cce0d4;
+  border-radius: 18px;
+  background: linear-gradient(150deg, #fffefa, #f5faf7);
+  box-shadow: inset 0 1px 2px #fff, 0 4px 14px rgba(24, 90, 57, 0.06);
+  padding: 18px 20px;
+}
+.brandsFormRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.brandsRateRow {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #cce3d4;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+}
+
+@media (max-width: 711px) {
+  .brandsHeaderInner {
+    height: 64px;
+    gap: 10px;
+  }
+  .brandsBrandLink {
+    font-size: 16px;
+    gap: 8px;
+  }
+  .brandsBadge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+  .brandsBackLink {
+    display: none;
+  }
+  .brandsHeaderActions {
+    gap: 8px;
+  }
+  .brandsHeaderActions .smallButton {
+    height: 34px;
+    min-width: 0;
+    padding-inline: 12px;
+    font-size: 12px;
+    gap: 6px;
+  }
+  .brandsMain {
+    padding-top: 28px;
+    padding-bottom: 56px;
+  }
+  .brandsMainGrid {
+    gap: 20px;
+    margin-top: 24px;
+  }
+  .brandsCard {
+    padding: 20px 18px;
+    border-radius: 20px;
+  }
+  .brandsFormRow {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 390px) {
+  .brandsBadge {
+    display: none;
+  }
+}
+

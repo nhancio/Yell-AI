@@ -44,6 +44,26 @@ class PublicEntryTests(unittest.TestCase):
         self.assertIn("/app?plan=business", paths)
         self.assertNotIn("checkout.razorpay.com/v1/checkout.js", self.html)
 
+    def test_brands_portal_is_mobile_responsive_and_unlocked_for_inquiries(self):
+        brands_html = (Path(__file__).resolve().parents[1] / "out/brands.html").read_text()
+        css = "\n".join(
+            p.read_text()
+            for p in (Path(__file__).resolve().parents[1] / "out/_next/static/css").glob("*.css")
+        )
+        self.assertNotIn('<button type="submit" disabled=""', brands_html)
+        self.assertIn("brandsHeaderInner", brands_html)
+        self.assertIn("brandsMainGrid", brands_html)
+        self.assertIn("brandsFormRow", brands_html)
+        self.assertIn("Admin API Key", brands_html)
+        self.assertIn("brandsHeaderInner", css)
+
+    def test_app_entry_html_does_not_render_onboarding_progress_bar_on_initial_load(self):
+        app_html = (Path(__file__).resolve().parents[1] / "out/app.html").read_text()
+        self.assertNotIn('aria-label="Onboarding"', app_html)
+        self.assertNotIn("Making room for you", app_html)
+
+
+
 
 if __name__ == "__main__":
     unittest.main()

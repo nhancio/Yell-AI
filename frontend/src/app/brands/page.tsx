@@ -37,6 +37,76 @@ interface Metrics {
   total_spent_inr: number;
 }
 
+const SHOWCASE_CAMPAIGNS: Campaign[] = [
+  {
+    id: 1,
+    brand_name: "Skyscanner & MakeMyTrip",
+    category: "travel",
+    target_intent: "railway/flight",
+    headline: "Flat ₹1,200 OFF on domestic flights & boutique stays when you book via UPI!",
+    cta_text: "Use code ASTRAFLY",
+    cta_url: "https://www.makemytrip.com/?utm_source=astra_ai_whatsapp",
+    cpm_inr: 320,
+    budget_inr: 5000,
+    spent_inr: 1280,
+    remaining_inr: 3720,
+    impressions: 4000,
+    clicks: 168,
+    ctr_percent: 4.2,
+    is_active: true,
+  },
+  {
+    id: 2,
+    brand_name: "Swiggy Instamart / Bolt",
+    category: "food",
+    target_intent: "food_order",
+    headline: "Craving midnight chai or snacks? Get ₹100 OFF + Free 10-min delivery on orders above ₹299.",
+    cta_text: "Claim on Swiggy",
+    cta_url: "https://www.swiggy.com/?utm_source=astra_ai_whatsapp",
+    cpm_inr: 280,
+    budget_inr: 5000,
+    spent_inr: 1540,
+    remaining_inr: 3460,
+    impressions: 5500,
+    clicks: 242,
+    ctr_percent: 4.4,
+    is_active: true,
+  },
+  {
+    id: 3,
+    brand_name: "CRED / Fi Money",
+    category: "finance",
+    target_intent: "tax/upi",
+    headline: "Pay your credit card bills or track UPI spends & earn guaranteed cashback up to ₹250.",
+    cta_text: "Check Reward on CRED",
+    cta_url: "https://cred.club/?utm_source=astra_ai_whatsapp",
+    cpm_inr: 450,
+    budget_inr: 5000,
+    spent_inr: 1350,
+    remaining_inr: 3650,
+    impressions: 3000,
+    clicks: 114,
+    ctr_percent: 3.8,
+    is_active: true,
+  },
+];
+
+function computeMetrics(list: Campaign[]): Metrics {
+  const totalImpressions = list.reduce((acc, c) => acc + c.impressions, 0);
+  const totalClicks = list.reduce((acc, c) => acc + c.clicks, 0);
+  const totalBudget = list.reduce((acc, c) => acc + (c.budget_inr || 0), 0);
+  const totalSpent = list.reduce((acc, c) => acc + (c.spent_inr || 0), 0);
+  return {
+    total_campaigns: list.length,
+    active_campaigns: list.filter((c) => c.is_active).length,
+    total_impressions: totalImpressions,
+    total_clicks: totalClicks,
+    avg_ctr_percent: totalImpressions > 0 ? Number(((totalClicks / totalImpressions) * 100).toFixed(2)) : 0,
+    total_budget_inr: totalBudget,
+    total_spent_inr: totalSpent,
+  };
+}
+
 const CATEGORIES = [
   { id: "travel", name: "Travel & Hospitality", icon: "✈️", desc: "Flights, hotels & getaways" },
   { id: "food", name: "Dining & Quick-Commerce", icon: "🍔", desc: "Food delivery, cafes & essentials" },
@@ -53,12 +123,6 @@ const INTENTS = [
   { id: "tax/upi", label: "💸 FinTech, Payments & Wealth", category: "finance" },
   { id: "all", label: "🌐 Run Across All Daily Conversational Turns", category: "general" },
 ];
-
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
 
 function AstraMark() {
   return (
@@ -81,38 +145,38 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   background: "#ffffff",
   border: "1px solid #cce0d4",
-  borderRadius: "14px",
-  padding: "11px 15px",
+  borderRadius: "10px",
+  padding: "7px 11px",
   color: "#22221f",
-  fontSize: "14px",
+  fontSize: "13px",
   outline: "none",
   boxShadow: "inset 0 1px 2px rgba(27, 77, 49, 0.04)",
 };
 
 const labelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 600,
   textTransform: "uppercase",
   letterSpacing: "0.05em",
   color: "#55685c",
-  marginBottom: "7px",
+  marginBottom: "4px",
 };
 
 const cardStyle: React.CSSProperties = {
   border: "1px solid #cce0d4",
-  borderRadius: "24px",
+  borderRadius: "14px",
   background: "linear-gradient(150deg, #fffefa, #f5faf7)",
   boxShadow: "inset 0 1px 2px #fff, 0 4px 14px rgba(24, 90, 57, 0.06)",
 };
 
 export default function BrandsPortal() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [campaigns, setCampaigns] = useState<Campaign[]>(SHOWCASE_CAMPAIGNS);
+  const [metrics, setMetrics] = useState<Metrics | null>(() => computeMetrics(SHOWCASE_CAMPAIGNS));
+  const [loading, setLoading] = useState(false);
   const [campaignAccess, setCampaignAccess] = useState(false);
+  const [adminKey, setAdminKey] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [payingId, setPayingId] = useState<number | null>(null);
 
   // Form State
   const [brandName, setBrandName] = useState("");
@@ -123,47 +187,68 @@ export default function BrandsPortal() {
   );
   const [ctaText, setCtaText] = useState("Claim Offer");
   const [ctaUrl, setCtaUrl] = useState("https://tryastra.web.app/?utm_source=astra_ai");
-  const [cpmInr, setCpmInr] = useState(300);
+  const [cpmInr] = useState(300);
   const [budgetInr, setBudgetInr] = useState(5000);
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
 
   const [notification, setNotification] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-  const fetchCampaigns = async () => {
+  const fetchCampaigns = async (keyToUse?: string, explicitAttempt = false) => {
+    const activeKey = (keyToUse ?? adminKey).trim();
+    if (!activeKey) {
+      setCampaignAccess(false);
+      setCampaigns(SHOWCASE_CAMPAIGNS);
+      setMetrics(computeMetrics(SHOWCASE_CAMPAIGNS));
+      if (explicitAttempt) {
+        setNotification({
+          type: "error",
+          msg: "Enter your Admin API Key to unlock live campaign management, or submit the form above to request a placement.",
+        });
+      }
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await fetch(`${BACKEND_URL}/api/brands/campaigns`);
+      const res = await fetch(`${BACKEND_URL}/api/brands/campaigns`, {
+        headers: { "X-Admin-Key": activeKey },
+      });
       if (!res.ok) {
         setCampaignAccess(false);
-        setCampaigns([]);
-        setMetrics(null);
-        throw new Error(res.status === 401 || res.status === 403
-          ? "Campaign management requires authorized access. Contact nithindidigam@nhancio.com to set up a campaign."
-          : "Couldn’t load campaigns. Please try again.");
+        sessionStorage.removeItem("astra_admin_key");
+        throw new Error(
+          res.status === 401 || res.status === 403
+            ? "Invalid Admin API Key. Contact nithindidigam@nhancio.com for authorized campaign management."
+            : "Couldn’t load live campaigns. Please try again."
+        );
       }
-      if (res.ok) {
-        const data = await res.json();
-        setCampaigns(data.campaigns || []);
-        setMetrics(data.metrics || null);
-        setCampaignAccess(true);
+      const data = await res.json();
+      setCampaigns(data.campaigns || []);
+      setMetrics(data.metrics || null);
+      setCampaignAccess(true);
+      sessionStorage.setItem("astra_admin_key", activeKey);
+      if (explicitAttempt) {
+        setNotification({ type: "success", msg: "✅ Admin access unlocked. Live campaign controls are active." });
       }
     } catch (e) {
-      setNotification({ type: "error", msg: e instanceof Error ? e.message : "Couldn’t load campaigns. Please try again." });
+      if (explicitAttempt) {
+        setNotification({
+          type: "error",
+          msg: e instanceof Error ? e.message : "Couldn’t load campaigns. Please try again.",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCampaigns();
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
+    const savedKey = typeof window !== "undefined" ? sessionStorage.getItem("astra_admin_key") || "" : "";
+    if (savedKey) {
+      setAdminKey(savedKey);
+      fetchCampaigns(savedKey, false);
+    }
   }, []);
 
   const estimatedImpressions = Math.round((budgetInr / cpmInr) * 1000);
@@ -175,11 +260,37 @@ export default function BrandsPortal() {
       return;
     }
 
+    if (!campaignAccess || !adminKey.trim()) {
+      const subject = encodeURIComponent(`Astra Sponsored Placement: ${brandName} (₹${budgetInr.toLocaleString("en-IN")})`);
+      const body = encodeURIComponent(
+        [
+          `Brand / Advertiser: ${brandName}`,
+          `Category: ${category}`,
+          `Target Intent: ${targetIntent}`,
+          `Headline: ${headline}`,
+          `CTA Button: ${ctaText}`,
+          `Destination URL: ${ctaUrl}`,
+          `Planned Budget: ₹${budgetInr.toLocaleString("en-IN")} at ₹${cpmInr} CPM (~${estimatedImpressions.toLocaleString("en-IN")} impressions)`,
+          `Contact Email: ${contactEmail || "Not provided"}`,
+          `WhatsApp Phone: ${contactPhone || "Not provided"}`,
+        ].join("\n")
+      );
+      window.location.href = `mailto:nithindidigam@nhancio.com?subject=${subject}&body=${body}`;
+      setNotification({
+        type: "success",
+        msg: `🎉 Campaign brief prepared for "${brandName}"! Send the pre-filled email to nithindidigam@nhancio.com to activate your ₹${budgetInr.toLocaleString("en-IN")} placement.`,
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
       const res = await fetch(`${BACKEND_URL}/api/brands/campaigns`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Key": adminKey.trim(),
+        },
         body: JSON.stringify({
           brand_name: brandName,
           category,
@@ -206,7 +317,7 @@ export default function BrandsPortal() {
       });
 
       setBrandName("");
-      fetchCampaigns();
+      fetchCampaigns(adminKey, false);
     } catch (err: any) {
       setNotification({ type: "error", msg: err.message || "Error creating campaign" });
     } finally {
@@ -215,77 +326,23 @@ export default function BrandsPortal() {
   };
 
   const handleToggle = async (id: number) => {
+    if (!campaignAccess || !adminKey.trim()) {
+      setNotification({
+        type: "error",
+        msg: "Unlock with your Admin API Key below to pause or resume live campaigns.",
+      });
+      return;
+    }
     try {
-      const res = await fetch(`${BACKEND_URL}/api/brands/campaigns/${id}/toggle`, { method: "PATCH" });
+      const res = await fetch(`${BACKEND_URL}/api/brands/campaigns/${id}/toggle`, {
+        method: "PATCH",
+        headers: { "X-Admin-Key": adminKey.trim() },
+      });
       if (res.ok) {
-        fetchCampaigns();
+        fetchCampaigns(adminKey, false);
       }
     } catch (e) {
       console.error("Toggle failed:", e);
-    }
-  };
-
-  const handleTopUp = async (camp: Campaign, amountInr: number = 5000) => {
-    try {
-      setPayingId(camp.id);
-      const orderRes = await fetch(`${BACKEND_URL}/api/brands/campaigns/${camp.id}/prepay`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount_inr: amountInr }),
-      });
-
-      if (!orderRes.ok) {
-        throw new Error("Could not initiate Razorpay order");
-      }
-
-      const orderData = await orderRes.json();
-
-      if (!window.Razorpay) {
-        alert("Razorpay SDK not loaded. Please check your internet connection.");
-        return;
-      }
-
-      const options = {
-        key: orderData.key_id,
-        amount: orderData.amount_paise,
-        currency: "INR",
-        name: "Astra AI Ads Platform",
-        description: `Top-Up Ad Wallet: ${camp.brand_name} (₹${amountInr})`,
-        order_id: orderData.order_id,
-        handler: async (response: any) => {
-          const verifyRes = await fetch(`${BACKEND_URL}/api/brands/campaigns/${camp.id}/verify-payment`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              amount_inr: amountInr,
-            }),
-          });
-          if (verifyRes.ok) {
-            setNotification({
-              type: "success",
-              msg: `✅ ₹${amountInr.toLocaleString("en-IN")} added to ${camp.brand_name} wallet! Campaign is live.`,
-            });
-            fetchCampaigns();
-          } else {
-            alert("Payment verification failed");
-          }
-        },
-        prefill: {
-          email: camp.contact_email || "advertiser@nhancio.com",
-          contact: camp.contact_phone || "",
-        },
-        theme: { color: "#1b7a4e" },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (err: any) {
-      alert(err.message || "Top-up failed");
-    } finally {
-      setPayingId(null);
     }
   };
 
@@ -302,48 +359,20 @@ export default function BrandsPortal() {
           borderBottom: "1px solid #d8e4dc",
         }}
       >
-        <div
-          className={styles.container}
-          style={{
-            height: "76px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "20px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <Link
-              href="/"
-              style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 600, fontSize: "18px" }}
-            >
+        <div className={`${styles.container} ${styles.brandsHeaderInner}`}>
+          <div className={styles.brandsBrandGroup}>
+            <Link href="/" className={styles.brandsBrandLink}>
               <AstraMark />
               <span>Astra AI</span>
             </Link>
-            <span
-              style={{
-                background: "#dcf2e4",
-                border: "1px solid #a3d4b5",
-                color: "#195936",
-                fontSize: "11px",
-                fontWeight: 600,
-                padding: "4px 11px",
-                borderRadius: "30px",
-                letterSpacing: "0.03em",
-              }}
-            >
-              Brands & Ads Portal
-            </span>
+            <span className={styles.brandsBadge}>Brands & Ads Portal</span>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "18px", fontSize: "14px" }}>
-            <Link href="/" style={{ color: "#4f6256", fontWeight: 500 }}>
+          <div className={styles.brandsHeaderActions}>
+            <Link href="/" className={styles.brandsBackLink}>
               ← Back to Home
             </Link>
-            <a
-              href="/app"
-              className={`${styles.button} ${styles.darkButton} ${styles.smallButton}`}
-            >
+            <a href="/app" className={`${styles.button} ${styles.darkButton} ${styles.smallButton}`}>
               💬 Sign in to try Astra
             </a>
           </div>
@@ -351,120 +380,85 @@ export default function BrandsPortal() {
       </header>
 
       {/* Main Content */}
-      <main className={styles.container} style={{ paddingTop: "52px", paddingBottom: "90px" }}>
-        {/* Hero Headline */}
+      <main className={`${styles.container} ${styles.brandsMain}`}>
+        {/* Compact Hero + Inline KPI Bar */}
         <div
           style={{
             display: "flex",
             flexWrap: "wrap",
-            alignItems: "flex-end",
+            alignItems: "center",
             justifyContent: "space-between",
-            gap: "20px",
+            gap: "12px",
           }}
         >
-          <div>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "#e8f4ec",
-                border: "1px solid #c5dfd0",
-                color: "#1f5c3a",
-                borderRadius: "30px",
-                padding: "5px 14px",
-                fontSize: "12px",
-                fontWeight: 500,
-                marginBottom: "16px",
-              }}
-            >
+          <div style={{ flex: "1 1 360px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <h1 style={{ fontSize: "clamp(24px, 3vw, 32px)", lineHeight: 1.1, color: "#15261d" }}>
+                Monetize Bharat on <span style={{ color: "#1b7a4e" }}>WhatsApp</span>
+              </h1>
               <span
                 style={{
-                  width: "7px",
-                  height: "7px",
-                  borderRadius: "50%",
-                  background: "#1b7a4e",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "#e8f4ec",
+                  border: "1px solid #c5dfd0",
+                  color: "#1f5c3a",
+                  borderRadius: "30px",
+                  padding: "3px 10px",
+                  fontSize: "11px",
+                  fontWeight: 500,
                 }}
-              />
-              Contextual Intent Matching Engine Active
-            </span>
-            <h1 style={{ fontSize: "clamp(34px, 4.5vw, 48px)", lineHeight: 1.08, color: "#15261d" }}>
-              Monetize Bharat on <span style={{ color: "#1b7a4e" }}>WhatsApp</span>
-            </h1>
-            <p style={{ color: "#5e6d63", fontSize: "16px", maxWidth: "640px", marginTop: "14px" }}>
-              Reach high-intent Indian consumers right inside their everyday WhatsApp workflows. Zero banner
-              blindness, 100% contextual intent matching, and transparent pay-as-you-go CPM.
+              >
+                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1b7a4e" }} />
+                Intent Engine Active
+              </span>
+            </div>
+            <p style={{ color: "#5e6d63", fontSize: "13px", marginTop: "4px" }}>
+              High-intent native WhatsApp placements • Zero banner blindness • Pay-as-you-go CPM
             </p>
           </div>
-        </div>
 
-        {/* Global Performance Metrics */}
-        {metrics && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(185px, 1fr))",
-              gap: "16px",
-              marginTop: "36px",
-            }}
-          >
-            {[
-              {
-                label: "Total Delivered",
-                value: metrics.total_impressions.toLocaleString("en-IN"),
-                sub: "WhatsApp Impressions",
-              },
-              {
-                label: "Direct Taps",
-                value: metrics.total_clicks.toLocaleString("en-IN"),
-                sub: "Verified User Clicks",
-              },
-              {
-                label: "Average CTR",
-                value: `${metrics.avg_ctr_percent}%`,
-                sub: "vs 0.8% Display Avg",
-                highlight: true,
-              },
-              {
-                label: "Live Campaigns",
-                value: `${metrics.active_campaigns} / ${metrics.total_campaigns}`,
-                sub: "Active Brand Sponsors",
-              },
-              {
-                label: "Total Ad Spend",
-                value: `₹${metrics.total_spent_inr.toLocaleString("en-IN")}`,
-                sub: `₹${metrics.total_budget_inr.toLocaleString("en-IN")} Total Funded`,
-              },
-            ].map((m) => (
-              <div key={m.label} style={{ ...cardStyle, padding: "20px 22px", borderRadius: "20px" }}>
-                <div style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#687a6e" }}>
-                  {m.label}
-                </div>
+          {metrics && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {[
+                { label: "Delivered", value: metrics.total_impressions.toLocaleString("en-IN") },
+                { label: "Direct Taps", value: metrics.total_clicks.toLocaleString("en-IN") },
+                { label: "Avg CTR", value: `${metrics.avg_ctr_percent}%`, highlight: true },
+                { label: "Live", value: `${metrics.active_campaigns}/${metrics.total_campaigns}` },
+                { label: "Ad Spend", value: `₹${metrics.total_spent_inr.toLocaleString("en-IN")}` },
+              ].map((m) => (
                 <div
+                  key={m.label}
                   style={{
-                    fontSize: "26px",
-                    fontWeight: 600,
-                    color: m.highlight ? "#1b7a4e" : "#18241d",
-                    marginTop: "6px",
-                    letterSpacing: "-0.03em",
+                    ...cardStyle,
+                    padding: "7px 12px",
+                    borderRadius: "12px",
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: "6px",
                   }}
                 >
-                  {m.value}
+                  <span style={{ fontSize: "15px", fontWeight: 700, color: m.highlight ? "#1b7a4e" : "#18241d" }}>
+                    {m.value}
+                  </span>
+                  <span style={{ fontSize: "10px", fontWeight: 600, textTransform: "uppercase", color: "#687a6e" }}>
+                    {m.label}
+                  </span>
                 </div>
-                <div style={{ fontSize: "12px", color: "#1b7a4e", marginTop: "3px" }}>{m.sub}</div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Notifications */}
         {notification && (
           <div
             style={{
-              marginTop: "24px",
-              padding: "16px 20px",
-              borderRadius: "16px",
-              fontSize: "14px",
+              marginTop: "10px",
+              padding: "10px 14px",
+              borderRadius: "12px",
+              fontSize: "13px",
               border: notification.type === "success" ? "1px solid #98c7ab" : "1px solid #e0b4b4",
               background: notification.type === "success" ? "#eaf6ee" : "#fdf2f2",
               color: notification.type === "success" ? "#175234" : "#8c2d2d",
@@ -474,44 +468,39 @@ export default function BrandsPortal() {
           </div>
         )}
 
-        {/* Main Grid: Campaign Builder + WhatsApp Live Preview */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
-            gap: "28px",
-            marginTop: "40px",
-            alignItems: "start",
-          }}
-        >
+        {/* Main Grid: Campaign Builder (Left) + Preview & Campaigns Table (Right) */}
+        <div className={styles.brandsMainGrid}>
           {/* Left Column: Campaign Builder Form */}
-          <div style={{ ...cardStyle, padding: "32px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px" }}>
+          <div className={styles.brandsCard}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
               <span
                 style={{
-                  width: "5px",
-                  height: "24px",
+                  width: "4px",
+                  height: "18px",
                   borderRadius: "4px",
                   background: "#1b7a4e",
+                  flexShrink: 0,
                 }}
               />
-              <h2 style={{ fontSize: "26px", color: "#18241d" }}>Launch New Sponsored Placement</h2>
+              <h2 style={{ fontSize: "19px", color: "#18241d" }}>
+                Launch New Sponsored Placement
+              </h2>
             </div>
 
-            <form onSubmit={handleCreateCampaign} style={{ display: "grid", gap: "18px" }}>
-              <div>
-                <label style={labelStyle}>Brand / Advertiser Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Swiggy, Ixigo, CRED, Sarvam AI, Zepto"
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
+            <form onSubmit={handleCreateCampaign} style={{ display: "grid", gap: "10px" }}>
+              <div className={styles.brandsFormRow}>
+                <div>
+                  <label style={labelStyle}>Brand / Advertiser Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Swiggy, Ixigo, CRED, Zepto"
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>Industry Category *</label>
                   <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
@@ -522,7 +511,9 @@ export default function BrandsPortal() {
                     ))}
                   </select>
                 </div>
+              </div>
 
+              <div className={styles.brandsFormRow}>
                 <div>
                   <label style={labelStyle}>Target Intent Trigger *</label>
                   <select value={targetIntent} onChange={(e) => setTargetIntent(e.target.value)} style={inputStyle}>
@@ -533,21 +524,7 @@ export default function BrandsPortal() {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              <div>
-                <label style={labelStyle}>Offer Headline (1–2 sentences) *</label>
-                <textarea
-                  required
-                  rows={2}
-                  value={headline}
-                  onChange={(e) => setHeadline(e.target.value)}
-                  placeholder="Write a clear, compelling offer (e.g. Flat ₹100 OFF on orders above ₹299 + 10-min free delivery)."
-                  style={{ ...inputStyle, resize: "vertical" }}
-                />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                 <div>
                   <label style={labelStyle}>CTA Button Text *</label>
                   <input
@@ -555,10 +532,25 @@ export default function BrandsPortal() {
                     required
                     value={ctaText}
                     onChange={(e) => setCtaText(e.target.value)}
-                    placeholder="e.g. Claim on Swiggy, Book on Ixigo"
+                    placeholder="e.g. Claim Offer"
                     style={inputStyle}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Offer Headline (1–2 sentences) *</label>
+                <input
+                  type="text"
+                  required
+                  value={headline}
+                  onChange={(e) => setHeadline(e.target.value)}
+                  placeholder="Write a clear, compelling offer (e.g. Flat ₹100 OFF + 10-min free delivery)."
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className={styles.brandsFormRow}>
                 <div>
                   <label style={labelStyle}>Destination Landing URL *</label>
                   <input
@@ -570,6 +562,25 @@ export default function BrandsPortal() {
                     style={inputStyle}
                   />
                 </div>
+                <div>
+                  <label style={labelStyle}>Advertiser Email & WhatsApp</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                    <input
+                      type="email"
+                      placeholder="ads@brand.com"
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      style={inputStyle}
+                    />
+                    <input
+                      type="tel"
+                      placeholder="+91 98765..."
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Budget & CPM Slider */}
@@ -577,15 +588,15 @@ export default function BrandsPortal() {
                 style={{
                   background: "#eef7f1",
                   border: "1px solid #bddbc8",
-                  borderRadius: "18px",
-                  padding: "18px 20px",
+                  borderRadius: "12px",
+                  padding: "10px 14px",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "13px", fontWeight: 600, color: "#223b2c" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#223b2c" }}>
                     Prepaid Ad Budget (Wallet)
                   </span>
-                  <span style={{ fontSize: "20px", fontWeight: 700, color: "#1b7a4e" }}>
+                  <span style={{ fontSize: "16px", fontWeight: 700, color: "#1b7a4e" }}>
                     ₹{budgetInr.toLocaleString("en-IN")}
                   </span>
                 </div>
@@ -596,356 +607,258 @@ export default function BrandsPortal() {
                   step={1000}
                   value={budgetInr}
                   onChange={(e) => setBudgetInr(Number(e.target.value))}
-                  style={{ width: "100%", accentColor: "#1b7a4e", margin: "12px 0 6px", cursor: "pointer" }}
+                  style={{ width: "100%", accentColor: "#1b7a4e", margin: "6px 0 2px", cursor: "pointer" }}
                 />
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#5e7366" }}>
-                  <span>₹1,000 (Starter)</span>
-                  <span>₹10,000 (Growth)</span>
-                  <span>₹50,000 (Scale)</span>
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "14px",
-                    paddingTop: "12px",
-                    borderTop: "1px solid #cce3d4",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "12px",
-                  }}
-                >
+                <div className={styles.brandsRateRow}>
                   <span style={{ color: "#4f6658" }}>
-                    Rate: <strong style={{ color: "#18241d" }}>₹{cpmInr} CPM</strong> (₹0.30 / view)
+                    Rate: <strong style={{ color: "#18241d" }}>₹{cpmInr} CPM</strong> (₹0.30/view)
                   </span>
                   <span style={{ color: "#1b7a4e", fontWeight: 600 }}>
-                    Est. {estimatedImpressions.toLocaleString("en-IN")} WhatsApp impressions
+                    Est. {estimatedImpressions.toLocaleString("en-IN")} impressions
                   </span>
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-                <div>
-                  <label style={labelStyle}>Advertiser Email</label>
-                  <input
-                    type="email"
-                    placeholder="ads@yourbrand.com"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    style={inputStyle}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>WhatsApp Phone (For Alerts)</label>
-                  <input
-                    type="tel"
-                    placeholder="+91 98765 43210"
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    style={inputStyle}
-                  />
                 </div>
               </div>
 
               <button
                 type="submit"
-                disabled={submitting || !campaignAccess}
+                disabled={submitting}
                 className={`${styles.button} ${styles.darkButton}`}
-                style={{ width: "100%", height: "50px", marginTop: "6px" }}
+                style={{ width: "100%", height: "40px", fontSize: "13px" }}
               >
                 {submitting
                   ? "Creating Campaign..."
-                  : `🚀 Create & Fund Campaign (₹${budgetInr.toLocaleString("en-IN")})`}
+                  : campaignAccess
+                    ? `🚀 Create & Fund Campaign (₹${budgetInr.toLocaleString("en-IN")})`
+                    : `🚀 Request & Launch Placement (₹${budgetInr.toLocaleString("en-IN")})`}
               </button>
             </form>
           </div>
 
-          {/* Right Column: Live WhatsApp Bubble Mockup matching Landing Page Phone */}
-          <div style={{ ...cardStyle, padding: "28px" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "18px",
-              }}
-            >
-              <span style={{ fontSize: "12px", fontWeight: 600, textTransform: "uppercase", color: "#55685c" }}>
-                Live WhatsApp Message Preview
-              </span>
-              <span
+          {/* Right Column: Live WhatsApp Preview + Live Campaigns Table Stacked */}
+          <div style={{ display: "grid", gap: "14px" }}>
+            <div className={styles.brandsCard}>
+              <div
                 style={{
-                  background: "#dcf2e4",
-                  border: "1px solid #a3d4b5",
-                  color: "#195936",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  padding: "3px 10px",
-                  borderRadius: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "8px",
+                  marginBottom: "10px",
                 }}
               >
-                Real Rendering
-              </span>
-            </div>
-
-            {/* Warm Light-Mode WhatsApp Conversation Box matching Landing Page */}
-            <div
-              style={{
-                background: "#fffdfa",
-                border: "1px solid #d5e3da",
-                borderRadius: "20px",
-                padding: "20px",
-                boxShadow: "inset 0 1px 3px rgba(0,0,0,0.03)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "14px",
-              }}
-            >
-              {/* Outgoing User Prompt */}
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <div
+                <span style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", color: "#55685c" }}>
+                  Live WhatsApp Message Preview
+                </span>
+                <span
                   style={{
-                    background: "#23784f",
-                    color: "#ffffff",
-                    fontSize: "13px",
-                    lineHeight: 1.45,
-                    padding: "10px 14px",
-                    borderRadius: "18px 18px 4px 18px",
-                    maxWidth: "85%",
+                    background: "#dcf2e4",
+                    border: "1px solid #a3d4b5",
+                    color: "#195936",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    padding: "2px 8px",
+                    borderRadius: "20px",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  {category === "travel" && "Find the best morning flights to Bengaluru tomorrow and block my calendar"}
-                  {category === "food" && "Order some quick midnight snacks from Blinkit or Swiggy"}
-                  {category === "career" && "Find top funded AI startups in Bengaluru hiring engineers"}
-                  {category === "finance" && "How do I save tax under new tax regime 2026?"}
-                  {(category === "shopping" || category === "general") &&
-                    "Can you help me buy fresh groceries in 10 mins?"}
-                </div>
+                  Real Rendering
+                </span>
               </div>
 
-              {/* Incoming Astra Reply with Sponsored Native Placement */}
-              <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                <div
-                  style={{
-                    background: "#f1f6f3",
-                    border: "1px solid #d8e8de",
-                    color: "#22221f",
-                    fontSize: "13px",
-                    lineHeight: 1.5,
-                    padding: "12px 15px",
-                    borderRadius: "18px 18px 18px 4px",
-                    maxWidth: "94%",
-                  }}
-                >
-                  <p style={{ margin: 0 }}>
-                    Here is the verified information you requested! Everything is confirmed and ready for your action.
-                  </p>
-
+              <div
+                style={{
+                  background: "#fffdfa",
+                  border: "1px solid #d5e3da",
+                  borderRadius: "14px",
+                  padding: "12px 14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   <div
                     style={{
-                      marginTop: "12px",
-                      paddingTop: "10px",
-                      borderTop: "1px solid #cde0d4",
+                      background: "#23784f",
+                      color: "#ffffff",
                       fontSize: "12px",
+                      lineHeight: 1.35,
+                      padding: "7px 11px",
+                      borderRadius: "14px 14px 3px 14px",
+                      maxWidth: "85%",
                     }}
                   >
-                    <div style={{ fontWeight: 700, color: "#1b7a4e", marginBottom: "4px" }}>
-                      ⚡ Sponsored • {brandName || "Your Brand"}
-                    </div>
-                    <p style={{ margin: "0 0 6px", color: "#3b4a40" }}>
-                      {headline || "Your compelling ad headline will appear right here."}
-                    </p>
-                    <div style={{ color: "#155e3b", fontWeight: 600, textDecoration: "underline" }}>
-                      👉 {ctaText || "Claim Offer"}: https://tryastra.web.app/r/101
-                    </div>
+                    {category === "travel" && "Find the best morning flights to Bengaluru tomorrow and block my calendar"}
+                    {category === "food" && "Order some quick midnight snacks from Blinkit or Swiggy"}
+                    {category === "career" && "Find top funded AI startups in Bengaluru hiring engineers"}
+                    {category === "finance" && "How do I save tax under new tax regime 2026?"}
+                    {(category === "shopping" || category === "general") &&
+                      "Can you help me buy fresh groceries in 10 mins?"}
                   </div>
+                </div>
 
-                  <div style={{ fontSize: "10px", color: "#7a8a80", textAlign: "right", marginTop: "6px" }}>
-                    12:45 PM • Read
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <div
+                    style={{
+                      background: "#f1f6f3",
+                      border: "1px solid #d8e8de",
+                      color: "#22221f",
+                      fontSize: "12px",
+                      lineHeight: 1.4,
+                      padding: "9px 12px",
+                      borderRadius: "14px 14px 14px 3px",
+                      maxWidth: "96%",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    <p style={{ margin: 0 }}>
+                      Here is the verified information you requested! Everything is confirmed and ready.
+                    </p>
+
+                    <div
+                      style={{
+                        marginTop: "7px",
+                        paddingTop: "6px",
+                        borderTop: "1px solid #cde0d4",
+                        fontSize: "11.5px",
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, color: "#1b7a4e", marginBottom: "2px" }}>
+                        ⚡ Sponsored • {brandName || "Your Brand"}
+                      </div>
+                      <p style={{ margin: "0 0 3px", color: "#3b4a40" }}>
+                        {headline || "Your compelling ad headline will appear right here."}
+                      </p>
+                      <div style={{ color: "#155e3b", fontWeight: 600, textDecoration: "underline" }}>
+                        👉 {ctaText || "Claim Offer"}: https://tryastra.web.app/r/101
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <ul
-              style={{
-                listStyle: "none",
-                padding: 0,
-                margin: "20px 0 0",
-                display: "grid",
-                gap: "10px",
-                fontSize: "13px",
-                color: "#55685c",
-              }}
-            >
-              <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1b7a4e" }} />
-                Only served to free-tier users after answering their question.
-              </li>
-              <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1b7a4e" }} />
-                Auto-debits wallet on each delivered turn. Pauses automatically when ₹0.
-              </li>
-              <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1b7a4e" }} />
-                Unique tracking link redirects to your landing page & logs verified CTR.
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Live Brand Campaigns & Analytics Table */}
-        <div style={{ ...cardStyle, padding: "32px", marginTop: "40px" }}>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "14px",
-              marginBottom: "24px",
-            }}
-          >
-            <div>
-              <h2 style={{ fontSize: "26px", color: "#18241d" }}>Live Brand Campaigns & Analytics</h2>
-              <p style={{ fontSize: "13px", color: "#687a6e", marginTop: "4px" }}>
-                Monitor real-time impressions, click-through rates, and wallet balances.
-              </p>
-            </div>
-            <button
-              onClick={fetchCampaigns}
-              className={`${styles.button} ${styles.lightButton} ${styles.smallButton}`}
-            >
-              ↻ Refresh Analytics
-            </button>
-          </div>
-
-          {loading ? (
-            <div style={{ padding: "40px 0", textAlign: "center", color: "#687a6e" }}>Loading campaigns...</div>
-          ) : campaigns.length === 0 ? (
-            <div style={{ padding: "40px 0", textAlign: "center", color: "#687a6e" }}>
-              No campaigns found. Create your first campaign above!
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }}>
-                <thead>
-                  <tr
-                    style={{
-                      borderBottom: "1px solid #cce0d4",
-                      color: "#55685c",
-                      fontSize: "11px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
+            {/* Compact Live Brand Campaigns & Analytics Table */}
+            <div className={styles.brandsCard}>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "8px",
+                  marginBottom: "10px",
+                }}
+              >
+                <div>
+                  <h2 style={{ fontSize: "16px", color: "#18241d" }}>
+                    Live Brand Campaigns & Analytics
+                  </h2>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <input
+                    type="password"
+                    aria-label="Admin API Key"
+                    placeholder="Admin API Key"
+                    value={adminKey}
+                    onChange={(e) => setAdminKey(e.target.value)}
+                    style={{ ...inputStyle, width: "130px", height: "30px", padding: "0 9px", fontSize: "11px" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fetchCampaigns(adminKey, true)}
+                    className={`${styles.button} ${styles.lightButton} ${styles.smallButton}`}
+                    style={{ height: "30px", padding: "0 10px", fontSize: "11px" }}
                   >
-                    <th style={{ paddingBottom: "12px" }}>Brand & Category</th>
-                    <th style={{ paddingBottom: "12px" }}>Target Intent</th>
-                    <th style={{ paddingBottom: "12px" }}>Wallet Balance</th>
-                    <th style={{ paddingBottom: "12px" }}>Impressions</th>
-                    <th style={{ paddingBottom: "12px" }}>Clicks</th>
-                    <th style={{ paddingBottom: "12px" }}>CTR</th>
-                    <th style={{ paddingBottom: "12px", textAlign: "center" }}>Status</th>
-                    <th style={{ paddingBottom: "12px", textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {campaigns.map((c) => {
-                    const budget = c.budget_inr || 0;
-                    const spent = c.spent_inr || 0;
-                    const percentSpent = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+                    {campaignAccess ? "↻ Refresh" : "🔑 Unlock"}
+                  </button>
+                </div>
+              </div>
 
-                    return (
-                      <tr key={c.id} style={{ borderBottom: "1px solid #e2eee7" }}>
-                        <td style={{ padding: "16px 8px 16px 0" }}>
-                          <div style={{ fontWeight: 600, color: "#18241d", fontSize: "14px" }}>{c.brand_name}</div>
-                          <div style={{ fontSize: "11px", color: "#687a6e", textTransform: "capitalize" }}>
-                            {c.category} • ₹{c.cpm_inr} CPM
-                          </div>
-                        </td>
-                        <td style={{ padding: "16px 8px" }}>
-                          <span
-                            style={{
-                              background: "#e8f4ec",
-                              border: "1px solid #c5dfd0",
-                              color: "#1f5c3a",
-                              padding: "3px 9px",
-                              borderRadius: "20px",
-                              fontSize: "11px",
-                              fontWeight: 500,
-                            }}
-                          >
-                            {c.target_intent}
-                          </span>
-                        </td>
-                        <td style={{ padding: "16px 8px", minWidth: "150px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "5px" }}>
-                            <span style={{ color: "#223b2c", fontWeight: 600 }}>₹{spent.toLocaleString("en-IN")}</span>
-                            <span style={{ color: "#687a6e" }}>/ ₹{budget.toLocaleString("en-IN")}</span>
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "6px",
-                              background: "#dfeee5",
-                              borderRadius: "99px",
-                              overflow: "hidden",
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: `${percentSpent}%`,
-                                height: "100%",
-                                background: percentSpent >= 90 ? "#c94a4a" : "#1b7a4e",
-                              }}
-                            />
-                          </div>
-                        </td>
-                        <td style={{ padding: "16px 8px", fontWeight: 600, color: "#18241d" }}>
-                          {c.impressions.toLocaleString("en-IN")}
-                        </td>
-                        <td style={{ padding: "16px 8px", fontWeight: 600, color: "#1b7a4e" }}>
-                          {c.clicks.toLocaleString("en-IN")}
-                        </td>
-                        <td style={{ padding: "16px 8px", fontWeight: 700, color: "#155e3b" }}>{c.ctr_percent}%</td>
-                        <td style={{ padding: "16px 8px", textAlign: "center" }}>
-                          <button
-                            onClick={() => handleToggle(c.id)}
-                            style={{
-                              padding: "4px 11px",
-                              borderRadius: "20px",
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              border: c.is_active ? "1px solid #98c7ab" : "1px solid #e0b4b4",
-                              background: c.is_active ? "#dcf2e4" : "#fbeaea",
-                              color: c.is_active ? "#195936" : "#8c2d2d",
-                            }}
-                          >
-                            {c.is_active ? "🟢 LIVE" : "⏸️ PAUSED"}
-                          </button>
-                        </td>
-                        <td style={{ padding: "16px 0 16px 8px", textAlign: "right" }}>
-                          <button
-                            onClick={() => handleTopUp(c, 5000)}
-                            disabled={payingId === c.id}
-                            className={`${styles.button} ${styles.darkButton} ${styles.smallButton}`}
-                            style={{ height: "34px", minWidth: "96px", padding: "0 14px", fontSize: "12px" }}
-                          >
-                            {payingId === c.id ? "..." : "+ ₹5,000"}
-                          </button>
-                        </td>
+              {loading ? (
+                <div style={{ padding: "16px 0", textAlign: "center", color: "#687a6e", fontSize: "12px" }}>
+                  Loading campaigns...
+                </div>
+              ) : campaigns.length === 0 ? (
+                <div style={{ padding: "16px 0", textAlign: "center", color: "#687a6e", fontSize: "12px" }}>
+                  No campaigns found.
+                </div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px", textAlign: "left" }}>
+                    <thead>
+                      <tr
+                        style={{
+                          borderBottom: "1px solid #cce0d4",
+                          color: "#55685c",
+                          fontSize: "10px",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        <th style={{ paddingBottom: "6px" }}>Brand</th>
+                        <th style={{ paddingBottom: "6px" }}>Spend / Budget</th>
+                        <th style={{ paddingBottom: "6px" }}>Views</th>
+                        <th style={{ paddingBottom: "6px" }}>CTR</th>
+                        <th style={{ paddingBottom: "6px", textAlign: "right" }}>Status</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {campaigns.map((c) => {
+                        const budget = c.budget_inr || 0;
+                        const spent = c.spent_inr || 0;
+                        return (
+                          <tr key={c.id} style={{ borderBottom: "1px solid #e2eee7" }}>
+                            <td style={{ padding: "7px 6px 7px 0" }}>
+                              <div style={{ fontWeight: 600, color: "#18241d", fontSize: "12px" }}>{c.brand_name}</div>
+                              <div style={{ fontSize: "10px", color: "#687a6e", textTransform: "capitalize" }}>
+                                {c.category} • ₹{c.cpm_inr} CPM
+                              </div>
+                            </td>
+                            <td style={{ padding: "7px 6px", fontSize: "11px" }}>
+                              <span style={{ color: "#223b2c", fontWeight: 600 }}>₹{spent.toLocaleString("en-IN")}</span>
+                              <span style={{ color: "#687a6e" }}> / ₹{budget.toLocaleString("en-IN")}</span>
+                            </td>
+                            <td style={{ padding: "7px 6px", fontWeight: 600, color: "#18241d" }}>
+                              {c.impressions.toLocaleString("en-IN")}
+                            </td>
+                            <td style={{ padding: "7px 6px", fontWeight: 700, color: "#155e3b" }}>{c.ctr_percent}%</td>
+                            <td style={{ padding: "7px 0 7px 6px", textAlign: "right" }}>
+                              <button
+                                type="button"
+                                onClick={() => handleToggle(c.id)}
+                                style={{
+                                  padding: "2px 8px",
+                                  borderRadius: "20px",
+                                  fontSize: "10px",
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap",
+                                  border: c.is_active ? "1px solid #98c7ab" : "1px solid #e0b4b4",
+                                  background: c.is_active ? "#dcf2e4" : "#fbeaea",
+                                  color: c.is_active ? "#195936" : "#8c2d2d",
+                                }}
+                              >
+                                {c.is_active ? "🟢 LIVE" : "⏸️ PAUSED"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </main>
 
-      {/* Footer matching Landing Page */}
-      <footer className={styles.footer}>
-        <div className={`${styles.container} ${styles.footerMeta}`} style={{ marginTop: 0, paddingBottom: "36px" }}>
+      {/* Compact Footer */}
+      <footer style={{ borderTop: "1px solid #dce8e0", padding: "12px 0" }}>
+        <div
+          className={styles.container}
+          style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#687a6e" }}
+        >
           <span>© {new Date().getFullYear()} Astra AI Ads Engine • Powered by Nhancio</span>
           <span>Real-time Conversational Intent Placement</span>
         </div>
