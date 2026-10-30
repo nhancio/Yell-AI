@@ -1,7 +1,7 @@
-# Yell AI — India's WhatsApp AI Super-Agent (Instinct + Poke + Backdoor Clone)
+# Astra AI — India's WhatsApp AI Super-Agent (Instinct + Poke + Backdoor Clone)
 
 ## Working Directory & Project Context
-- **Repo Path:** `/Users/nithi/Desktop/Claude-Projects/Nhancio-Projects/Yell AI`
+- **Repo Path:** `/Users/nithi/Desktop/Claude-Projects/Nhancio-Projects/Astra AI`
 - **Production URL:** `https://yell.nhancio.com`
 - **Backend URL:** `https://api.yell.nhancio.com` (FastAPI on `:8000` locally)
 - **WhatsApp Provider:** Meta WhatsApp Cloud API, direct (`WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET` in `.env`)
@@ -24,5 +24,5 @@
    - `SponsoredCampaign` model pre-seeded with high-intent Indian brand campaigns (Ixigo Trains, Swiggy Instamart, CRED, Instahyre, Zepto Pass).
    - Appends a 1-line contextual sponsor card to free-tier WhatsApp replies (disabled automatically for Pro users and mental-health crisis/venting messages).
 4. **Next.js Frontend (`frontend/src/app/`):**
-   - `/` (`page.tsx`): Instinct-style India landing page with `+91` phone input, interactive WhatsApp chat showcase, Composio connector grid, ₹0 vs ₹199 UPI pricing, and Yell Ads Network sponsor callout.
+   - `/` (`page.tsx`): Instinct-style India landing page with `+91` phone input, interactive WhatsApp chat showcase, Composio connector grid, ₹0 vs ₹199 UPI pricing, and Astra Ads Network sponsor callout.
    - `/connect` (`connect/page.tsx`): 1-Tap Connect Hub where users link their WhatsApp number to Gmail, Calendar, Notion, GitHub, LinkedIn, Drive, Sheets, and Slack.

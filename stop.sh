@@ -78,7 +78,7 @@ kill_port() {
     fi
   done
   if [ "$killed" = 0 ] && [ -n "$pids" ]; then
-    echo "  port $port in use by non-Yell-AI process(es); left running"
+    echo "  port $port in use by non-Astra-AI process(es); left running"
   fi
 }
 
@@ -112,7 +112,7 @@ stop_docker_services() {
 }
 
 echo "================================================="
-echo "Stopping Yell AI"
+echo "Stopping Astra AI"
 echo "================================================="
 
 echo "Backend / uvicorn (port 8000)..."
@@ -127,7 +127,7 @@ echo "Docker Redis (6380) / Postgres (5433)..."
 stop_docker_services
 
 echo ""
-echo "Done. Yell AI services should be stopped."
+echo "Done. Astra AI services should be stopped."
 if command -v lsof >/dev/null 2>&1; then
   remaining=""
   for port in 3000 8000; do

@@ -3,6 +3,7 @@
 import hashlib
 import hmac
 import logging
+import re
 from typing import Any, Mapping, Optional
 
 import httpx
@@ -110,10 +111,10 @@ class WhatsAppService:
         Without this, anyone could POST a fake message "from" any phone number and act as that user.
         """
         secret = settings.WHATSAPP_APP_SECRET
-        signature = headers.get("x-hub-signature-256", "").removeprefix("sha256=")
-        if not secret or not signature:
+        signature = headers.get("x-hub-signature-256", "")
+        if not secret or not re.fullmatch(r"sha256=[0-9a-f]{64}", signature):
             return False
-        expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
         return hmac.compare_digest(expected, signature)
 
     @staticmethod

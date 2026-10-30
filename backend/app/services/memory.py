@@ -2,16 +2,21 @@
 
 import json
 import logging
+import asyncio
 from typing import Any, Optional
 
 import redis.asyncio as aioredis
 
-from app.config import DEFAULT_REDIS_URL, get_settings
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 SESSION_TTL_SECONDS = 24 * 60 * 60  # 24 hours
+
+
+class MemoryUnavailable(RuntimeError):
+    pass
 
 
 class MemoryService:
@@ -24,23 +29,38 @@ class MemoryService:
     def __init__(self, redis_client: Optional[aioredis.Redis] = None) -> None:
         self._redis = redis_client
         self._local_storage: dict[str, list[str]] = {}
+        self._connect_lock = asyncio.Lock()
 
     async def _get_redis(self) -> Optional[aioredis.Redis]:
-        if settings.REDIS_URL == DEFAULT_REDIS_URL and not self._redis:
-             # Default value often means it's not set in production
-             return None
-             
-        if self._redis is None:
+        if self._redis is not None:
+            return self._redis
+        async with self._connect_lock:
+            if self._redis is not None:
+                return self._redis
+            client = None
             try:
-                self._redis = aioredis.from_url(
+                client = aioredis.from_url(
                     settings.REDIS_URL, decode_responses=True,
-                    socket_connect_timeout=2
+                    socket_connect_timeout=2, socket_timeout=2,
+                    health_check_interval=30,
                 )
-                await self._redis.ping()
+                await client.ping()
+                self._redis = client
             except Exception as exc:
-                logger.warning("Redis connection failed, using local memory: %s", exc)
-                self._redis = None
+                if client is not None:
+                    await client.aclose()
+                logger.warning("Redis connection unavailable (%s)", type(exc).__name__)
+                if not settings.memory_fallback_allowed:
+                    raise MemoryUnavailable("Redis connection is required") from exc
         return self._redis
+
+    async def ping(self) -> bool:
+        """Check the shared Redis connection; a local dictionary is never ready."""
+        try:
+            client = await self._get_redis()
+            return client is not None and bool(await client.ping())
+        except Exception:
+            return False
 
     def _key(self, phone_number: str) -> str:
         return f"yellai:conv:{phone_number}"
@@ -60,7 +80,9 @@ class MemoryService:
             raw_messages = self._local_storage.get(phone_number, [])[-limit:]
             return [json.loads(m) for m in raw_messages]
         except Exception as exc:
-            logger.error("Memory get_conversation_history error: %s", exc)
+            logger.error("Memory read failed (%s)", type(exc).__name__)
+            if not settings.memory_fallback_allowed:
+                raise MemoryUnavailable("Conversation memory is unavailable") from exc
             return []
 
     async def add_message(
@@ -98,7 +120,9 @@ class MemoryService:
             self._local_storage[phone_number].append(json_entry)
             self._local_storage[phone_number] = self._local_storage[phone_number][-50:]
         except Exception as exc:
-            logger.error("Memory add_message error: %s", exc)
+            logger.error("Memory write failed (%s)", type(exc).__name__)
+            if not settings.memory_fallback_allowed:
+                raise MemoryUnavailable("Conversation memory is unavailable") from exc
 
     async def clear_history(self, phone_number: str) -> None:
         """Delete the entire conversation history for a user."""
@@ -110,9 +134,15 @@ class MemoryService:
             if phone_number in self._local_storage:
                 del self._local_storage[phone_number]
         except Exception as exc:
-            logger.error("Memory clear_history error: %s", exc)
+            logger.error("Memory clear failed (%s)", type(exc).__name__)
+            if not settings.memory_fallback_allowed:
+                raise MemoryUnavailable("Conversation memory is unavailable") from exc
 
     async def close(self) -> None:
         """Close the Redis connection."""
-        if self._redis:
-            await self._redis.close()
+        if self._redis is not None:
+            await self._redis.aclose()
+            self._redis = None
+
+
+memory_service = MemoryService()

@@ -1,4 +1,4 @@
-// Ways to reach Yell. Leave a value empty to show the channel as "Coming soon".
+// Ways to reach Astra. Leave a value empty to show the channel as "Coming soon".
 export const CHANNELS = {
   whatsapp: process.env.NEXT_PUBLIC_YELL_WHATSAPP || "12057820175", // digits only, with country code
 };
@@ -10,4 +10,4 @@ export function formatPhone(digits: string): string {
   return `+${digits}`;
 }
 
-export const GREETING = "Hi Yell!";
+export const GREETING = "Hi Astra!";

@@ -12,48 +12,17 @@ import {
 import { auth } from "@/lib/firebase";
 import ContactChannels from "@/components/ContactChannels";
 import { CHANNELS, GREETING } from "@/lib/channels";
+import { accountApi as api, type Account as Me, type Setup, type SetupPatch } from "@/lib/account";
+import Onboarding, { SetupFrame } from "@/components/onboarding/Onboarding";
+import setupStyles from "@/components/onboarding/onboarding.module.css";
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 const LANDING_URL = "https://yell.nhancio.com";
-
-interface Connection {
-  slug: string;
-  name: string;
-  icon: string;
-  description: string;
-  category: string;
-  status: string;
-  configured: boolean;
-}
-
-interface Me {
-  phone_number: string;
-  name: string | null;
-  member_since: string | null;
-  plan: { is_premium: boolean; name: string; expires_at: string | null; price_inr: number };
-  usage: { used_today: number; daily_limit: number };
-  whatsapp_number: string;
-  connections: Connection[];
-}
-
-async function api<T>(user: User, path: string, init: RequestInit = {}): Promise<T> {
-  const token = await user.getIdToken();
-  const res = await fetch(`${API}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, ...(init.headers || {}) },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `Request failed (${res.status})`);
-  }
-  return res.json();
-}
 
 function Logo() {
   return (
     <a href={LANDING_URL} className="flex items-center gap-2.5">
       <div className="h-8 w-8 rounded-lg bg-[#25D366] text-black font-black flex items-center justify-center">Y</div>
-      <span className="font-bold text-lg text-white">Yell AI</span>
+      <span className="font-bold text-lg text-white">Astra AI</span>
     </a>
   );
 }
@@ -66,6 +35,7 @@ function Login() {
   const [error, setError] = useState<string | null>(null);
   const confirmation = useRef<ConfirmationResult | null>(null);
   const verifier = useRef<RecaptchaVerifier | null>(null);
+  useEffect(() => () => { verifier.current?.clear(); verifier.current = null; }, []);
 
   const digits = phone.replace(/\D/g, "");
   const e164 = digits.length === 10 ? `+91${digits}` : digits.startsWith("91") && digits.length === 12 ? `+${digits}` : "";
@@ -104,67 +74,30 @@ function Login() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col">
-      <header className="max-w-5xl w-full mx-auto px-4 py-5"><Logo /></header>
-      <main className="flex-1 flex items-center justify-center px-4 pb-16">
-        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900/80 p-8 shadow-2xl">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-white">
-            {step === "phone" ? "Link your WhatsApp number" : "Enter the OTP"}
-          </h1>
-          <p className="text-slate-400 text-sm mt-2">
-            {step === "phone"
-              ? "Use the same number you chat with Yell AI on WhatsApp. We'll text you a 6-digit code."
-              : `We sent a 6-digit code to ${e164}.`}
-          </p>
-
-          {step === "phone" ? (
-            <form onSubmit={sendOtp} className="mt-6 space-y-4">
-              <div className="flex items-center bg-black/60 border border-white/15 rounded-xl px-4 py-3 focus-within:border-emerald-400/60">
-                <span className="text-slate-400 font-semibold text-sm mr-2 whitespace-nowrap shrink-0">🇮🇳 +91</span>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  autoFocus
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="98765 43210"
-                  maxLength={14}
-                  className="bg-transparent text-white placeholder-slate-500 focus:outline-none w-full font-medium tracking-wide"
-                />
-              </div>
-              <button disabled={busy} className="w-full py-3 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] disabled:opacity-60 text-black font-bold transition">
-                {busy ? "Sending OTP..." : "Send OTP →"}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={verifyOtp} className="mt-6 space-y-4">
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                autoFocus
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="••••••"
-                className="w-full bg-black/60 border border-white/15 rounded-xl px-4 py-3 text-center text-2xl tracking-[0.5em] text-white focus:outline-none focus:border-emerald-400/60"
-              />
-              <button disabled={busy || code.length !== 6} className="w-full py-3 rounded-xl bg-[#25D366] hover:bg-[#1ebe5d] disabled:opacity-60 text-black font-bold transition">
-                {busy ? "Verifying..." : "Verify & open Yell →"}
-              </button>
-              <button type="button" onClick={() => { setStep("phone"); setCode(""); }} className="w-full text-xs text-slate-400 hover:text-white">
-                ← Change number
-              </button>
-            </form>
-          )}
-
-          {error && <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-2.5 text-sm text-red-300">{error}</div>}
-          <div id="recaptcha-container" />
-          <p className="text-[11px] text-slate-500 mt-6">By continuing you agree to receive an SMS for verification. Standard rates may apply.</p>
+  return <SetupFrame index={step === "phone" ? 0 : 1}>
+    <section className={setupStyles.content}>
+      <h1 className={setupStyles.heading}>{step === "phone" ? <>Your Astra starts<br />with a hello.</> : <>One little code.<br />Then you’re in.</>}</h1>
+      <p className={setupStyles.description}>{step === "phone"
+        ? "Sign in with your WhatsApp number. We’ll text you a code to make sure it’s you."
+        : `Enter the six-digit code we sent to ${e164}.`}</p>
+      {step === "phone" ? <form onSubmit={sendOtp} className={setupStyles.form}>
+        <label className={setupStyles.label} htmlFor="login-phone">Phone number</label>
+        <div className={setupStyles.phoneInput}>
+          <span aria-label="India country code">+91</span>
+          <input id="login-phone" className={setupStyles.input} type="tel" inputMode="tel" autoComplete="tel-national" autoFocus value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="98765 43210" maxLength={14} disabled={busy} />
         </div>
-      </main>
-    </div>
-  );
+        <button disabled={busy} className={setupStyles.primary}>{busy ? "Sending code…" : "Continue"}</button>
+      </form> : <form onSubmit={verifyOtp} className={setupStyles.form}>
+        <label className={setupStyles.label} htmlFor="login-code">Verification code</label>
+        <input id="login-code" className={`${setupStyles.input} ${setupStyles.otp}`} type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" maxLength={6} disabled={busy} />
+        <button disabled={busy || code.length !== 6} className={setupStyles.primary}>{busy ? "Verifying…" : "Continue"}</button>
+        <div className={setupStyles.footer}><button type="button" disabled={busy} onClick={() => { setStep("phone"); setCode(""); setError(null); }} className={setupStyles.textButton}>← Change number</button></div>
+      </form>}
+      {error && <p className={setupStyles.error} role="alert">{error}</p>}
+      <div id="recaptcha-container" />
+      <p className={setupStyles.smallNote}>By continuing, you agree to receive a verification SMS. Standard message rates may apply.</p>
+    </section>
+  </SetupFrame>;
 }
 
 function friendly(err: any): string {
@@ -177,7 +110,7 @@ function friendly(err: any): string {
   return err?.message || "Something went wrong. Please try again.";
 }
 
-function Dashboard({ user }: { user: User }) {
+function Dashboard({ user, onSetup }: { user: User; onSetup: () => Promise<void> }) {
   const [me, setMe] = useState<Me | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -249,6 +182,7 @@ function Dashboard({ user }: { user: User }) {
           <Logo />
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-xs text-slate-400">{user.phoneNumber}</span>
+            <button onClick={() => { void onSetup().catch((cause) => setToast(cause instanceof Error ? cause.message : "Couldn’t reopen setup")); }} className="text-xs px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10">Personalize</button>
             <button onClick={() => signOut(auth)} className="text-xs px-3 py-2 rounded-lg border border-white/15 hover:bg-white/10">
               Log out
             </button>
@@ -259,12 +193,12 @@ function Dashboard({ user }: { user: User }) {
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-10 space-y-8">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <p className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Your Yell</p>
+            <p className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Your Astra</p>
             <h1 className="text-3xl md:text-4xl font-extrabold text-white mt-1">Hey{me?.name ? ` ${me.name}` : ""} 👋</h1>
-            <p className="text-slate-400 text-sm mt-1">Everything Yell can do for you on WhatsApp, in one place.</p>
+            <p className="text-slate-400 text-sm mt-1">Everything Astra can do for you on WhatsApp, in one place.</p>
           </div>
           <a href={waLink} target="_blank" rel="noreferrer" className="inline-flex justify-center bg-[#25D366] hover:bg-[#1ebe5d] text-black font-bold px-5 py-3 rounded-xl transition">
-            💬 Chat with Yell on WhatsApp
+            💬 Chat with Astra on WhatsApp
           </a>
         </div>
 
@@ -338,18 +272,61 @@ function Dashboard({ user }: { user: User }) {
           </div>
         </section>
 
-        <ContactChannels subtitle="Text Yell from any of these — same assistant, same connected apps." />
+        <ContactChannels subtitle="Text Astra from any of these — same assistant, same connected apps." />
       </main>
     </div>
   );
 }
 
+function AccountEntry({ user }: { user: User }) {
+  const [account, setAccount] = useState<Me | null>(null);
+  const [setup, setSetup] = useState<Setup | null>(null);
+  const [error, setError] = useState("");
+  const load = useCallback(async () => {
+    setError("");
+    try {
+      const [profile, preferences] = await Promise.all([
+        api<Me>(user, "/api/me"), api<Setup>(user, "/api/me/onboarding"),
+      ]);
+      setAccount(profile); setSetup(preferences);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Couldn’t load your account"); }
+  }, [user]);
+  useEffect(() => { void load(); }, [load]);
+
+  async function save(patch: SetupPatch) {
+    const saved = await api<Setup>(user, "/api/me/onboarding", { method: "PATCH", body: JSON.stringify(patch) });
+    setSetup(saved);
+    return saved;
+  }
+  async function reopen() {
+    const preferences = await api<Setup>(user, "/api/me/onboarding", { method: "PATCH", body: JSON.stringify({ step: "name" }) });
+    const profile = await api<Me>(user, "/api/me");
+    setAccount(profile); setSetup(preferences);
+  }
+
+  if (setup?.completed) return <Dashboard user={user} onSetup={reopen} />;
+  if (!account || !setup) return <SetupFrame index={2}>
+    <h1 className={setupStyles.heading}>{error ? "Let’s try that again." : "Making room for you…"}</h1>
+    <p className={setupStyles.description}>{error || "Getting your account and saved preferences ready."}</p>
+    {error && <><button className={setupStyles.primary} onClick={() => void load()}>Try again</button><div className={setupStyles.footer}><button className={setupStyles.textButton} onClick={() => void signOut(auth)}>Sign out</button></div></>}
+  </SetupFrame>;
+  return <Onboarding account={account} setup={setup} save={save} onComplete={setSetup}
+    connect={async (slug) => {
+      const result = await api<{ auth_url: string }>(user, "/api/me/connectors/link", { method: "POST", body: JSON.stringify({ toolkit: slug }) });
+      if (!result.auth_url) throw new Error("No connection link was returned. Please try again.");
+      window.location.assign(result.auth_url);
+    }}
+    checkout={async (plan) => {
+      const result = await api<{ payment_url: string }>(user, "/api/me/upgrade", { method: "POST", body: JSON.stringify({ plan }) });
+      if (!result.payment_url) throw new Error("No checkout link was returned. You can continue for free.");
+      await save({ step: "complete" });
+      window.location.assign(result.payment_url);
+    }} />;
+}
+
 export default function YellApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   useEffect(() => onAuthStateChanged(auth, setUser), []);
-
-  if (user === undefined) {
-    return <div className="min-h-screen bg-[#070b14] flex items-center justify-center text-slate-400">Loading Yell…</div>;
-  }
-  return user ? <Dashboard user={user} /> : <Login />;
+  if (user === undefined) return <SetupFrame index={0}><h1 className={setupStyles.heading}>A little less to do.<br />A little more you.</h1><p className={setupStyles.description}>Opening Astra…</p></SetupFrame>;
+  return user ? <AccountEntry key={user.uid} user={user} /> : <Login />;
 }

@@ -7,14 +7,13 @@ from app.config import get_settings
 
 settings = get_settings()
 
-_db_url = settings.DATABASE_URL
-if _db_url.startswith("sqlite") and ":///./" in _db_url:
-    _db_url = "sqlite+aiosqlite:////tmp/yellai.db"
+_db_url = settings.effective_database_url
 
-_engine_kw: dict = {"echo": False}
+_engine_kw: dict = {"echo": False, "pool_pre_ping": True}
 if _db_url.startswith("postgresql"):
     _engine_kw["pool_size"] = 10
     _engine_kw["max_overflow"] = 20
+    _engine_kw["connect_args"] = {"timeout": 5}
 
 engine = create_async_engine(_db_url, **_engine_kw)
 
@@ -35,12 +34,9 @@ async def ensure_tables() -> None:
     global _tables_initialized
     if _tables_initialized:
         return
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        _tables_initialized = True
-    except Exception:
-        pass
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    _tables_initialized = True
 
 
 async def get_db() -> AsyncSession:  # type: ignore[misc]

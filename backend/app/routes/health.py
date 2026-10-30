@@ -1,22 +1,43 @@
 """Health check and admin stats endpoints."""
 
 from datetime import date
+import asyncio
 
-from fastapi import APIRouter
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
+from sqlalchemy import func, select, text
 
-from app.models.database import async_session
+from app.models.database import async_session, engine
 from app.models.user import Conversation, User, UserUsage
+from app.routes.admin import verify_admin_key
+from app.services.memory import memory_service
 
 router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
 async def health_check() -> dict:
-    return {"status": "healthy", "service": "Yell AI", "version": "1.0.0"}
+    return {"status": "healthy", "service": "Astra AI", "version": "1.0.0"}
 
 
-@router.get("/stats")
+@router.get("/ready")
+async def readiness():
+    checks = {"database": "unavailable", "redis": "unavailable"}
+    try:
+        async with asyncio.timeout(5):
+            async with engine.connect() as connection:
+                await connection.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception:
+        pass
+    if await memory_service.ping():
+        checks["redis"] = "ok"
+    ready = all(value == "ok" for value in checks.values())
+    return JSONResponse(status_code=200 if ready else 503,
+                        content={"status": "ready" if ready else "not_ready", "checks": checks})
+
+
+@router.get("/stats", dependencies=[Depends(verify_admin_key)])
 async def stats() -> dict:
     """Basic admin stats — protect this in production."""
     async with async_session() as session:

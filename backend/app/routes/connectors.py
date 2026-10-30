@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from app.services.ads_service import AdsService
 from app.services.auth import current_phone
+from app.routes.admin import verify_admin_key
 from app.services.composio_service import ComposioService, normalize_phone
 from app.services.whatsapp import WhatsAppService
 
@@ -29,7 +30,7 @@ def require_owner(claimed_phone: str, verified_phone: str) -> None:
 
 @router.get("/connectors/toolkits")
 async def list_toolkits() -> dict[str, Any]:
-    """List all supported 1-tap OAuth connectors for Yell AI."""
+    """List all supported 1-tap OAuth connectors for Astra AI."""
     return {"toolkits": composio_service.list_toolkits()}
 
 
@@ -63,7 +64,7 @@ async def create_connector_link(body: ConnectLinkRequest, owner: str = Depends(c
     if body.send_whatsapp_link and res.get("auth_url"):
         try:
             msg = (
-                f"🔌 *Connect {res['toolkit_name']} to Yell AI*\n\n"
+                f"🔌 *Connect {res['toolkit_name']} to Astra AI*\n\n"
                 f"Tap once below to authorize {res['toolkit_name']}. "
                 f"After connecting, you can manage everything directly inside this WhatsApp chat! 🇮🇳"
             )
@@ -87,7 +88,7 @@ async def confirm_connector_callback(body: ConnectLinkRequest, owner: str = Depe
     return await composio_service.mark_connected(owner, body.toolkit)
 
 
-@router.get("/ads/campaigns")
+@router.get("/ads/campaigns", dependencies=[Depends(verify_admin_key)])
 async def list_ad_campaigns() -> dict[str, Any]:
     """List active India contextual ad campaigns and impression metrics."""
     campaigns = await ads_service.list_campaigns()

@@ -1,6 +1,6 @@
-# Yell AI
+# Astra AI
 
-Yell AI is a WhatsApp-first AI assistant project with two related product
+Astra AI is a WhatsApp-first AI assistant project with two related product
 tracks living in one repo:
 
 - **`backend/`** — a hosted FastAPI service that receives WhatsApp webhooks

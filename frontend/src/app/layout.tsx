@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Yell AI — India's Personal AI Super-Agent on WhatsApp",
+  title: "Astra AI — India's Personal AI Super-Agent on WhatsApp",
   description:
     "Connect Gmail, Google Calendar, Notion, GitHub & LinkedIn once via Composio. Do everything inside WhatsApp.",
 };

@@ -2,10 +2,11 @@
 
 import json
 import logging
+import hmac
 
 import collections
 import time
-from fastapi import APIRouter, BackgroundTasks, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request, Response
 from sqlalchemy import update
 
 from app.agents import AgentOrchestrator
@@ -15,7 +16,7 @@ from app.models.user import FlowLog
 from app.services.ads_service import AdsService
 from app.services.composio_service import SUPPORTED_TOOLKITS, ComposioService, normalize_phone
 from app.services.gemini import GeminiService
-from app.services.memory import MemoryService
+from app.services.memory import memory_service as memory
 from app.services.payment import PaymentService
 from app.services.usage import UsageService
 from app.services.whatsapp import WhatsAppService
@@ -29,7 +30,6 @@ router = APIRouter(tags=["webhook"])
 whatsapp = WhatsAppService()
 gemini = GeminiService()
 orchestrator = AgentOrchestrator(gemini)
-memory = MemoryService()
 usage_service = UsageService()
 payment_service = PaymentService()
 composio_service = ComposioService()
@@ -60,7 +60,10 @@ async def verify_webhook(
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
 ) -> Response:
     """WhatsApp webhook verification (GET)."""
-    if hub_mode == "subscribe" and hub_verify_token == settings.WHATSAPP_VERIFY_TOKEN:
+    configured_token = settings.WHATSAPP_VERIFY_TOKEN
+    if (hub_mode == "subscribe" and hub_challenge and hub_verify_token and configured_token
+            and configured_token != "yellai-verify-token"
+            and hmac.compare_digest(hub_verify_token.encode(), configured_token.encode())):
         logger.info("Webhook verified successfully")
         return Response(content=hub_challenge, media_type="text/plain")
 
@@ -97,7 +100,7 @@ async def process_user_message(
         first_name = sender_name.split()[0] if sender_name else "bro"
         welcome = (
             f"Namaste {first_name}! 🙏🇮🇳\n\n"
-            "I'm *Yell AI* — your personal AI super-agent on WhatsApp.\n\n"
+            "I'm *Astra AI* — your personal AI super-agent on WhatsApp.\n\n"
             "⚡ *What I can do for you right here:*\n"
             "• 📧 *Gmail & Calendar:* Read/send emails, book meetings & reminders\n"
             "• 🚀 *Backdoor Hiring:* Draft cold emails to Indian & YC startup founders\n"
@@ -117,7 +120,7 @@ async def process_user_message(
             tk = parts[1]
             tk_meta = SUPPORTED_TOOLKITS[tk]
             msg = (
-                f"{tk_meta['icon']} *Connect {tk_meta['name']} to Yell AI*\n\n"
+                f"{tk_meta['icon']} *Connect {tk_meta['name']} to Astra AI*\n\n"
                 f"Sign in to your verified account to link {tk_meta['name']}:\n"
                 f"👉 {connect_hub_url}"
             )
@@ -125,7 +128,7 @@ async def process_user_message(
             return {"status": "ok"}
 
         conns = await composio_service.get_user_connections(sender)
-        lines = ["🔌 *Your Yell AI App Connections (Composio):*\n"]
+        lines = ["🔌 *Your Astra AI App Connections (Composio):*\n"]
         for c in conns:
             badge = "✅ Connected" if c["status"] == "active" else "⚪ Not connected"
             lines.append(f"• {c['icon']} *{c['name']}*: {badge}")
@@ -150,14 +153,14 @@ async def process_user_message(
         biz_price = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) // 100
 
         msg = (
-            "⚡ *Yell AI Subscription Plans (Fair Usage Policy):*\n\n"
-            f"1️⃣ *Yell Pro — ₹{pro_price}/month (Most Popular)*\n"
+            "⚡ *Astra AI Subscription Plans (Fair Usage Policy):*\n\n"
+            f"1️⃣ *Astra Pro — ₹{pro_price}/month (Most Popular)*\n"
             f"• {settings.PAID_DAILY_LIMIT} tasks & queries/day (~2,400 tasks/mo)\n"
             "• Priority Gemini 3.8 Flash execution\n"
             "• All Composio tools (Gmail, Calendar, Notion, GitHub)\n"
             "• 100% Ad-Free experience\n"
             f"👉 *Subscribe to Pro (₹{pro_price}):* {pro_url or f'{settings.FRONTEND_URL}#pricing'}\n\n"
-            f"2️⃣ *Yell Business / Team — ₹{biz_price}/month*\n"
+            f"2️⃣ *Astra Business / Team — ₹{biz_price}/month*\n"
             f"• {settings.BUSINESS_DAILY_LIMIT} tasks & queries/day (Enterprise headroom)\n"
             "• Dedicated priority execution & custom connectors\n"
             f"👉 *Subscribe to Business (₹{biz_price}):* {biz_url or f'{settings.FRONTEND_URL}#pricing'}"
@@ -176,8 +179,8 @@ async def process_user_message(
             pro_url = await payment_service.create_payment_link(sender, user.id, plan="pro")
             pro_price = settings.MONTHLY_PRICE_PAISE // 100
             upsell_text = (
-                f"You've completed your {settings.FREE_DAILY_LIMIT} free daily tasks on Yell AI! ⚡\n\n"
-                f"Upgrade to *Yell AI Pro* for just *₹{pro_price}/month* (UPI Autopay) to unlock:\n"
+                f"You've completed your {settings.FREE_DAILY_LIMIT} free daily tasks on Astra AI! ⚡\n\n"
+                f"Upgrade to *Astra AI Pro* for just *₹{pro_price}/month* (UPI Autopay) to unlock:\n"
                 f"• {settings.PAID_DAILY_LIMIT} tasks & messages/day (FUP)\n"
                 "• Unlimited Gmail, Calendar, Notion & Backdoor Founder Outreach\n"
                 "• 100% Zero sponsored ads\n\n"
@@ -189,7 +192,7 @@ async def process_user_message(
             biz_price = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) // 100
             upsell_text = (
                 f"You've reached your Pro daily Fair Usage limit of {settings.PAID_DAILY_LIMIT} tasks! ⚡\n\n"
-                f"Need heavy enterprise throughput? Upgrade to *Yell Business* for *₹{biz_price}/month*:\n"
+                f"Need heavy enterprise throughput? Upgrade to *Astra Business* for *₹{biz_price}/month*:\n"
                 f"• {settings.BUSINESS_DAILY_LIMIT} tasks/day headroom\n"
                 "• Multi-workflow automation & team prioritization\n\n"
                 f"👉 *Upgrade to Business (₹{biz_price}):* {biz_url or f'{settings.FRONTEND_URL}#pricing'}"
@@ -263,7 +266,13 @@ async def process_user_message(
 @router.post("/webhook")
 async def handle_webhook(request: Request, background_tasks: BackgroundTasks) -> dict:
     # Process incoming WhatsApp messages with instant ack and deduplication
-    raw_body = await request.body()
+    chunks, size = [], 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > 1048576:
+            raise HTTPException(status_code=413, detail="Webhook payload too large")
+        chunks.append(chunk)
+    raw_body = b"".join(chunks)
 
     if not WhatsAppService.verify_signature(raw_body, request.headers):
         logger.warning("Rejected WhatsApp webhook: missing or invalid signature (set WHATSAPP_APP_SECRET)")
@@ -271,8 +280,10 @@ async def handle_webhook(request: Request, background_tasks: BackgroundTasks) ->
 
     try:
         payload = json.loads(raw_body)
-    except Exception:
-        payload = {}
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="Invalid webhook JSON")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Webhook payload must be an object")
 
     parsed = WhatsAppService.parse_incoming_message(payload)
     if not parsed:

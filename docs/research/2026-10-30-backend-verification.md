@@ -1,5 +1,7 @@
 # Backend verification — 30 October 2026
 
+Follow-up: local dependency configuration and backend security have since been strengthened. See [the hardening report](../backend-hardening.md) for current local results and remaining provider setup. The observations below describe the earlier configuration.
+
 Scope: verify the current backend. No new agent use cases, CRM account connections, or external writes were performed during this verification pass.
 
 ## Result

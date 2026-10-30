@@ -7,7 +7,7 @@ from app.services.gemini import GeminiService
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are the emotional intelligence core of Yell AI — a WhatsApp assistant for Indians who need to be heard.
+SYSTEM_PROMPT = """You are the emotional intelligence core of Astra AI — a WhatsApp assistant for Indians who need to be heard.
 
 Your job:
 1. Detect the user's primary emotion from their message

@@ -39,7 +39,7 @@ class PaymentService:
 
         is_biz = plan.lower() in ("business", "biz", "team")
         amount = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) if is_biz else settings.MONTHLY_PRICE_PAISE
-        desc = "Yell AI Business (1,000 tasks/day) - 30 Days" if is_biz else "Yell AI Pro (80 tasks/day FUP) - 30 Days"
+        desc = "Astra AI Business (1,000 tasks/day) - 30 Days" if is_biz else "Astra AI Pro (80 tasks/day FUP) - 30 Days"
 
         try:
             data = {

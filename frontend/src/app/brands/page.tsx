@@ -72,7 +72,7 @@ export default function BrandsPortal() {
   const [targetIntent, setTargetIntent] = useState("railway/flight");
   const [headline, setHeadline] = useState("Zero Payment Gateway Charges on your first IRCTC Train or Domestic Flight booking via UPI!");
   const [ctaText, setCtaText] = useState("Claim on Ixigo");
-  const [ctaUrl, setCtaUrl] = useState("https://www.ixigo.com/?utm_source=yell_ai");
+  const [ctaUrl, setCtaUrl] = useState("https://www.ixigo.com/?utm_source=astra_ai");
   const [cpmInr, setCpmInr] = useState(300);
   const [budgetInr, setBudgetInr] = useState(5000);
   const [contactEmail, setContactEmail] = useState("");
@@ -197,7 +197,7 @@ export default function BrandsPortal() {
         key: orderData.key_id,
         amount: orderData.amount_paise,
         currency: "INR",
-        name: "Yell AI Ads Platform",
+        name: "Astra AI Ads Platform",
         description: `Top-Up Ad Wallet: ${camp.brand_name} (₹${amountInr})`,
         order_id: orderData.order_id,
         handler: async (response: any) => {
@@ -244,7 +244,7 @@ export default function BrandsPortal() {
         <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-[#25D366] text-black font-black flex items-center justify-center text-lg">Y</div>
-            <span className="font-bold text-xl text-white tracking-tight">Yell AI</span>
+            <span className="font-bold text-xl text-white tracking-tight">Astra AI</span>
           </Link>
           <span className="text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             Brands & Ads Portal
@@ -255,7 +255,7 @@ export default function BrandsPortal() {
             ← Back to Home
           </Link>
           <a
-            href="https://wa.me/15552107308?text=Hi%20Yell%20AI"
+            href="https://wa.me/15552107308?text=Hi%20Astra"
             target="_blank"
             rel="noreferrer"
             className="bg-[#25D366] text-black font-semibold px-4 py-1.5 rounded-lg hover:bg-[#20ba59] transition-all flex items-center gap-1.5 text-xs"
@@ -685,7 +685,7 @@ export default function BrandsPortal() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-white/10 px-6 py-6 text-center text-xs text-slate-500">
-        Yell AI Ads Engine • Powered by Nhancio • Real-time Conversational Intent Placement
+        Astra AI Ads Engine • Powered by Nhancio • Real-time Conversational Intent Placement
       </footer>
     </div>
   );

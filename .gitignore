@@ -10,11 +10,13 @@ build/
 venv/
 node_modules/
 .next/
+frontend/.next-onboarding/
 .DS_Store
 *.log
 .runtime/
 frontend/.runtime/
 frontend/prisma/dev.db
+backend/*.db
 .idea/
 .vscode/
 

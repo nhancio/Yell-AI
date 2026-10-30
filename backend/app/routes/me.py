@@ -1,7 +1,7 @@
-"""Authenticated Yell App endpoints (phone-verified via Firebase)."""
+"""Authenticated Astra App endpoints (phone-verified via Firebase)."""
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -26,6 +26,10 @@ class ToolkitBody(BaseModel):
     toolkit: str
 
 
+class UpgradeBody(BaseModel):
+    plan: Literal["pro", "business"] = "pro"
+
+
 @router.get("")
 async def me(phone: str = Depends(current_phone)) -> dict[str, Any]:
     """Profile, plan, today's usage and connected apps for the logged-in user."""
@@ -37,7 +41,8 @@ async def me(phone: str = Depends(current_phone)) -> dict[str, Any]:
             )
         ).scalar_one_or_none()
     used = row.query_count if row else 0
-    limit = settings.PAID_DAILY_LIMIT if user.is_premium else settings.FREE_DAILY_LIMIT
+    business = user.is_premium and user.plan_tier == "business"
+    limit = settings.BUSINESS_DAILY_LIMIT if business else settings.PAID_DAILY_LIMIT if user.is_premium else settings.FREE_DAILY_LIMIT
     connections = await composio.get_user_connections(phone)
     return {
         "phone_number": phone,
@@ -45,13 +50,19 @@ async def me(phone: str = Depends(current_phone)) -> dict[str, Any]:
         "member_since": user.created_at.isoformat() if user.created_at else None,
         "plan": {
             "is_premium": user.is_premium,
-            "name": "Pro" if user.is_premium else "Free",
+            "name": "Business" if business else "Pro" if user.is_premium else "Free",
             "expires_at": user.premium_expires_at.isoformat() if user.premium_expires_at else None,
-            "price_inr": settings.MONTHLY_PRICE_PAISE // 100,
+            "price_inr": (settings.BUSINESS_PRICE_PAISE if business else settings.MONTHLY_PRICE_PAISE) / 100,
         },
         "usage": {"used_today": used, "daily_limit": limit},
         "whatsapp_number": settings.WHATSAPP_DISPLAY_NUMBER,
         "connections": connections,
+        "available_plans": [
+            {"id": "pro", "name": "Pro", "price_inr": settings.MONTHLY_PRICE_PAISE / 100,
+             "daily_limit": settings.PAID_DAILY_LIMIT},
+            {"id": "business", "name": "Business", "price_inr": settings.BUSINESS_PRICE_PAISE / 100,
+             "daily_limit": settings.BUSINESS_DAILY_LIMIT},
+        ],
     }
 
 
@@ -69,10 +80,10 @@ async def link_connector(body: ToolkitBody, phone: str = Depends(current_phone))
 
 
 @router.post("/upgrade")
-async def upgrade(phone: str = Depends(current_phone)) -> dict[str, Any]:
-    """Create a Razorpay payment link for Yell Pro."""
+async def upgrade(body: UpgradeBody | None = None, phone: str = Depends(current_phone)) -> dict[str, Any]:
+    """Create a Razorpay payment link for the selected configured plan."""
     user = await usage_service.get_or_create_user(phone)
-    url = await payment_service.create_payment_link(f"+{phone}", user.id)
+    url = await payment_service.create_payment_link(f"+{phone}", user.id, plan=body.plan if body else "pro")
     if not url:
         raise HTTPException(status_code=503, detail="Payments unavailable right now")
     return {"payment_url": url}

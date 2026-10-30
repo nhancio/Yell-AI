@@ -15,7 +15,7 @@ from app.models.user import UserConnection
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Pre-provisioned Composio v3 Managed OAuth Config IDs for Yell AI
+# Pre-provisioned Composio v3 Managed OAuth Config IDs for Astra AI
 SUPPORTED_TOOLKITS: dict[str, dict[str, str]] = {
     "hubspot": {
         "name": "HubSpot", "icon": "🔶", "category": "CRM",

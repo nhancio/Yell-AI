@@ -1,4 +1,4 @@
-# Yell AI — Evaluation & Launch Plan
+# Astra AI — Evaluation & Launch Plan
 
 **Written:** 2026-10-30 · **Status:** proposal, needs founder decisions at Gate 0
 
@@ -13,7 +13,7 @@
 
 Three facts kill the current shape:
 
-1. **The platform bans it.** Meta's WhatsApp Business terms have barred general-purpose AI assistants since 15 Jan 2026. ChatGPT and Copilot left WhatsApp. Meta reopened access, for a fee, only where regulators forced it (Italy, Brazil, EU/EEA). **Yell is India-only, so none of those exceptions help.** An India reversal is claimed by one blog and is **unverified**. Yell's intent prompt called it a *"WhatsApp AI Super-Agent"*, which is the banned category (fixed in Gate 0).
+1. **The platform bans it.** Meta's WhatsApp Business terms have barred general-purpose AI assistants since 15 Jan 2026. ChatGPT and Copilot left WhatsApp. Meta reopened access, for a fee, only where regulators forced it (Italy, Brazil, EU/EEA). **Astra is India-only, so none of those exceptions help.** An India reversal is claimed by one blog and is **unverified**. Astra's intent prompt called it a *"WhatsApp AI Super-Agent"*, which is the banned category (fixed in Gate 0).
 2. **Every reply now costs money, and ads don't cover it.** Since 1 Oct 2026 Meta charges ~₹0.115 + GST per service message in India (first 1,000/month per number free). The ad model loses money per message even with the spreadsheet's own optimistic numbers (table below).
 3. **You can't compete on "AI in WhatsApp".** For the WhatsApp-native, regional-language user, ChatGPT and Gemini apps aren't the competition; they don't install them. **Meta AI is**: it's inside the WhatsApp they already use, free, and speaks Hindi (third-party estimates put it at ~140M Indian users). Puch AI is free on WhatsApp in 10+ Indian languages too. Nobody beats free inside the same app, so a general assistant has no wedge.
 
@@ -94,7 +94,7 @@ The 12-month forecast's Month 12 implies **₹315 ad revenue per DAU per month**
 ## Part 2 — The wedge
 
 **Recommended wedge: "Backdoor": an AI job-outreach service on WhatsApp.**
-The user shares a resume and target roles. Yell finds relevant Indian/YC startup founders, drafts short personal cold emails, and the user approves them in WhatsApp with one tap. Emails go out from the user's own Gmail. Replies and interviews are tracked.
+The user shares a resume and target roles. Astra finds relevant Indian/YC startup founders, drafts short personal cold emails, and the user approves them in WhatsApp with one tap. Emails go out from the user's own Gmail. Replies and interviews are tracked.
 
 Why this one:
 - **Already in the code:** `founder_outreach` intent and agent prompt, Composio Gmail.

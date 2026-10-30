@@ -1,13 +1,13 @@
-# Yell AI — Current State and Execution Backlog
+# Astra AI — Current State and Execution Backlog
 
 **Updated:** 2026-04-09
-**Repo:** `/Users/nithi/Desktop/Claude-Projects/Nhancio-projects/Yell AI`
+**Repo:** `/Users/nithi/Desktop/Claude-Projects/Nhancio-projects/Astra AI`
 
 ## 1. What this repo actually contains
 
 This repository currently holds **two related but different product tracks**:
 
-### Track A: Yell AI backend
+### Track A: Astra AI backend
 - Python/FastAPI WhatsApp assistant backend
 - Receives WhatsApp webhooks
 - Classifies emotion and intent
@@ -27,7 +27,7 @@ Relevant code:
 - `backend/app/services/usage.py`
 - `backend/app/services/payment.py`
 
-### Track B: Yell AI frontend / NanoClaw launcher
+### Track B: Astra AI frontend / NanoClaw launcher
 - Next.js app with Google sign-in
 - Creates per-user local NanoClaw runtimes
 - Starts WhatsApp auth locally
@@ -132,7 +132,7 @@ These are the main gaps between the codebase and the intended product:
 
 Before adding more code, choose one of these as the primary direction:
 
-### Option A: Ship the hosted Yell AI WhatsApp bot first
+### Option A: Ship the hosted Astra AI WhatsApp bot first
 Focus on:
 - `backend/`
 - one simple landing/admin surface
@@ -285,7 +285,7 @@ Include:
 
 ## 6. Suggested execution order
 
-### If shipping hosted Yell AI backend first
+### If shipping hosted Astra AI backend first
 1. Verify backend webhook flow
 2. Fix docs to reflect hosted-first product
 3. Add or simplify a minimal operator/admin UI

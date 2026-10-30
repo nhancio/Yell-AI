@@ -2,24 +2,18 @@
 
 import logging
 from typing import Any, Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
 
-from app.config import get_settings
-from app.models.database import async_session
-from app.models.user import SponsoredCampaign
 from app.services.ads_service import AdsService
-from app.services.payment import PaymentService
+from app.routes.admin import verify_admin_key
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 router = APIRouter(tags=["brands"])
 ads_service = AdsService()
-payment_service = PaymentService()
 
 
 class CampaignCreateRequest(BaseModel):
@@ -63,7 +57,7 @@ async def track_and_redirect(campaign_id: int):
 # Brand Campaign API
 # ------------------------------------------------------------------
 
-@router.get("/api/brands/campaigns")
+@router.get("/api/brands/campaigns", dependencies=[Depends(verify_admin_key)])
 async def list_brand_campaigns() -> dict[str, Any]:
     """List all campaigns with live impressions, clicks, CTR, and remaining budget."""
     campaigns = await ads_service.list_campaigns()
@@ -89,89 +83,30 @@ async def list_brand_campaigns() -> dict[str, Any]:
     }
 
 
-@router.post("/api/brands/campaigns")
+@router.post("/api/brands/campaigns", dependencies=[Depends(verify_admin_key)])
 async def create_brand_campaign(req: CampaignCreateRequest) -> dict[str, Any]:
     """Create a new campaign. If budget > 0, creates campaign and returns details."""
     try:
-        created = await ads_service.create_campaign(req.dict())
+        created = await ads_service.create_campaign(req.model_dump())
         return {"status": "created", "campaign": created}
     except Exception as exc:
         logger.error("Error creating campaign: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.post("/api/brands/campaigns/{campaign_id}/prepay")
+@router.post("/api/brands/campaigns/{campaign_id}/prepay", dependencies=[Depends(verify_admin_key)])
 async def prepay_campaign_budget(campaign_id: int, req: PrepayRequest) -> dict[str, Any]:
-    """Generate a Razorpay Order for prepaid ad wallet deposit."""
-    if not payment_service.client:
-        raise HTTPException(status_code=503, detail="Payment gateway not configured")
-
-    amount_paise = req.amount_inr * 100
-    try:
-        order = payment_service.client.order.create({
-            "amount": amount_paise,
-            "currency": "INR",
-            "receipt": f"ad_camp_{campaign_id}",
-            "notes": {
-                "campaign_id": str(campaign_id),
-                "type": "brand_wallet_prepay",
-            }
-        })
-        return {
-            "order_id": order["id"],
-            "amount_paise": amount_paise,
-            "currency": "INR",
-            "key_id": settings.RAZORPAY_KEY_ID,
-        }
-    except Exception as exc:
-        logger.error("Razorpay order creation failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Payment initiation failed: {exc}")
+    """Do not accept wallet payments until settlement can be verified safely."""
+    raise HTTPException(status_code=503, detail="Wallet funding is disabled pending server-side settlement verification")
 
 
-@router.post("/api/brands/campaigns/{campaign_id}/verify-payment")
+@router.post("/api/brands/campaigns/{campaign_id}/verify-payment", dependencies=[Depends(verify_admin_key)])
 async def verify_campaign_payment(campaign_id: int, req: PaymentVerifyRequest) -> dict[str, Any]:
-    """Verify Razorpay payment signature and credit the campaign wallet."""
-    if not payment_service.client:
-        raise HTTPException(status_code=503, detail="Payment gateway not configured")
-
-    # Verify signature
-    try:
-        import hmac, hashlib
-        generated_signature = hmac.new(
-            settings.RAZORPAY_KEY_SECRET.encode("utf-8"),
-            f"{req.razorpay_order_id}|{req.razorpay_payment_id}".encode("utf-8"),
-            hashlib.sha256
-        ).hexdigest()
-
-        if generated_signature != req.razorpay_signature:
-            raise HTTPException(status_code=400, detail="Invalid payment signature")
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Signature verification failed: {exc}")
-
-    # Credit wallet & activate campaign
-    amount_paise = req.amount_inr * 100
-    async with async_session() as session:
-        result = await session.execute(
-            select(SponsoredCampaign).where(SponsoredCampaign.id == campaign_id)
-        )
-        camp = result.scalar_one_or_none()
-        if not camp:
-            raise HTTPException(status_code=404, detail="Campaign not found")
-
-        camp.budget_paise = getattr(camp, "budget_paise", 0) + amount_paise
-        camp.is_active = True
-        await session.commit()
-        await session.refresh(camp)
-
-        return {
-            "status": "wallet_funded",
-            "campaign_id": camp.id,
-            "new_budget_inr": camp.budget_paise / 100,
-            "is_active": camp.is_active
-        }
+    """Legacy client-supplied amounts and replayable receipts must never credit a wallet."""
+    raise HTTPException(status_code=503, detail="Wallet funding is disabled pending server-side settlement verification")
 
 
-@router.patch("/api/brands/campaigns/{campaign_id}/toggle")
+@router.patch("/api/brands/campaigns/{campaign_id}/toggle", dependencies=[Depends(verify_admin_key)])
 async def toggle_campaign_status(campaign_id: int) -> dict[str, Any]:
     """Toggle campaign active or paused."""
     new_status = await ads_service.toggle_campaign(campaign_id)

@@ -1,11 +1,11 @@
-# Yell: marketing agent for founders
+# Astra: marketing agent for founders
 
 Date: 30 October 2026.
 Status: proposed product direction. Website versus working-product implementation scope is awaiting the user's selection. This brief does not claim the proposed capabilities are already available.
 
 ## Positioning
 
-Yell is a marketing agent for founders that turns a product brief into a coherent campaign, using the founder's brand, audience, and approved messaging.
+Astra is a marketing agent for founders that turns a product brief into a coherent campaign, using the founder's brand, audience, and approved messaging.
 
 First audience: early-stage founders who handle their own product launches and weekly social content.
 
@@ -13,17 +13,17 @@ Working promise: **Send your product link. Get a launch campaign in your brand.*
 
 Supporting copy: Research, write, create images and videos, and refine everything in one conversation.
 
-Retain Yell as the working name until the user chooses a replacement. Preserve the warm, approachable visual language requested earlier, while making campaign assets the main visual proof of the product.
+Retain Astra as the working name until the user chooses a replacement. Preserve the warm, approachable visual language requested earlier, while making campaign assets the main visual proof of the product.
 
 ## First repeatable workflow
 
 1. The founder supplies a product URL, a brief, and optionally brand assets.
-2. Yell proposes an editable brand profile: product, audience, positioning, tone, colors, logo, and approved factual claims.
+2. Astra proposes an editable brand profile: product, audience, positioning, tone, colors, logo, and approved factual claims.
 3. The founder chooses an outcome, starting with a feature/product launch or a week of founder content.
-4. Yell prepares a compact campaign plan and identifies any missing information.
-5. Yell produces drafts and creative assets using connected generation/editing services.
+4. Astra prepares a compact campaign plan and identifies any missing information.
+5. Astra produces drafts and creative assets using connected generation/editing services.
 6. The founder requests revisions and approves individual versions.
-7. Yell packages the approved copy and downloadable assets with a publishing checklist.
+7. Astra packages the approved copy and downloadable assets with a publishing checklist.
 
 Initial publishing is an export workflow. Direct posting, account changes, advertising spend, and campaign activation are separate capabilities that require actual integrations and explicit user approval.
 

@@ -1,14 +1,14 @@
-# Yell AI compared with Instinct and Poke
+# Astra AI compared with Instinct and Poke
 
 Research date: 30 October 2026.
 
 Scope: product capabilities, onboarding, account controls, billing, and implementation readiness. Research only; no application code was changed for this review.
 
-Evidence standard: competitor capabilities below are documented or advertised by the companies, not independently tested. Yell findings come from reading the current hosted FastAPI backend, Next.js pages, and the separate vendored NanoClaw runtime. Production credentials, deployed configuration, paid competitor accounts, and live task completion were not tested. Repository files were changing during the review; code findings describe the snapshot inspected today. Older README and readiness documents were not treated as authoritative where implementation differed.
+Evidence standard: competitor capabilities below are documented or advertised by the companies, not independently tested. Astra findings come from reading the current hosted FastAPI backend, Next.js pages, and the separate vendored NanoClaw runtime. Production credentials, deployed configuration, paid competitor accounts, and live task completion were not tested. Repository files were changing during the review; code findings describe the snapshot inspected today. Older README and readiness documents were not treated as authoritative where implementation differed.
 
 ## Main finding
 
-Yell has messaging, account verification, connector scaffolding, billing, and a polished landing page. Its hosted WhatsApp processing path still generates text without executing connected-app tools. This is the main obstacle to matching a personal assistant that completes tasks.
+Astra has messaging, account verification, connector scaffolding, billing, and a polished landing page. Its hosted WhatsApp processing path still generates text without executing connected-app tools. This is the main obstacle to matching a personal assistant that completes tasks.
 
 The immediate goal should be a small set of verifiable outcomes: actually reading an inbox, creating a calendar event, delivering a reminder after the conversation ends, understanding a voice note, and recalling an explicitly saved preference later.
 
@@ -24,7 +24,7 @@ Poke additionally documents a human concierge tier, assistant email addresses, w
 
 “Missing” here means not found in the inspected hosted consumer flow. It does not mean the repository contains no reusable component for that capability.
 
-| Capability | Competitor evidence | Yell implementation finding | Priority |
+| Capability | Competitor evidence | Astra implementation finding | Priority |
 |---|---|---|---|
 | Execute email/calendar actions from conversation | Poke documents connected-app actions; Instinct describes Workspace access and acting for users | Composio execution helper exists, but hosted chat does not call it | P0 |
 | Complete a request across several apps | Poke API examples describe workflows spanning email, calendar, and integrations | Intent routing produces a reply; no plan/execute/observe loop found | P0 |
@@ -43,7 +43,7 @@ Poke additionally documents a human concierge tier, assistant email addresses, w
 
 Competitor references for the table: [Poke core capabilities](https://poke.com/docs), [Poke integrations](https://poke.com/docs/managing-integrations), [Poke recipes](https://poke.com/docs/creating-recipes), [MCP servers](https://poke.com/docs/mcp-servers), [Poke API](https://poke.com/docs/api), [Poke product](https://poke.com/), [Poke release notes](https://poke.com/docs/release-notes), [Instinct](https://instinct.com/), [Instinct connected-data description](https://instinct.com/privacy-policy).
 
-## Specific findings in Yell
+## Specific findings in Astra
 
 ### 1. Linking an account does not yet enable task execution through chat
 
@@ -81,7 +81,7 @@ Connection status should reflect provider-confirmed authorization. The consumer 
 
 The hosted webhook uses FastAPI in-process background tasks and an in-process message-deduplication cache. No durable task lifecycle with restart recovery, persistent retries, cancellation, or task receipts was found in the inspected backend.
 
-A useful consumer-facing lifecycle would show accepted, awaiting approval, running, completed, or failed, with an actual event/message/document identifier where applicable. This is a recommendation for Yell, not a claim about competitors' private infrastructure.
+A useful consumer-facing lifecycle would show accepted, awaiting approval, running, completed, or failed, with an actual event/message/document identifier where applicable. This is a recommendation for Astra, not a claim about competitors' private infrastructure.
 
 ### 7. Onboarding and commercial promises are inconsistent
 
@@ -97,7 +97,7 @@ These mismatches should be resolved before measuring onboarding conversion or pr
 
 The repository already contains WhatsApp transport through Kapso/Meta, Firebase phone login, connected-account records and OAuth scaffolding, a Composio execution helper, usage tracking, Razorpay payment links, and account/usage UI. These are implementation foundations, not independently verified production outcomes.
 
-The separate NanoClaw runtime includes recurring/one-off scheduling, persistent task records, filesystem context, web tools, container execution, and session handling. It should be evaluated as reusable infrastructure. Its features should not be advertised as hosted Yell capabilities until they are connected to the same verified user identity, permissions, billing, and delivery path. Current application pages do not expose the old local-launcher onboarding described in stale readiness notes.
+The separate NanoClaw runtime includes recurring/one-off scheduling, persistent task records, filesystem context, web tools, container execution, and session handling. It should be evaluated as reusable infrastructure. Its features should not be advertised as hosted Astra capabilities until they are connected to the same verified user identity, permissions, billing, and delivery path. Current application pages do not expose the old local-launcher onboarding described in stale readiness notes.
 
 ## Recommended order
 
@@ -116,10 +116,10 @@ The existing launch proposal contains strong assertions about AI-provider restri
 
 Follow-up verification on 30 October 2026 found a more specific official update: Meta's FAQ explicitly states that service messages became chargeable on 1 October 2026 after the first 1,000 service messages per business phone number each month. That allowance is shared across customers using that number. The general pricing page still describes free service messages, so it should not have been the basis for questioning the dated change. The FAQ establishes the change; fetching the linked primary rate card required login, so the exact India tariff was not independently verified from that card. [Official FAQ](https://whatsappbusiness.com/resources/faq/), [general pricing page](https://whatsappbusiness.com/products/platform-pricing/).
 
-Its messaging policy requires approved templates outside the customer-service window. Yell's inspected sender has no template-message workflow, which is a concrete gap for scheduled notifications. AI-provider rules and special pricing are separate from ordinary business pricing. [Official messaging policy](https://whatsappbusiness.com/policy/).
+Its messaging policy requires approved templates outside the customer-service window. Astra's inspected sender has no template-message workflow, which is a concrete gap for scheduled notifications. AI-provider rules and special pricing are separate from ordinary business pricing. [Official messaging policy](https://whatsappbusiness.com/policy/).
 
-The public terms index points to the current Meta platform contract, but fetching that contract redirected to a Facebook login/block page during this research. Indexed earlier official terms contain AI-provider restrictions and regional exceptions. Current India-specific eligibility and special AI-provider pricing were not fully verified. Confirm these with Meta/Kapso before committing to a general-purpose, WhatsApp-only launch; another assistant advertising WhatsApp access does not establish Yell's eligibility. Narrowing a prompt alone does not establish compliance. [Official terms index](https://whatsappbusiness.com/terms-and-conditions/).
+The public terms index points to the current Meta platform contract, but fetching that contract redirected to a Facebook login/block page during this research. Indexed earlier official terms contain AI-provider restrictions and regional exceptions. Current India-specific eligibility and special AI-provider pricing were not fully verified. Confirm these with Meta/Kapso before committing to a general-purpose, WhatsApp-only launch; another assistant advertising WhatsApp access does not establish Astra's eligibility. Narrowing a prompt alone does not establish compliance. [Official terms index](https://whatsappbusiness.com/terms-and-conditions/).
 
-Poke lists Free, Pro at $19/month, and Ultra at $199/month; its usage documentation describes lighter operation when allowances run out. Yell can choose different pricing, but a ₹99 promise of large autonomous-task allowances needs measured model, tool, messaging, infrastructure, and support costs. No margin conclusion is made here without those measurements. Instinct's current public pricing was not verified. [Poke pricing](https://poke.com/pricing), [usage behavior](https://poke.com/docs/usage-and-resets).
+Poke lists Free, Pro at $19/month, and Ultra at $199/month; its usage documentation describes lighter operation when allowances run out. Astra can choose different pricing, but a ₹99 promise of large autonomous-task allowances needs measured model, tool, messaging, infrastructure, and support costs. No margin conclusion is made here without those measurements. Instinct's current public pricing was not verified. [Poke pricing](https://poke.com/pricing), [usage behavior](https://poke.com/docs/usage-and-resets).
 
 For sensitivity analysis only, assuming an effective variable cost of ₹0.145 per delivered reply and ignoring the shared free allowance: 10 replies/day cost ₹43.50 per 30-day month; 20 cost ₹87; 40 cost ₹174; and 1,000 cost ₹4,350. If ₹82 of revenue is available to cover those costs, the ceiling is approximately 565 replies/month, or 18.85/day, before fixed costs, support, and acquisition. These are conditional calculations, not measured costs or validated tax treatment. Advertising CPM, fill, and revenue assumptions likewise require evidence from paid campaigns.

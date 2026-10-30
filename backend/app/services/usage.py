@@ -2,9 +2,11 @@
 
 import logging
 from datetime import date, datetime, timedelta
+from contextlib import nullcontext
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.database import async_session, ensure_tables
@@ -17,10 +19,11 @@ settings = get_settings()
 class UsageService:
     """Track per-user daily query counts and enforce free/premium limits."""
 
-    async def get_or_create_user(self, phone_number: str, name: str = "") -> User:
+    async def get_or_create_user(self, phone_number: str, name: str = "", *, session: AsyncSession | None = None) -> User:
         """Fetch an existing user or create a new one."""
-        await ensure_tables()
-        async with async_session() as session:
+        if session is None:
+            await ensure_tables()
+        async with (nullcontext(session) if session is not None else async_session()) as session:
             result = await session.execute(
                 select(User).where(User.phone_number == phone_number)
             )

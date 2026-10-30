@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Yell AI — Firebase Hosting + Cloud Run (Mumbai asia-south1) Deploy Script
+# Astra AI — Firebase Hosting + Cloud Run (Mumbai asia-south1) Deploy Script
 # Domain Management: Netlify DNS (yell.nhancio.com, api.yell.nhancio.com)
 # Deployment: Firebase Project yell-ai-nhancio (nithindidigam@nhancio.com)
 
@@ -15,25 +15,26 @@ REGION="${CLOUD_RUN_REGION:-asia-south1}"
 echo "==> 1/3 Deploying FastAPI Backend (yell-ai-api) to Cloud Run ($REGION)..."
 python3 -c '
 import subprocess, pathlib
-env_path = pathlib.Path(".env")
+
 env_vars = {}
-if env_path.exists():
-    for line in env_path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        k = k.strip()
-        v = v.strip()
-        if k in ("WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_APP_SECRET", "ADMIN_API_KEY", "RAZORPAY_WEBHOOK_SECRET", "WHATSAPP_TOKEN", "WHATSAPP_VERIFY_TOKEN", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
-            env_vars[k] = v
+for line in open(".env"):
+    line = line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    k, v = line.split("=", 1)
+    k, v = k.strip(), v.strip()
+    if k in ("WHATSAPP_PROVIDER", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_TOKEN", "WHATSAPP_VERIFY_TOKEN", "GEMINI_API_KEY", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "COMPOSIO_API_KEY"):
+        env_vars[k] = v
 
 env_vars["DATABASE_URL"] = "sqlite+aiosqlite:////tmp/yellai.db"
 env_vars["APP_URL"] = "https://yell.nhancio.com"
 env_vars["FRONTEND_URL"] = "https://yell.nhancio.com"
 env_vars["ADS_ENABLED"] = "true"
+env_vars["MONTHLY_PRICE_PAISE"] = "9900"
+env_vars["BUSINESS_PRICE_PAISE"] = "99900"
 
 env_arg = ",".join(f"{k}={v}" for k, v in env_vars.items())
+
 subprocess.run([
     "gcloud", "run", "deploy", "yell-ai-api",
     "--source", "backend",

@@ -3,7 +3,7 @@
 import json
 import logging
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
 from pydantic import BaseModel
@@ -12,6 +12,9 @@ from app.config import get_settings
 from app.services.payment import PaymentService
 from app.services.usage import UsageService
 from app.services.whatsapp import WhatsAppService
+from app.services.auth import current_phone
+from app.services.composio_service import normalize_phone
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -25,15 +28,15 @@ whatsapp = WhatsAppService()
 
 class PublicPaymentLinkRequest(BaseModel):
     phone_number: str
-    plan: str = "pro"  # "pro" (₹99) or "business" (₹999)
+    plan: Literal["pro", "business"] = "pro"
 
 
 @router.post("/create-link")
-async def create_public_payment_link(req: PublicPaymentLinkRequest) -> dict:
+async def create_public_payment_link(req: PublicPaymentLinkRequest, owner: str = Depends(current_phone)) -> dict:
     """Create a Razorpay payment link for Pro (₹99) or Business (₹999)."""
-    norm_phone = "".join(filter(str.isdigit, req.phone_number))
-    if len(norm_phone) == 10:
-        norm_phone = "91" + norm_phone
+    norm_phone = normalize_phone(req.phone_number)
+    if norm_phone != owner:
+        raise HTTPException(status_code=403, detail="Payment must belong to the logged-in account")
     user = await usage_service.get_or_create_user(norm_phone)
     url = await payment_service.create_payment_link(f"+{norm_phone}", user.id, plan=req.plan)
     if not url:
@@ -53,7 +56,7 @@ async def payment_success():
     return """
     <html>
         <head>
-            <title>Payment Successful - Yell AI</title>
+            <title>Payment Successful - Astra AI</title>
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
                 body { font-family: -apple-system, sans-serif; text-align: center; padding: 40px 20px; background: #0A0A0A; color: #fff; }
@@ -63,7 +66,7 @@ async def payment_success():
         </head>
         <body>
             <h1>Payment Successful! 🎉</h1>
-            <p>Your Yell AI Pro subscription is now active.</p>
+            <p>Your Astra AI Pro subscription is now active.</p>
             <p>You can close this window and return to WhatsApp.</p>
         </body>
     </html>
@@ -78,7 +81,7 @@ async def razorpay_webhook(request: Request) -> dict:
 
     if not payment_service.verify_payment("", signature, body):
         logger.warning("Invalid Razorpay webhook signature")
-        return {"status": "invalid_signature"}
+        raise HTTPException(status_code=401, detail="Invalid payment signature")
 
     try:
         payload = json.loads(body)
@@ -96,9 +99,9 @@ async def razorpay_webhook(request: Request) -> dict:
                     limit = settings.BUSINESS_DAILY_LIMIT if plan_tier == "business" else settings.PAID_DAILY_LIMIT
                     await whatsapp.send_message(
                         phone_number,
-                        f"🎉 *Welcome to Yell AI {plan_tier.upper()}!*\n\n"
+                        f"🎉 *Welcome to Astra AI {plan_tier.upper()}!*\n\n"
                         f"Your account now has {limit} conversations/day for the next 30 days.\n\n"
-                        "Go ahead, yell away! I'm all ears. 💛"
+                        "Go ahead, ask Astra anything! I'm all ears. 💛"
                     )
                     logger.info("Premium (%s) activated via webhook for %s", plan_tier, phone_number)
 
@@ -110,8 +113,11 @@ async def razorpay_webhook(request: Request) -> dict:
 
 
 @router.get("/status/{phone_number}")
-async def payment_status(phone_number: str) -> dict:
+async def payment_status(phone_number: str, owner: str = Depends(current_phone)) -> dict:
     """Check premium status for a phone number."""
+    phone_number = normalize_phone(phone_number)
+    if phone_number != owner:
+        raise HTTPException(status_code=403, detail="Payment belongs to another account")
     from app.services.usage import UsageService
 
     usage_service = UsageService()

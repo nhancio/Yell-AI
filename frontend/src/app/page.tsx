@@ -6,8 +6,8 @@ import QRCode from "qrcode";
 import styles from "./home.module.css";
 
 const APP_URL = "https://yellapp.nhancio.com";
-const WA_NUMBER = "15552107308";
-const whatsapp = (text = "Hi Yell AI!") =>
+const WA_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "918790968218";
+const whatsapp = (text = "Hi Astra!") =>
   `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`;
 const WA_LINK = whatsapp();
 const asset = (name: string) => `/poke/${name}`;
@@ -156,7 +156,7 @@ function Phone() {
     <div
       className={styles.phone}
       role="img"
-      aria-label="Example WhatsApp conversation with Yell AI about scheduling a meeting and checking a train booking"
+      aria-label="Example WhatsApp conversation with Astra AI about scheduling a meeting and checking a train booking"
     >
       <div className={styles.phoneScreen}>
         <div className={styles.statusBar}>
@@ -179,7 +179,7 @@ function Phone() {
           <span className={styles.backArrow}>‹</span>
           <Mark app />
           <b>
-            Yell <span className={styles.verified}>✦</span>
+            Astra <span className={styles.verified}>✦</span>
             <span className={styles.contactChevron}>›</span>
           </b>
         </div>
@@ -205,7 +205,7 @@ function Phone() {
         </div>
         <div className={styles.messageInput}>
           <Icon name="plus" />
-          <span>Message Yell</span>
+          <span>Message Astra</span>
           <Icon name="voice" />
         </div>
         <span className={styles.homeIndicator} />
@@ -309,7 +309,7 @@ export default function HomePage() {
         <header
           className={`${styles.header} ${scrolled ? styles.scrolledHeader : ""}`}
         >
-          <Link href="/" aria-label="Yell home" className={styles.logo}>
+          <Link href="/" aria-label="Astra home" className={styles.logo}>
             <Mark />
           </Link>
           <nav className={styles.desktopNav} aria-label="Main navigation">
@@ -318,10 +318,10 @@ export default function HomePage() {
                 Product <span>⌄</span>
               </summary>
               <div>
-                <a href="#experience">Meet Yell</a>
+                <a href="#experience">Meet Astra</a>
                 <a href="#recipes">Recipes</a>
                 <a href={APP_URL}>
-                  Yell App <Icon name="arrow" size={14} />
+                  Astra App <Icon name="arrow" size={14} />
                 </a>
               </div>
             </details>
@@ -367,7 +367,7 @@ export default function HomePage() {
               aria-label="Mobile navigation"
               onClick={() => setMenuOpen(false)}
             >
-              <a href="#experience">Meet Yell</a>
+              <a href="#experience">Meet Astra</a>
               <a href="#recipes">Recipes</a>
               <a href="#pricing">Pricing</a>
               <a href="#faq">FAQs</a>
@@ -386,7 +386,7 @@ export default function HomePage() {
             <Icon name="chevron" size={14} />
           </Link>
           <h1 id="hero-title">
-            Meet Yell,
+            Meet Astra,
             <br />
             your new favorite contact
           </h1>
@@ -438,7 +438,7 @@ export default function HomePage() {
                       src={qrUrl}
                       width="160"
                       height="160"
-                      alt="Scan this QR code to chat with Yell on WhatsApp"
+                      alt="Scan this QR code to chat with Astra on WhatsApp"
                     />
                     <p>
                       Open your camera.
@@ -461,7 +461,7 @@ export default function HomePage() {
         >
           <div className={styles.container}>
             <h2 id="integration-title">
-              Yell fits into your life <sup>(1)</sup>,<br />
+              Astra fits into your life <sup>(1)</sup>,<br />
               not the other way around
             </h2>
           </div>
@@ -537,7 +537,7 @@ export default function HomePage() {
                     </div>
                     <p>{r.description}</p>
                     <span>
-                      <Mark /> Yell Team{" "}
+                      <Mark /> Astra Team{" "}
                       <span className={styles.recipeChip}>
                         Try recipe <Icon name="arrow" size={11} />
                       </span>
@@ -551,7 +551,7 @@ export default function HomePage() {
               <h2 id="recipes-title">
                 Adapts to your needs
                 <br />
-                with Yell Recipes
+                with Astra Recipes
               </h2>
               <p>
                 Set up your integrations, make everyday tasks automatic, and
@@ -621,7 +621,7 @@ export default function HomePage() {
                 rel="noreferrer"
                 className={styles.textLink}
               >
-                Leave it with Yell <Icon name="arrow" size={18} />
+                Leave it with Astra <Icon name="arrow" size={18} />
               </a>
             </div>
           </section>
@@ -650,14 +650,14 @@ export default function HomePage() {
                 ))}
                 <div>
                   <Mark app />
-                  <span>Yell</span>
+                  <span>Astra</span>
                 </div>
               </div>
               <div className={styles.notification}>
                 <Mark app />
                 <div>
                   <b>
-                    Yell <span>now</span>
+                    Astra <span>now</span>
                   </b>
                   <p>
                     Your train leaves at 5. Leave a little early — traffic looks
@@ -675,7 +675,7 @@ export default function HomePage() {
               </h2>
               <p>
                 A heads-up before your train. A morning briefing before your
-                coffee. Yell remembers the little things, and reaches out when
+                coffee. Astra remembers the little things, and reaches out when
                 it matters.
               </p>
               <a
@@ -732,11 +732,11 @@ export default function HomePage() {
                 <br />A lot more personal.
               </h2>
               <p>
-                Connect Gmail, Calendar, Notion, and GitHub once. Yell puts them
+                Connect Gmail, Calendar, Notion, and GitHub once. Astra puts them
                 to work together, right inside your WhatsApp.
               </p>
               <a href={APP_URL} className={styles.textLink}>
-                Explore Yell App <Icon name="arrow" size={18} />
+                Explore Astra App <Icon name="arrow" size={18} />
               </a>
             </div>
           </section>
@@ -749,7 +749,7 @@ export default function HomePage() {
         >
           <h2 id="pricing-title">Choose a plan to get started</h2>
           <p className={styles.sectionSubtitle}>
-            Every plan gets all of Yell. Start free, then step up for more
+            Every plan gets all of Astra. Start free, then step up for more
             <br className={styles.desktopBreak} /> intelligence and headroom as
             it becomes part of your day.
           </p>
@@ -757,7 +757,7 @@ export default function HomePage() {
           <div className={styles.pricingGrid}>
             <article className={styles.plan}>
               <h3>Bharat Free</h3>
-              <p>Get started and explore what Yell can do for you</p>
+              <p>Get started and explore what Astra can do for you</p>
               <div className={styles.price}>
                 ₹0<span>/ month</span>
               </div>
@@ -794,7 +794,7 @@ export default function HomePage() {
               <span className={styles.planBadge}>
                 Fair Usage Policy • Most Popular
               </span>
-              <h3>Yell Pro</h3>
+              <h3>Astra Pro</h3>
               <p>For founders, operators, and everyday power users</p>
               <div className={styles.price}>
                 ₹99<span>/ month</span>
@@ -834,7 +834,7 @@ export default function HomePage() {
               <span className={styles.planBadge}>
                 Enterprise Headroom
               </span>
-              <h3>Yell Business</h3>
+              <h3>Astra Business</h3>
               <p>For agencies, high-volume teams, and automated workflows</p>
               <div className={styles.price}>
                 ₹999<span>/ month</span>
@@ -875,7 +875,7 @@ export default function HomePage() {
               <p>Put your brand where everyday decisions happen.</p>
             </div>
             <Link href="/brands" className={styles.textLink}>
-              Meet Yell for Brands <Icon name="arrow" size={18} />
+              Meet Astra for Brands <Icon name="arrow" size={18} />
             </Link>
           </div>
         </section>
@@ -905,7 +905,7 @@ export default function HomePage() {
                     />
                     <span>
                       <b>{title}</b>
-                      <small>Try asking Yell</small>
+                      <small>Try asking Astra</small>
                     </span>
                     <Icon name="arrow" size={16} />
                   </span>
@@ -928,20 +928,20 @@ export default function HomePage() {
           <div>
             {[
               [
-                "What is Yell?",
-                "Yell is your personal AI assistant on WhatsApp. It helps with email, your calendar, reminders, research, and the little things that fill up your day.",
+                "What is Astra?",
+                "Astra is your personal AI assistant on WhatsApp. It helps with email, your calendar, reminders, research, and the little things that fill up your day.",
               ],
               [
                 "Do I need to download another app?",
-                "No new app needed. Tap Get Started, say hi on WhatsApp, and connect the services you want Yell to help with.",
+                "No new app needed. Tap Get Started, say hi on WhatsApp, and connect the services you want Astra to help with.",
               ],
               [
                 "Can I speak in Hindi or Hinglish?",
                 "Yes. Text or send voice notes in English, Hindi, or Hinglish — whatever feels natural to you.",
               ],
               [
-                "Can I try Yell for free?",
-                "Yes. Bharat Free includes 25 AI queries and tasks per day with curated sponsored perks. Yell Pro is ₹99 per month for more daily actions and an ad-free experience.",
+                "Can I try Astra for free?",
+                "Yes. Bharat Free includes 15 AI tasks per day with curated sponsored perks. Astra Pro is ₹99 per month (80 tasks/day FUP), and Astra Business is ₹999 per month (1,000 tasks/day).",
               ],
             ].map(([question, answer]) => (
               <details key={question}>
@@ -985,7 +985,7 @@ export default function HomePage() {
 
       <footer className={styles.footer}>
         <div className={`${styles.container} ${styles.footerGrid}`}>
-          <Link href="/" className={styles.footerBrand} aria-label="Yell home">
+          <Link href="/" className={styles.footerBrand} aria-label="Astra home">
             <Mark />
             <span>
               A little help.
@@ -1016,14 +1016,14 @@ export default function HomePage() {
           </div>
         </div>
         <div className={`${styles.container} ${styles.footerMeta}`}>
-          <span>© {new Date().getFullYear()} Yell AI</span>
+          <span>© {new Date().getFullYear()} Astra AI</span>
           <span>Made for your everyday. Built for India.</span>
           <span className={styles.systemStatus}>
             <i /> Let&apos;s make life a little easier
           </span>
         </div>
         <div className={styles.footerWordmark} aria-hidden="true">
-          yell
+          astra
         </div>
       </footer>
 
@@ -1047,10 +1047,10 @@ export default function HomePage() {
           </button>
           <Mark app />
           <span className={styles.dialogEyebrow}>
-            {selectedPlan === "business" ? "Yell Business · ₹999 / month" : "Yell Pro · ₹99 / month"}
+            {selectedPlan === "business" ? "Astra Business · ₹999 / month" : "Astra Pro · ₹99 / month"}
           </span>
           <h2 id="upgrade-title">
-            {selectedPlan === "business" ? "Enterprise Headroom." : "A little more Yell."}
+            {selectedPlan === "business" ? "Enterprise Headroom." : "A little more Astra."}
           </h2>
           <p>
             Enter your WhatsApp number to continue to secure Razorpay checkout.
@@ -1111,7 +1111,7 @@ export default function HomePage() {
               aria-invalid={!!checkoutError}
             />
             <div className={styles.checkoutSummary}>
-              <span>{selectedPlan === "business" ? "Yell Business (1,000 tasks/day) · 30 days" : "Yell Pro (80 tasks/day FUP) · 30 days"}</span>
+              <span>{selectedPlan === "business" ? "Astra Business (1,000 tasks/day) · 30 days" : "Astra Pro (80 tasks/day FUP) · 30 days"}</span>
               <b>{selectedPlan === "business" ? "₹999.00" : "₹99.00"}</b>
             </div>
             {checkoutError && (

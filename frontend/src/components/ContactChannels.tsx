@@ -32,7 +32,7 @@ function buildChannels(): Channel[] {
   ];
 }
 
-export default function ContactChannels({ subtitle = "Ways to reach Yell directly" }: { subtitle?: string }) {
+export default function ContactChannels({ subtitle = "Ways to reach Astra directly" }: { subtitle?: string }) {
   const [copied, setCopied] = useState<string | null>(null);
 
   async function copy(e: React.MouseEvent, key: string, value: string) {

@@ -1,4 +1,4 @@
-# Yell AI Deployment Plan
+# Astra AI Deployment Plan
 
 ## 1. Target architecture
 
