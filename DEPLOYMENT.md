@@ -48,8 +48,8 @@ Because of that:
 - `GOOGLE_CLIENT_SECRET`
 
 ### Optional server defaults
-- `YELLAI_ANTHROPIC_API_KEY`
-- `YELLAI_CLAUDE_CODE_OAUTH_TOKEN`
+- `ASTRAAI_ANTHROPIC_API_KEY`
+- `ASTRAAI_CLAUDE_CODE_OAUTH_TOKEN`
 - `NEXT_PUBLIC_RUNTIME_ENABLED=false` until a persistent runtime worker is connected
 
 ### Current production behavior

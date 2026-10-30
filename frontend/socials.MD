@@ -1,7 +1,7 @@
-# Social Media Strategy — Yell AI
+# Social Media Strategy — Astra AI
 
 ## 1. Product Name & Category
-**Product:** Yell AI
+**Product:** Astra AI
 **Category:** Personal AI Assistant & Domain-Specific Knowledge Base
 
 ## 2. Target Audience
@@ -18,7 +18,7 @@
 
 ## 4. Content Strategy
 - **"Your AI Second Brain":** Demos showing the tool recalling obscure facts from a user's uploaded data.
-- **Workflow Connectors:** Showing how Yell AI syncs with Notion, Obsidian, and browser bookmarks.
+- **Workflow Connectors:** Showing how Astra AI syncs with Notion, Obsidian, and browser bookmarks.
 - **Personal AI Demos:** "Watch me ask my AI about that research paper I read 3 months ago."
 - **Knowledge Management Hacks:** General tips on organizing digital information.
 

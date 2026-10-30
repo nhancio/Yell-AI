@@ -125,7 +125,7 @@ values = dotenv_values(Path.cwd().parent / ".env")
 os.environ["BACKEND_DATABASE_URL"] = URL.create(
     "postgresql+asyncpg", username=values.get("POSTGRES_USER") or "postgres",
     password=values["POSTGRES_PASSWORD"], host="127.0.0.1",
-    port=int(values.get("POSTGRES_PORT") or 55432), database=values.get("POSTGRES_DB") or "yellai",
+    port=int(values.get("POSTGRES_PORT") or 55432), database=values.get("POSTGRES_DB") or "astra",
 ).render_as_string(hide_password=False)
 os.environ["REDIS_URL"] = "redis://:" + quote(values["REDIS_PASSWORD"], safe="") + "@127.0.0.1:" + (values.get("REDIS_PORT") or "6380") + "/0"
 os.environ["ALLOW_MEMORY_FALLBACK"] = "false"

@@ -1,6 +1,6 @@
-# Yell AI Frontend
+# Astra AI Frontend
 
-Yell AI is a managed deployment app for a WhatsApp-based NanoClaw assistant.
+Astra AI is a managed deployment app for a WhatsApp-based NanoClaw assistant.
 
 The intended user flow is:
 
@@ -62,8 +62,8 @@ Minimum frontend auth requirements:
 
 Optional default Claude credentials:
 
-- `YELLAI_ANTHROPIC_API_KEY`
-- `YELLAI_CLAUDE_CODE_OAUTH_TOKEN`
+- `ASTRAAI_ANTHROPIC_API_KEY`
+- `ASTRAAI_CLAUDE_CODE_OAUTH_TOKEN`
 - `ANTHROPIC_API_KEY`
 - `CLAUDE_CODE_OAUTH_TOKEN`
 

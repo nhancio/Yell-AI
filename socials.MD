@@ -1,7 +1,7 @@
-# Social Media Strategy — Yell AI
+# Social Media Strategy — Astra AI
 
 ## 1. Product Name & Category
-**Product:** Yell AI
+**Product:** Astra AI
 **Category:** AI-powered Feedback & Review Management (SaaS/Reputation)
 
 ## 2. Target Audience
@@ -20,8 +20,8 @@
 - **"Automating Your Customer Feedback":** Demos showing the AI responding to and managing reviews.
 - **Turning Bad Reviews into Good Ones:** Showcasing the AI's ability to handle negative feedback professionally.
 - **Reputation Management for Local Biz:** Educational content on the importance of online reviews.
-- **Problem/Solution:** "Stop worrying about manual review management—let Yell AI handle it for you."
+- **Problem/Solution:** "Stop worrying about manual review management—let Astra AI handle it for you."
 
 ## 5. Growth Hack / Viral Loop
 **The "Free Review Audit" Loop:**
-Offer a free "Reputation Health Check" or "Review Audit" for a user's business. This allows them to see their current standing and how Yell AI can improve it, leading to a full subscription for their ongoing reputation management.
+Offer a free "Reputation Health Check" or "Review Audit" for a user's business. This allows them to see their current standing and how Astra AI can improve it, leading to a full subscription for their ongoing reputation management.

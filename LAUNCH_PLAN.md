@@ -37,7 +37,7 @@ What that means with the limits in `backend/app/config.py`:
 
 The 12-month forecast's Month 12 implies **₹315 ad revenue per DAU per month**. That is several times what Meta itself earns per user in Asia-Pacific. Nobody pays a new ad network that CPM.
 
-> Spreadsheet note: `Yell_AI_Business_Plan_Financial_Model.xlsx` has formulas but no cached values. Most totals show **0** outside Excel.
+> Spreadsheet note: `Astra_AI_Business_Plan_Financial_Model.xlsx` has formulas but no cached values. Most totals show **0** outside Excel.
 
 ### Scorecard
 

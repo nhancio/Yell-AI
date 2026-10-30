@@ -6,7 +6,7 @@ This change strengthens backend infrastructure and trust boundaries. It adds no 
 
 The configured backend now uses an isolated PostgreSQL 16 database at `127.0.0.1:55432` and authenticated Redis at `127.0.0.1:6380`.
 
-- PostgreSQL uses SCRAM-SHA-256 authentication. The `yell_backend` application role is not a superuser and cannot create roles or databases.
+- PostgreSQL uses SCRAM-SHA-256 authentication. The `astra_backend` application role is not a superuser and cannot create roles or databases.
 - Redis binds only to loopback, requires a random password, and persists data with AOF.
 - Private connection details live in ignored `.env` files with mode `0600`. Database files and the Redis configuration are in ignored `.runtime/` directories. PostgreSQL administrator credentials are in `.runtime/postgres-admin.env`, also mode `0600`.
 - The existing SSH tunnel on port 5433 and its server/database were not changed. No existing database volumes were reset or migrated.
