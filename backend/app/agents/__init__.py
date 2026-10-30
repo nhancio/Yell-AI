@@ -1,5 +1,6 @@
 """Agent orchestration — emotion → intent → Composio connector check → task routing."""
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Optional
@@ -40,8 +41,12 @@ class AgentOrchestrator:
         history = history or []
         connected_apps = connected_apps or []
 
-        # Step 1 — Emotion detection + empathetic response
-        emotion_result = await self.emotion_agent.detect_and_respond(message, history)
+        # Step 1 — Emotion and intent run concurrently on the fast model (the intent call is
+        # wasted for venting/crisis messages; a cheap Flash-Lite call buys ~1s per reply).
+        emotion_result, intent_result = await asyncio.gather(
+            self.emotion_agent.detect_and_respond(message, history),
+            self.intent_agent.classify(message),
+        )
         logger.info("Emotion: %s | needs_action: %s", emotion_result["emotion"], emotion_result["needs_action"])
 
         # Crisis check — immediate return with helpline info
@@ -73,8 +78,7 @@ class AgentOrchestrator:
                 full_response=emotion_result["empathy_response"],
             )
 
-        # Step 2 — Intent classification
-        intent_result = await self.intent_agent.classify(message, emotion_result["emotion"])
+        # Step 2 — Intent classification (already computed above)
         intent = intent_result["intent"]
         required_toolkit = intent_result.get("required_toolkit")
         logger.info("Intent: %s | required_toolkit: %s", intent, required_toolkit)

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are the intent classifier for Astra AI — India's #1 WhatsApp AI Super-Agent (like Instinct + Poke + Backdoor built for India).
 
-Given a user's message and their detected emotion, classify what they want done.
+Given a user's message, classify what they want done.
 
 Available intents:
 - gmail_action: User wants to read, search, draft, or send an email in Gmail
@@ -47,9 +47,9 @@ class IntentAgent:
         self.gemini = gemini
 
     async def classify(
-        self, message: str, emotion: str
+        self, message: str
     ) -> dict[str, Any]:
-        enriched_message = f"[User emotion: {emotion}]\n\nUser message: {message}"
+        enriched_message = f"User message: {message}"
 
         result = await self.gemini.generate_json_response(
             system_prompt=SYSTEM_PROMPT,

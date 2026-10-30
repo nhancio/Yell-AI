@@ -31,6 +31,8 @@ class MemoryService:
     def __init__(self, redis_client: Optional[aioredis.Redis] = None) -> None:
         self._redis = redis_client
         self._local_storage: dict[str, list[str]] = {}
+        self._local_once: dict[str, float] = {}
+        self._local_latest: dict[str, str] = {}
         self._connect_lock = asyncio.Lock()
         self._retry_after = 0.0
 
@@ -146,6 +148,45 @@ class MemoryService:
             logger.error("Memory clear failed (%s)", type(exc).__name__)
             if not settings.memory_fallback_allowed:
                 raise MemoryUnavailable("Conversation memory is unavailable") from exc
+
+    async def mark_latest(self, phone_number: str, message_id: str) -> None:
+        """Record the newest inbound message so older in-flight replies can be dropped."""
+        try:
+            r = await self._get_redis()
+            if r:
+                await r.set(f"astra:latest:{phone_number}", message_id, ex=600)
+            else:
+                self._local_latest[phone_number] = message_id
+        except Exception as exc:
+            logger.error("Latest-message write failed (%s)", type(exc).__name__)
+
+    async def is_latest(self, phone_number: str, message_id: str) -> bool:
+        """False once the user has sent something newer. Fails open so replies never vanish on errors."""
+        try:
+            r = await self._get_redis()
+            latest = await r.get(f"astra:latest:{phone_number}") if r else self._local_latest.get(phone_number)
+            return latest in (None, message_id)
+        except Exception as exc:
+            logger.error("Latest-message read failed (%s)", type(exc).__name__)
+            return True
+
+    async def first_today(self, key: str) -> bool:
+        """True only for the first call per key in a rolling 24h window, shared across instances."""
+        try:
+            r = await self._get_redis()
+            if r:
+                return bool(await r.set(f"astra:once:{key}", 1, nx=True, ex=SESSION_TTL_SECONDS))
+
+            # Local fallback
+            now = time.time()
+            if now - self._local_once.get(key, 0) < SESSION_TTL_SECONDS:
+                return False
+            self._local_once[key] = now
+            return True
+        except Exception as exc:
+            # Fail open: one extra paid message beats a user stuck in silence.
+            logger.error("Once-per-day check failed (%s)", type(exc).__name__)
+            return True
 
     async def close(self) -> None:
         """Close the Redis connection."""

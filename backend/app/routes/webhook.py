@@ -71,6 +71,18 @@ async def verify_webhook(
     return Response(content="Verification failed", status_code=403)
 
 
+async def _superseded(message_id: str, log_id: int) -> dict:
+    """Drop a reply the user overrode by texting again (no send, no usage charge)."""
+    logger.info("Dropping reply to %s: superseded by a newer message", message_id)
+    try:
+        async with async_session() as session:
+            await session.execute(update(FlowLog).where(FlowLog.id == log_id).values(status="superseded"))
+            await session.commit()
+    except Exception:
+        pass
+    return {"status": "superseded"}
+
+
 async def process_user_message(
     sender: str,
     text: str,
@@ -132,6 +144,11 @@ async def process_user_message(
         await whatsapp.send_message(sender, "\n".join(lines))
         return {"status": "ok"}
 
+    if clean_text in ("stop", "/stop", "cancel", "/cancel"):
+        # This message already superseded any reply still being generated (see mark_latest).
+        await whatsapp.send_message(sender, "Stopped ✋ What should I do instead?")
+        return {"status": "ok"}
+
     if clean_text == "/clear":
         await memory.clear_history(sender)
         await whatsapp.send_message(sender, "Fresh start! 🧹 Tell me what we're tackling next.")
@@ -168,13 +185,15 @@ async def process_user_message(
     # The inbound message already proves they own the number; app login (OTP, same number) links it.
     signed_up, preview_left = await usage_service.signup_state(sender)
     if not signed_up and preview_left == 0:
-        first_name = sender_name.split()[0] if sender_name else "there"
-        await whatsapp.send_message(sender, (
-            f"Hey {first_name}! 👋 Loved chatting so far.\n\n"
-            "Finish a 30-second setup to keep going with *Astra AI*:\n"
-            f"👉 {connect_hub_url}\n\n"
-            f"Log in with this same WhatsApp number (+{norm_phone}) and I'll pick up right here."
-        ))
+        # Every reply is billed, so the link goes out at most once a day; otherwise stay silent.
+        if await memory.first_today(f"signup_link:{norm_phone}"):
+            first_name = sender_name.split()[0] if sender_name else "there"
+            await whatsapp.send_message(sender, (
+                f"Hey {first_name}! 👋 Loved chatting so far.\n\n"
+                "Finish a 30-second setup to keep going with *Astra AI*:\n"
+                f"👉 {connect_hub_url}\n\n"
+                f"Log in with this same WhatsApp number (+{norm_phone}) and I'll pick up right here."
+            ))
         return {"status": "signup_required"}
 
     # 3. Check usage limits (Fair Usage Policy enforcement)
@@ -215,10 +234,17 @@ async def process_user_message(
     active_apps = [c["slug"] for c in user_conns if c["status"] == "active"]
 
     await memory.add_message(sender, "user", text)
+    # A newer message already arrived: it will see this one in history, so skip the LLM work.
+    if not await memory.is_latest(sender, message_id):
+        return await _superseded(message_id, log_id)
 
     # 5. Process through AgentOrchestrator
     try:
         result = await orchestrator.process(text, history, connected_apps=active_apps)
+        # ponytail: Gemini calls already in flight still run to completion; cancel them per
+        # instance with asyncio tasks if that spend matters.
+        if not await memory.is_latest(sender, message_id):
+            return await _superseded(message_id, log_id)
         response_text = result.full_response
 
         # If the intent needs a Composio toolkit that isn't connected yet, append a 1-tap connect prompt
@@ -312,6 +338,8 @@ async def handle_webhook(request: Request, background_tasks: BackgroundTasks) ->
     await whatsapp.send_typing_indicator(message_id)
 
     sender = parsed["sender"]
+    # A newer message wins: replies still being generated for older ones are dropped.
+    await memory.mark_latest(sender, message_id)
     text = parsed["text"]
     sender_name = parsed.get("sender_name", "")
 

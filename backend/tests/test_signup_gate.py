@@ -12,6 +12,7 @@ from app.models.onboarding import UserOnboarding
 from app.models.user import User, UserUsage
 from app.routes import webhook
 from app.services import usage as usage_module
+from app.services.memory import MemoryService
 from app.services.usage import UsageService
 
 PHONE = "918374548218"
@@ -65,7 +66,7 @@ class _FlowLogSink:
 
 
 class WebhookGateTests(unittest.IsolatedAsyncioTestCase):
-    async def run_message(self, state):
+    async def run_message(self, state, first_today=True, latest=True):
         send = AsyncMock()
         process = AsyncMock(return_value=SimpleNamespace(
             full_response="Here you go", required_toolkit=None, intent="general",
@@ -77,11 +78,13 @@ class WebhookGateTests(unittest.IsolatedAsyncioTestCase):
              patch.object(webhook.orchestrator, "process", process), \
              patch.object(webhook.memory, "get_conversation_history", AsyncMock(return_value=[])), \
              patch.object(webhook.memory, "add_message", AsyncMock()), \
+             patch.object(webhook.memory, "first_today", AsyncMock(return_value=first_today)), \
+             patch.object(webhook.memory, "is_latest", AsyncMock(return_value=latest)), \
              patch.object(webhook.composio_service, "get_user_connections", AsyncMock(return_value=[])), \
              patch.object(webhook.ads_service, "get_contextual_ad", AsyncMock(return_value=None)), \
              patch.object(webhook, "async_session", lambda: _FlowLogSink()):
             result = await webhook.process_user_message(PHONE, "plan my week", "wamid.1", "Ravi Kumar", 0)
-        return result, process, send.await_args.args[1]
+        return result, process, send.await_args.args[1] if send.await_args else None
 
     async def test_exhausted_preview_sends_onboarding_link_without_ai(self):
         result, process, reply = await self.run_message((False, 0))
@@ -90,15 +93,53 @@ class WebhookGateTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("tryastra.web.app", reply)
         self.assertIn(f"+{PHONE}", reply)
 
+    async def test_link_already_sent_today_stays_silent(self):
+        result, process, reply = await self.run_message((False, 0), first_today=False)
+        self.assertEqual(result, {"status": "signup_required"})
+        process.assert_not_awaited()
+        self.assertIsNone(reply)
+
     async def test_preview_reply_carries_remaining_count(self):
         _, process, reply = await self.run_message((False, 2))
         process.assert_awaited_once()
         self.assertIn("Here you go", reply)
         self.assertIn("1 free message left", reply)
 
+    async def test_newer_message_drops_this_reply(self):
+        result, process, reply = await self.run_message((True, 0), latest=False)
+        self.assertEqual(result, {"status": "superseded"})
+        process.assert_not_awaited()
+        self.assertIsNone(reply)
+
     async def test_signed_up_reply_has_no_nudge(self):
         _, _, reply = await self.run_message((True, 0))
         self.assertEqual(reply, "Here you go")
+
+
+class FirstTodayTests(unittest.IsolatedAsyncioTestCase):
+    async def test_latest_message_wins_locally(self):
+        service = MemoryService()
+        with patch.object(service, "_get_redis", AsyncMock(return_value=None)):
+            self.assertTrue(await service.is_latest(PHONE, "wamid.1"))
+            await service.mark_latest(PHONE, "wamid.1")
+            await service.mark_latest(PHONE, "wamid.2")
+            self.assertFalse(await service.is_latest(PHONE, "wamid.1"))
+            self.assertTrue(await service.is_latest(PHONE, "wamid.2"))
+
+    async def test_local_fallback_allows_once_per_key(self):
+        service = MemoryService()
+        with patch.object(service, "_get_redis", AsyncMock(return_value=None)):
+            self.assertTrue(await service.first_today("signup_link:1"))
+            self.assertFalse(await service.first_today("signup_link:1"))
+            self.assertTrue(await service.first_today("signup_link:2"))
+
+    async def test_redis_uses_atomic_set_nx_with_ttl(self):
+        redis = AsyncMock()
+        redis.set.side_effect = [True, None]
+        service = MemoryService(redis_client=redis)
+        self.assertTrue(await service.first_today("k"))
+        self.assertFalse(await service.first_today("k"))
+        redis.set.assert_awaited_with("astra:once:k", 1, nx=True, ex=86400)
 
 
 if __name__ == "__main__":

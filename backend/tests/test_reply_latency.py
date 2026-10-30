@@ -129,20 +129,16 @@ class AsyncGeminiTests(unittest.IsolatedAsyncioTestCase):
     async def test_generation_yields_instead_of_blocking_other_requests(self):
         release = asyncio.Event()
 
-        class Model:
-            def generate_content(self, contents):
-                return SimpleNamespace(text="blocking path")
-
-            async def generate_content_async(self, contents, **kwargs):
-                await release.wait()
-                return SimpleNamespace(text="Astra response")
+        async def generate(*args):
+            await release.wait()
+            return "Astra response"
 
         service = GeminiService()
-        with patch.object(service, "_get_model", return_value=Model()):
+        with patch.object(service, "_generate", side_effect=generate):
             task = asyncio.create_task(service.generate_response("system", "hello"))
             try:
                 await asyncio.sleep(0)
-                self.assertFalse(task.done(), "The synchronous SDK call still blocks message handling")
+                self.assertFalse(task.done(), "Generation blocks message handling")
             finally:
                 release.set()
                 result = await task
@@ -152,9 +148,32 @@ class AsyncGeminiTests(unittest.IsolatedAsyncioTestCase):
         async def stalled_generation(*args, **kwargs):
             await asyncio.Event().wait()
 
-        model = SimpleNamespace(generate_content=lambda contents: SimpleNamespace(text="unbounded"),
-                                generate_content_async=stalled_generation)
-        with patch.object(GeminiService, "_get_model", return_value=model), \
+        with patch.object(GeminiService, "_generate", side_effect=stalled_generation), \
              patch.object(GeminiService, "REQUEST_TIMEOUT_SECONDS", 0.01):
             self.assertEqual(await asyncio.wait_for(
                 GeminiService().generate_response("system", "hello"), timeout=0.5), FALLBACK_RESPONSE)
+
+    async def test_router_picks_model_and_thinking_level_and_maps_roles(self):
+        requests = []
+
+        def handle(request):
+            requests.append((request.url.path, json.loads(request.content)))
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [
+                {"text": "thinking...", "thought": True}, {"text": '{"ok": true}'}]}}]})
+
+        real_client = httpx.AsyncClient
+        transport = httpx.MockTransport(handle)
+        service = GeminiService()
+        history = [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hey"}]
+        with patch("app.services.gemini.httpx.AsyncClient",
+                   side_effect=lambda **kw: real_client(transport=transport, **kw)):
+            self.assertEqual(await service.generate_json_response("classify", "remind me"), {"ok": True})
+            self.assertEqual(await service.generate_response("answer", "remind me", history), '{"ok": true}')
+
+        (fast_path, fast), (main_path, main) = requests
+        self.assertIn("gemini-3.5-flash-lite:", fast_path)
+        self.assertEqual(fast["generationConfig"]["thinkingConfig"], {"thinkingLevel": "minimal"})
+        self.assertEqual(fast["generationConfig"]["responseMimeType"], "application/json")
+        self.assertIn("gemini-3.8-flash:", main_path)
+        self.assertEqual(main["generationConfig"]["thinkingConfig"], {"thinkingLevel": "low"})
+        self.assertEqual([c["role"] for c in main["contents"]], ["user", "model", "user"])
