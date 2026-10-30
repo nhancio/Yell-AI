@@ -1,4 +1,4 @@
-"""Intent classification agent — maps user message to India Life-OS & Composio tool intents."""
+"""Intent classification agent — maps user message to job-outreach service intents."""
 
 import logging
 from typing import Any
@@ -7,34 +7,27 @@ from app.services.gemini import GeminiService
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are the intent classifier for Yell AI — India's #1 WhatsApp AI Super-Agent (like Instinct + Poke + Backdoor built for India).
+SYSTEM_PROMPT = """You are the intent classifier for Yell AI — a job-outreach service for job seekers in India. Yell AI helps users land interviews at startups by drafting and sending personal cold emails to founders from the user's own Gmail.
 
 Given a user's message and their detected emotion, classify what they want done.
 
 Available intents:
-- gmail_action: User wants to read, search, draft, or send an email in Gmail
-- calendar_action: User wants to check schedule, book a meeting, set a reminder, or create a Google Calendar event
-- notion_action: User wants to save notes, update a Notion page, or manage workspace docs
-- founder_outreach: User wants "Backdoor" style hiring help — cold emailing startup founders, finding YC/Indian startup roles, or referrals
-- travel_irctc: User asks about Indian Railways (IRCTC PNR, Tatkal, train routes), domestic flights (IndiGo/Air India), buses, or trip planning
-- food_commerce: User asks about ordering food (Swiggy/Zomato), quick commerce groceries (Blinkit/Zepto/Instamart), or comparing prices on Amazon/Flipkart
-- email_draft: User wants help writing a professional email/message without necessarily triggering live Gmail send
-- job_search: User wants career change, job hunting help (Naukri, Instahyre, LinkedIn), or interview prep
-- task_planning: User needs help organizing daily tasks, routines, or productivity
+- founder_outreach: User wants to cold email startup founders, find Indian/YC startups to target, or get referrals
+- gmail_action: User wants to send, follow up on, or check replies to outreach emails in their Gmail
+- calendar_action: User wants to schedule or track an interview in Google Calendar
+- email_draft: User wants help writing a job-related email or message without sending it
+- job_search: User wants job hunting help (which roles/companies to target, Naukri, Instahyre, LinkedIn) or interview prep
 - resume_help: User wants resume/CV improvement or LinkedIn profile optimization
-- budget_planning: User needs personal finance, UPI spend tracking, SIP/mutual fund basics, or tax/budget planning for India
-- relationship_advice: User needs advice on partner, family, parents, friends, or workplace politics
-- coping_strategies: User needs stress relief, anxiety support, or wellness strategies
-- research: User wants deep research, cricket/IPL scores, news, coding help, or product comparisons
-- general_help: Anything else that needs action
+- coping_strategies: User is stressed or anxious about the job hunt and needs support
+- general_help: Anything else, including requests unrelated to job hunting
 - just_venting: User is just expressing feelings and doesn't need a task done
 
-Also identify if a Composio connector toolkit is needed ("gmail", "googlecalendar", "notion", "github", "linkedin", "googlesheets", or null).
+Also identify if a Composio connector toolkit is needed ("gmail", "googlecalendar", "linkedin", or null).
 
 Return ONLY valid JSON:
 {
   "intent": "one_of_the_above_intents",
-  "required_toolkit": "gmail|googlecalendar|notion|github|linkedin|googlesheets|null",
+  "required_toolkit": "gmail|googlecalendar|linkedin|null",
   "details": {
     "summary": "brief summary of what they need",
     "key_points": ["point1", "point2"]
@@ -65,20 +58,13 @@ class IntentAgent:
 
         intent = result.get("intent", "general_help")
         valid_intents = {
+            "founder_outreach",
             "gmail_action",
             "calendar_action",
-            "notion_action",
-            "founder_outreach",
-            "travel_irctc",
-            "food_commerce",
             "email_draft",
             "job_search",
-            "task_planning",
             "resume_help",
-            "budget_planning",
-            "relationship_advice",
             "coping_strategies",
-            "research",
             "general_help",
             "just_venting",
         }

@@ -175,22 +175,72 @@ class WhatsAppService:
                     "button_id": btn_reply.get("id", ""),
                 }
 
-            # Handle image / audio / video / document with caption
-            if msg_type in ("image", "audio", "video", "document"):
-                caption = message.get(msg_type, {}).get("caption", "")
+            # Handle contact cards (.vcf / contacts)
+            if msg_type == "contacts":
+                contacts_data = message.get("contacts", [])
+                details = []
+                for c in contacts_data:
+                    c_name = c.get("name", {}).get("formatted_name", "Unknown Contact")
+                    c_phones = [p.get("phone", "") for p in c.get("phones", []) if p.get("phone")]
+                    c_emails = [e.get("email", "") for e in c.get("emails", []) if e.get("email")]
+                    detail_str = f"Name: {c_name}"
+                    if c_phones:
+                        detail_str += f", Phone: {', '.join(c_phones)}"
+                    if c_emails:
+                        detail_str += f", Email: {', '.join(c_emails)}"
+                    details.append(detail_str)
+                text = f"[Contact Card shared: {' | '.join(details)}]"
                 return {
                     "sender": sender,
                     "sender_name": sender_name,
-                    "text": caption if caption else f"[Sent a {msg_type}]",
+                    "text": text,
+                    "message_id": message_id,
+                    "type": "contacts",
+                }
+
+            # Handle location
+            if msg_type == "location":
+                loc = message.get("location", {})
+                lat = loc.get("latitude", "")
+                lon = loc.get("longitude", "")
+                name = loc.get("name", "")
+                address = loc.get("address", "")
+                loc_text = f"[Shared Location: {name or 'Pinned Location'} ({lat}, {lon}) {address}]"
+                return {
+                    "sender": sender,
+                    "sender_name": sender_name,
+                    "text": loc_text,
+                    "message_id": message_id,
+                    "type": "location",
+                }
+
+            # Handle sticker
+            if msg_type == "sticker":
+                return {
+                    "sender": sender,
+                    "sender_name": sender_name,
+                    "text": "[Sent a sticker 👍]",
+                    "message_id": message_id,
+                    "type": "sticker",
+                }
+
+            # Handle image / audio / video / document with caption
+            if msg_type in ("image", "audio", "video", "document"):
+                caption = message.get(msg_type, {}).get("caption", "")
+                default_text = f"[Sent a voice note]" if msg_type == "audio" else f"[Sent an image]" if msg_type == "image" else f"[Sent a {msg_type}]"
+                return {
+                    "sender": sender,
+                    "sender_name": sender_name,
+                    "text": caption if caption else default_text,
                     "message_id": message_id,
                     "type": msg_type,
                 }
 
-            # Unsupported message type — still acknowledge
+            # Fallback for other message types
             return {
                 "sender": sender,
                 "sender_name": sender_name,
-                "text": f"[Unsupported message type: {msg_type}]",
+                "text": f"[Shared {msg_type}]",
                 "message_id": message_id,
                 "type": msg_type,
             }

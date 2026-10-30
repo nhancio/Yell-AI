@@ -3,7 +3,9 @@
 import json
 import logging
 
-from fastapi import APIRouter, Query, Request, Response
+import collections
+import time
+from fastapi import APIRouter, BackgroundTasks, Query, Request, Response
 from sqlalchemy import update
 
 from app.agents import AgentOrchestrator
@@ -34,6 +36,23 @@ composio_service = ComposioService()
 ads_service = AdsService()
 
 
+PROCESSED_MESSAGE_IDS = collections.OrderedDict()
+MAX_DEDUP_CACHE = 10000
+
+
+def check_and_record_message(message_id: str) -> bool:
+    if not message_id:
+        return False
+    now = time.time()
+    if message_id in PROCESSED_MESSAGE_IDS:
+        logger.info("Deduplicated incoming message_id: %s (dropped duplicate retry)", message_id)
+        return True
+    PROCESSED_MESSAGE_IDS[message_id] = now
+    if len(PROCESSED_MESSAGE_IDS) > MAX_DEDUP_CACHE:
+        PROCESSED_MESSAGE_IDS.popitem(last=False)
+    return False
+
+
 @router.get("/webhook")
 async def verify_webhook(
     hub_mode: str = Query(None, alias="hub.mode"),
@@ -49,60 +68,20 @@ async def verify_webhook(
     return Response(content="Verification failed", status_code=403)
 
 
-@router.post("/webhook")
-async def handle_webhook(request: Request) -> dict:
-    """Process incoming WhatsApp messages."""
-    raw_body = await request.body()
-
-    client_ip = request.client.host if request.client else "unknown"
-    rate_limit_key = f"rate_limit:{client_ip}"
-
+async def process_user_message(
+    sender: str,
+    text: str,
+    message_id: str,
+    sender_name: str,
+    log_id: int,
+) -> None:
+    """Process incoming message asynchronously in background task (Meta gets 200 immediately)."""
     try:
-        r = await memory._get_redis()
-        current_requests = await r.incr(rate_limit_key)
-        if current_requests == 1:
-            await r.expire(rate_limit_key, 60)
-
-        if current_requests > settings.RATE_LIMIT_PER_MINUTE:
-            logger.warning(f"Rate limit exceeded for IP: {client_ip}")
-            return Response(content="Rate limit exceeded", status_code=429)
-    except Exception as e:
-        logger.warning(f"Rate limiting failed (Redis might be down): {e}")
-
-    await ensure_tables()
-    async with async_session() as session:
-        log = FlowLog(
-            direction="inbound",
-            payload=raw_body.decode("utf-8", errors="ignore"),
-            status="received",
-        )
-        session.add(log)
-        await session.commit()
-        await session.refresh(log)
-        log_id = log.id
-
-    try:
-        payload = json.loads(raw_body)
-    except Exception:
-        payload = {}
-
-    parsed = WhatsAppService.parse_incoming_message(payload)
-    if not parsed:
         async with async_session() as session:
-            await session.execute(update(FlowLog).where(FlowLog.id == log_id).values(status="ignored"))
+            await session.execute(update(FlowLog).where(FlowLog.id == log_id).values(sender=sender, status="processing"))
             await session.commit()
-        return {"status": "ignored"}
-
-    sender = parsed["sender"]
-    text = parsed["text"]
-    message_id = parsed["message_id"]
-    sender_name = parsed.get("sender_name", "")
-
-    async with async_session() as session:
-        await session.execute(update(FlowLog).where(FlowLog.id == log_id).values(sender=sender, status="processing"))
-        await session.commit()
-
-    logger.info("Message from %s: %s", sender, text[:100])
+    except Exception:
+        pass
 
     try:
         await whatsapp.mark_as_read(message_id)
@@ -266,3 +245,56 @@ async def handle_webhook(request: Request) -> dict:
         await whatsapp.send_message(sender, fallback)
 
     return {"status": "ok"}
+
+
+@router.post("/webhook")
+async def handle_webhook(request: Request, background_tasks: BackgroundTasks) -> dict:
+    # Process incoming WhatsApp messages with instant ack and deduplication
+    raw_body = await request.body()
+
+    try:
+        payload = json.loads(raw_body)
+    except Exception:
+        payload = {}
+
+    parsed = WhatsAppService.parse_incoming_message(payload)
+    if not parsed:
+        return {"status": "ignored"}
+
+    message_id = parsed.get("message_id", "")
+    if check_and_record_message(message_id):
+        return {"status": "already_processed"}
+
+    sender = parsed["sender"]
+    text = parsed["text"]
+    sender_name = parsed.get("sender_name", "")
+
+    log_id = 0
+    try:
+        await ensure_tables()
+        async with async_session() as session:
+            log = FlowLog(
+                direction="inbound",
+                sender=sender,
+                payload=text[:500],
+                status="received",
+            )
+            session.add(log)
+            await session.commit()
+            await session.refresh(log)
+            log_id = log.id
+    except Exception as exc:
+        logger.debug("FlowLog skip: %s", exc)
+
+    logger.info("Webhook received from %s (%s): %s", sender, sender_name, text[:80])
+
+    background_tasks.add_task(
+        process_user_message,
+        sender=sender,
+        text=text,
+        message_id=message_id,
+        sender_name=sender_name,
+        log_id=log_id,
+    )
+
+    return {"status": "received"}

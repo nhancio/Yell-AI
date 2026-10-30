@@ -1,588 +1,1052 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
+import styles from "./home.module.css";
 
-const WHATSAPP_NUMBER = "15552107308";
 const APP_URL = "https://yellapp.nhancio.com";
-
-const RECIPES = [
+const WA_NUMBER = "15552107308";
+const whatsapp = (text = "Hi Yell AI!") =>
+  `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`;
+const WA_LINK = whatsapp();
+const asset = (name: string) => `/poke/${name}`;
+const apps = [
+  ["Strava", "stravaapp.webp"],
+  ["Canva", "canvaapp.webp"],
+  ["Gmail", "gmailapp.webp"],
+  ["Google Calendar", "googlecalendarapp.webp"],
+  ["GitHub", "githubapp.webp"],
+  ["Granola", "granolaapp.webp"],
+  ["Asana", "asanaapp.webp"],
+  ["Sonos", "sonosapp.webp"],
+  ["Notion", "notionapp.webp"],
+  ["Linear", "linearapp.webp"],
+  ["Todoist", "todoistapp.webp"],
+  ["Vercel", "vercel.png"],
+  ["Ramp", "rampapp.webp"],
+  ["Webflow", "webflow.png"],
+  ["Devin", "devin.svg"],
+  ["Mercury", "mercuryapp.webp"],
+  ["Cursor", "cursor.png"],
+  ["Fitbit", "fitbit.svg"],
+  ["Sentry", "sentry.png"],
+  ["Oura", "ourapp.webp"],
+  ["Supabase", "supabase.png"],
+  ["Philips Hue", "hueapp.webp"],
+  ["Netlify", "netlify.png"],
+  ["Outlook", "outlookapp.webp"],
+];
+const recipes = [
   {
-    id: "assistant",
-    title: "Executive Assistant in Hinglish",
-    badge: "Gmail & Calendar",
-    icon: "📅",
-    prompt: "Bhai, kal subah 11 baje Rahul ke saath Google Meet lagao aur uska last mail summarize karo.",
-    reply: "✅ Done! Google Calendar invite sent to rahul@startup.in for 11:00 AM IST tomorrow.\n\n📧 Last Email Summary: Rahul shared the Q4 pitch deck and asked for final pricing approval before Friday.",
-    apps: ["Gmail", "Google Calendar"],
+    name: "Executive assistant",
+    icon: "googlecalendarapp.webp",
+    title: "A little less admin. A lot more life.",
+    description: "Your inbox, calendar, and to-do list. All in one text.",
+    prompt:
+      "Bhai, kal subah 11 baje Rahul ke saath Google Meet lagao aur uska last mail summarize karo.",
   },
   {
-    id: "hiring",
-    title: "Backdoor Startup Founder Outreach",
-    badge: "GitHub & LinkedIn",
-    icon: "🚀",
-    prompt: "Find top funded AI startups in Bengaluru hiring full-stack engineers and draft a cold email from my GitHub.",
-    reply: "🚀 Found 3 funded BLR startups (Sarvam, Composio, Smallest AI).\n\nDrafted a custom 4-line cold email referencing your top repo. Reply SEND to mail the CTO directly!",
-    apps: ["GitHub", "Gmail", "LinkedIn"],
+    name: "Founder outreach",
+    icon: "githubapp.webp",
+    title: "Your next opportunity, one text away.",
+    description: "Make the right connections, with a little help.",
+    prompt:
+      "Find funded AI startups in Bengaluru hiring full-stack engineers and draft an intro from my GitHub.",
   },
   {
-    id: "lifeos",
-    title: "India Life-OS & Expense Tracker",
-    badge: "Swiggy & IRCTC",
-    icon: "🚆",
-    prompt: "Check my IRCTC PNR from Gmail and tell me my total Swiggy + Blinkit spend this month.",
-    reply: "🚆 Train 12951 Rajdhani: Confirmed! Coach B4, Berth 21 (Departs 17:00 IST).\n\n💸 Food & Quick-Commerce: ₹6,420 across 14 Swiggy & Blinkit receipts in Gmail.",
-    apps: ["Gmail", "Google Sheets"],
+    name: "Everyday life",
+    icon: "gmailapp.webp",
+    title: "All the little things, taken care of.",
+    description: "Travel plans, expenses, and everything in between.",
+    prompt:
+      "Check my IRCTC PNR from Gmail and total my Swiggy + Blinkit spend this month.",
   },
 ];
-
-const BENTO_INTEGRATIONS = [
-  {
-    name: "Gmail & Email",
-    slug: "gmail",
-    icon: "📧",
-    title: "Search, summarize, and draft emails from your texts",
-    description: "Read receipts, check IRCTC train confirmations, or draft replies to clients without opening your inbox.",
-  },
-  {
-    name: "Google Calendar",
-    slug: "calendar",
-    icon: "📅",
-    title: "Book Google Meets & manage schedule effortlessly",
-    description: "Just voice-note 'Schedule a 30m call with Priya next Tuesday' — invites and Meet links are handled.",
-  },
-  {
-    name: "Notion & Second Brain",
-    slug: "notion",
-    icon: "📝",
-    title: "Access and organize notes & databases from WhatsApp",
-    description: "Dump voice notes, meeting thoughts, or startup ideas. Yell AI structures and syncs them straight to Notion.",
-  },
-  {
-    name: "Startup Outreach (Backdoor)",
-    slug: "founder-outreach",
-    icon: "🚀",
-    title: "Skip job boards. DM funded startup founders directly",
-    description: "Match with CTOs in Bengaluru, Gurgaon & Hyderabad. Yell AI crafts personalized cold intros referencing your GitHub.",
-  },
-  {
-    name: "Swiggy, Blinkit & Food",
-    slug: "swiggy",
-    icon: "🍔",
-    title: "Track monthly food expenses & order receipts",
-    description: "Automatically tally Swiggy, Zomato, and Blinkit spends from your bills and keep your monthly budget in check.",
-  },
-  {
-    name: "IRCTC & Travel",
-    slug: "travel",
-    icon: "🚆",
-    title: "Live train PNR status, flight alerts & bookings",
-    description: "Track live train delays, platform numbers, and flight boarding gates proactively before you reach the station.",
-  },
+const conversationIdeas = [
+  [
+    "A calmer morning",
+    "Give me a quick morning briefing: today's meetings, important emails, and anything I should know before I head out.",
+    "googlecalendarapp.webp",
+  ],
+  [
+    "An inbox that feels lighter",
+    "Summarize my unread emails and draft a reply to the ones that need my attention.",
+    "gmailapp.webp",
+  ],
+  [
+    "Room for your next big idea",
+    "Save this voice note to Notion and turn it into a tidy list of next steps. I'll come back to it after lunch.",
+    "notionapp.webp",
+  ],
+  [
+    "A little help getting there",
+    "Find my train booking in Gmail and remind me to leave for the station on time.",
+    "gmailapp.webp",
+  ],
+  [
+    "Your next chapter",
+    "Help me write a short introduction to a startup founder using the projects on my GitHub.",
+    "githubapp.webp",
+  ],
+  [
+    "The everyday, sorted",
+    "Add up this month's food and grocery receipts. How much did I spend on Swiggy and Blinkit?",
+    "googlecalendarapp.webp",
+  ],
 ];
+
+function Icon({
+  name,
+  size = 20,
+}: {
+  name: "arrow" | "chevron" | "check" | "voice" | "plus" | "close" | "menu";
+  size?: number;
+}) {
+  const paths = {
+    arrow: "M5 12h14m-6-6 6 6-6 6",
+    chevron: "m9 5 7 7-7 7",
+    check: "m5 12 4 4L19 6",
+    voice: "M4 10v4m4-8v12m4-15v18m4-15v12m4-8v4",
+    plus: "M12 5v14M5 12h14",
+    close: "m6 6 12 12M6 18 18 6",
+    menu: "M4 7h16M4 12h16M4 17h16",
+  };
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={paths[name]} />
+    </svg>
+  );
+}
+
+function Mark({ app = false }: { app?: boolean }) {
+  return (
+    <span className={app ? styles.appMark : styles.mark} aria-hidden="true">
+      <svg viewBox="0 0 40 44" fill="none">
+        <path
+          d="m7 5 13 15L33 5M20 20v18M7 39h26"
+          stroke="currentColor"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M6 13 20 20l14-7"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+      </svg>
+    </span>
+  );
+}
+
+function Phone() {
+  return (
+    <div
+      className={styles.phone}
+      role="img"
+      aria-label="Example WhatsApp conversation with Yell AI about scheduling a meeting and checking a train booking"
+    >
+      <div className={styles.phoneScreen}>
+        <div className={styles.statusBar}>
+          <b>9:41</b>
+          <span className={styles.statusIcons}>
+            ▮▮▮{" "}
+            <svg
+              width="17"
+              height="14"
+              viewBox="0 0 20 16"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M1 5a14 14 0 0 1 18 0l-2 2A11 11 0 0 0 3 7Zm4 4a8 8 0 0 1 10 0l-2 2a5 5 0 0 0-6 0Zm3 4a3 3 0 0 1 4 0l-2 3Z" />
+            </svg>
+            <span className={styles.battery} />
+          </span>
+        </div>
+        <div className={styles.contact}>
+          <span className={styles.backArrow}>‹</span>
+          <Mark app />
+          <b>
+            Yell <span className={styles.verified}>✦</span>
+            <span className={styles.contactChevron}>›</span>
+          </b>
+        </div>
+        <div className={styles.messages}>
+          <span className={styles.chatDate}>Today 9:41 AM</span>
+          <p className={styles.incoming}>morning! ready for the day?</p>
+          <p className={styles.outgoing}>
+            Bhai, schedule a Meet with Rahul for 11 tomorrow
+          </p>
+          <p className={styles.incoming}>
+            done boss! invite sent, Meet link included
+          </p>
+          <p className={styles.incoming}>
+            btw your Rajdhani ticket is confirmed. B4, berth 21 🚆
+          </p>
+          <p className={styles.outgoing}>you remembered 😭</p>
+          <p className={styles.incoming}>that&apos;s what I&apos;m here for</p>
+          <span className={styles.typing}>
+            <i />
+            <i />
+            <i />
+          </span>
+        </div>
+        <div className={styles.messageInput}>
+          <Icon name="plus" />
+          <span>Message Yell</span>
+          <Icon name="voice" />
+        </div>
+        <span className={styles.homeIndicator} />
+      </div>
+      <img
+        src={asset("phoneframe.38o-vdzwwky7a.webp")}
+        alt=""
+        className={styles.phoneFrame}
+        fetchPriority="high"
+      />
+    </div>
+  );
+}
 
 export default function HomePage() {
   const [activeRecipe, setActiveRecipe] = useState(0);
-  const [qrUrl, setQrUrl] = useState<string>("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [qrUrl, setQrUrl] = useState("");
+  const [showQr, setShowQr] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradePhone, setUpgradePhone] = useState("");
   const [upgrading, setUpgrading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+  const upgradeDialog = useRef<HTMLDialogElement>(null);
 
-  const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi Yell AI!")}`;
+  useEffect(() => {
+    QRCode.toDataURL(WA_LINK, {
+      width: 180,
+      margin: 1,
+      color: { dark: "#252525", light: "#FFFFFF" },
+    })
+      .then(setQrUrl)
+      .catch(() => setQrUrl(""));
+  }, []);
+
+  useEffect(() => {
+    const updateHeader = () => setScrolled(window.scrollY > 70);
+    updateHeader();
+    window.addEventListener("scroll", updateHeader, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeader);
+  }, []);
+
+  useEffect(() => {
+    if (showUpgradeModal) upgradeDialog.current?.showModal();
+    else upgradeDialog.current?.close();
+  }, [showUpgradeModal]);
 
   const handleProUpgrade = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = upgradePhone.replace(/\D/g, "");
-    if (clean.length < 10) {
-      alert("Please enter a valid 10-digit WhatsApp phone number.");
+    if (clean.length < 10 || clean.length > 15) {
+      setCheckoutError(
+        "Enter your WhatsApp number with 10–15 digits, including your country code.",
+      );
       return;
     }
+    setCheckoutError("");
+    setUpgrading(true);
     try {
-      setUpgrading(true);
-      const res = await fetch("https://yell-ai-api-6epx3aakpq-el.a.run.app/payment/create-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number: clean }),
-      });
-      if (!res.ok) throw new Error("Payment link generation failed");
+      const res = await fetch(
+        "https://yell-ai-api-6epx3aakpq-el.a.run.app/payment/create-link",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone_number: clean }),
+        },
+      );
+      if (!res.ok)
+        throw new Error(
+          "Couldn’t start checkout. Please try again, or text UPGRADE on WhatsApp.",
+        );
       const data = await res.json();
-      if (data.payment_url) {
-        window.location.href = data.payment_url;
-      }
-    } catch (err: any) {
-      alert(err.message || "Failed to start checkout. Try texting UPGRADE on WhatsApp!");
+      if (!data.payment_url)
+        throw new Error("No checkout link was returned. Please try again.");
+      window.location.href = data.payment_url;
+    } catch (err: unknown) {
+      setCheckoutError(
+        err instanceof Error
+          ? err.message
+          : "Couldn’t connect. Please try again, or text UPGRADE on WhatsApp.",
+      );
     } finally {
       setUpgrading(false);
     }
   };
 
-  useEffect(() => {
-    QRCode.toDataURL(waLink, {
-      width: 140,
-      margin: 1,
-      color: { dark: "#1C1C1C", light: "#FFFFFF" },
-    })
-      .then(setQrUrl)
-      .catch((e) => console.error("QR Error:", e));
-  }, [waLink]);
-
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#1C1C1C] flex flex-col font-sans selection:bg-[#25D366] selection:text-black antialiased">
-      {/* Top Banner (Poke style pill) */}
-      <div className="bg-[#F3EFEA] border-b border-[#E6E1DA] px-4 py-2 text-center text-xs text-[#5C5752] flex items-center justify-center gap-2">
-        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#E5E0D8] text-[#1C1C1C] font-semibold text-[11px]">
-          🇮🇳 India Beta
-        </span>
-        <span>Meet Yell — your proactive executive assistant on WhatsApp.</span>
-        <Link href="/brands" className="font-semibold text-[#1C1C1C] underline hover:text-[#25D366] ml-1">
-          Brands Portal →
-        </Link>
-      </div>
-
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-[#FAF8F5]/85 border-b border-[#EAE6DE]">
-        <div className="max-w-6xl mx-auto px-6 h-18 flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 outline-none group">
-            <div className="h-8 w-8 rounded-xl bg-[#1C1C1C] text-[#FAF8F5] font-black flex items-center justify-center text-base tracking-tighter shadow-sm group-hover:scale-105 transition-transform">
-              Y
-            </div>
-            <span className="font-bold text-xl tracking-tight text-[#1C1C1C]">Yell</span>
+    <div className={styles.site}>
+      <a href="#main" className={styles.skipLink}>
+        Skip to content
+      </a>
+      <div className={styles.heroWrap}>
+        <img
+          className={styles.heroBackground}
+          src={asset("herobg.0xbmuzkojhss1.webp")}
+          alt=""
+          fetchPriority="high"
+        />
+        <header
+          className={`${styles.header} ${scrolled ? styles.scrolledHeader : ""}`}
+        >
+          <Link href="/" aria-label="Yell home" className={styles.logo}>
+            <Mark />
           </Link>
-
-          {/* Nav links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-[#5C5752]">
-            <a href="#experience" className="hover:text-[#1C1C1C] transition-colors">Experience</a>
-            <a href="#recipes" className="hover:text-[#1C1C1C] transition-colors">Recipes</a>
-            <a href="#pricing" className="hover:text-[#1C1C1C] transition-colors">Pricing</a>
-            <Link href="/brands" className="hover:text-[#1C1C1C] transition-colors flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#25D366]" />
-              Brands & Ads
-            </Link>
+          <nav className={styles.desktopNav} aria-label="Main navigation">
+            <details className={styles.navDropdown}>
+              <summary>
+                Product <span>⌄</span>
+              </summary>
+              <div>
+                <a href="#experience">Meet Yell</a>
+                <a href="#recipes">Recipes</a>
+                <a href={APP_URL}>
+                  Yell App <Icon name="arrow" size={14} />
+                </a>
+              </div>
+            </details>
+            <details className={styles.navDropdown}>
+              <summary>
+                Resources <span>⌄</span>
+              </summary>
+              <div>
+                <a href="#faq">FAQs</a>
+                <a href="#integrations">Integrations</a>
+                <a href="mailto:nithindidigam@nhancio.com">Contact us</a>
+              </div>
+            </details>
+            <a href="#pricing">Pricing</a>
+            <Link href="/brands">For Brands</Link>
           </nav>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-3.5">
-            <Link
-              href={APP_URL}
-              className="hidden sm:inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium text-[#1C1C1C] hover:bg-[#EFECE6] transition-colors"
-            >
-              Yell App
-            </Link>
+          <div className={styles.headerActions}>
+            <a href={APP_URL} className={styles.login}>
+              Log in
+            </a>
             <a
-              href={waLink}
+              href={WA_LINK}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center font-medium whitespace-nowrap transition-all duration-150 active:scale-[0.98] text-white bg-[linear-gradient(180deg,#2D2D2D_0%,#1C1C1C_100%)] hover:bg-[#000] shadow-[0_1px_3px_rgba(0,0,0,0.1),0_4px_12px_rgba(0,0,0,0.08)] h-10 rounded-xl px-5 text-sm gap-2"
+              className={`${styles.button} ${styles.darkButton} ${styles.smallButton}`}
             >
-              <span className="h-2 w-2 rounded-full bg-[#25D366]" />
-              <span>Chat on WhatsApp</span>
+              Get Started
             </a>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1">
-        {/* Hero Section */}
-        <section className="pt-16 pb-20 md:pt-24 md:pb-32 px-6 max-w-5xl mx-auto text-center">
-          {/* Top Poke Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#F0ECE4] border border-[#DDD8CF] text-xs font-medium text-[#4A4540] mb-8 shadow-xs">
-            <span className="h-2 w-2 rounded-full bg-[#25D366] animate-pulse" />
-            <span>Works 100% inside your WhatsApp. No app download.</span>
-          </div>
-
-          {/* Hero Main Heading (Poke Typography) */}
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-[#141210] leading-[1.08] max-w-4xl mx-auto">
-            Meet Yell, your new <br className="hidden sm:inline" />
-            <span className="text-[#25D366] selection:text-white">favorite contact</span>.
-          </h1>
-
-          <p className="mt-6 text-base sm:text-xl text-[#5C5752] max-w-2xl mx-auto leading-relaxed font-normal">
-            The proactive AI assistant on WhatsApp. Texts like a human in English & Hinglish, really knows you, and integrates with your life in dozens of ways.
-          </p>
-
-          {/* Hero CTAs */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href={waLink}
-              target="_blank"
-              rel="noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center font-bold text-base text-black bg-[#25D366] hover:bg-[#20ba59] transition-all shadow-[0_2px_10px_rgba(37,211,102,0.35)] h-13 px-8 rounded-2xl gap-2.5 active:scale-[0.98]"
+            <button
+              className={styles.mobileToggle}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-navigation"
+              onClick={() => setMenuOpen(!menuOpen)}
             >
-              <span className="text-xl">💬</span>
-              <span>Say "Hi" on WhatsApp</span>
-            </a>
-
-            <Link
-              href="/brands"
-              className="w-full sm:w-auto inline-flex items-center justify-center font-semibold text-base text-[#1C1C1C] bg-[#EDE9E1] hover:bg-[#E4DFD5] border border-[#DDD7CE] transition-all h-13 px-7 rounded-2xl gap-2"
-            >
-              <span>⚡ For Brands & Advertisers →</span>
-            </Link>
+              <Icon name={menuOpen ? "close" : "menu"} />
+            </button>
           </div>
-
-          {/* Desktop QR Scan Bubble (Poke Style) */}
-          {qrUrl && (
-            <div className="hidden md:inline-flex items-center gap-4 mt-10 p-3 pr-6 rounded-2xl bg-[#FFFFFF] border border-[#E3DED5] shadow-[0_4px_20px_rgba(0,0,0,0.04)] text-left">
-              <img src={qrUrl} alt="Scan on WhatsApp" className="w-16 h-16 rounded-xl border border-[#EEE] shadow-xs" />
-              <div className="text-xs">
-                <div className="font-bold text-[#1C1C1C] flex items-center gap-2">
-                  <span>📱 Scan with Phone</span>
-                  <span className="font-mono text-[10px] bg-[#EFECE5] text-[#555] px-1.5 py-0.5 rounded">+1 555-210-7308</span>
-                </div>
-                <p className="text-[#706B65] mt-0.5">Point your phone camera to start chatting instantly.</p>
-              </div>
-            </div>
+          {menuOpen && (
+            <nav
+              id="mobile-navigation"
+              className={styles.mobileNav}
+              aria-label="Mobile navigation"
+              onClick={() => setMenuOpen(false)}
+            >
+              <a href="#experience">Meet Yell</a>
+              <a href="#recipes">Recipes</a>
+              <a href="#pricing">Pricing</a>
+              <a href="#faq">FAQs</a>
+              <Link href="/brands">For Brands</Link>
+              <a href={APP_URL}>Log in</a>
+            </nav>
           )}
-
-          {/* Centered Phone Canvas Showcase (Poke Signature) */}
-          <div id="experience" className="mt-16 max-w-xl mx-auto">
-            <div className="relative rounded-[40px] p-3.5 bg-[#1C1C1C] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.25)] border-[4px] border-[#383838]">
-              {/* iPhone Notch / Speaker Bar */}
-              <div className="absolute top-7 left-1/2 -translate-x-1/2 w-28 h-4.5 bg-[#1C1C1C] rounded-full z-20 flex items-center justify-center">
-                <div className="w-10 h-1 bg-[#2C2C2C] rounded-full" />
-              </div>
-
-              {/* Screen Body */}
-              <div className="bg-[#EFEAE2] rounded-[32px] overflow-hidden pt-12 pb-6 px-4 text-left font-sans">
-                {/* Header inside Phone */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#DCD5CB] mb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-8 w-8 rounded-full bg-[#25D366] text-black font-extrabold flex items-center justify-center text-xs">
-                      Y
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-[#1C1C1C] flex items-center gap-1">
-                        <span>Yell AI</span>
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#25D366]" />
-                      </div>
-                      <div className="text-[10px] text-[#756F68]">online • WhatsApp Business</div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-[#8C857D] font-mono">10:42 AM</span>
-                </div>
-
-                {/* Chat Flow */}
-                <div className="space-y-3.5 text-xs">
-                  {/* User Message */}
-                  <div className="flex justify-end">
-                    <div className="bg-[#D9FDD3] text-[#111B21] rounded-2xl rounded-tr-xs px-3.5 py-2.5 max-w-[85%] shadow-xs leading-relaxed">
-                      Bhai, kal 11 baje Rahul ke saath Google Meet schedule karo aur mera IRCTC PNR status bhi check karo.
-                      <div className="text-[9px] text-[#667781] text-right mt-1">10:42 AM ✓✓</div>
-                    </div>
-                  </div>
-
-                  {/* AI Reply */}
-                  <div className="flex justify-start">
-                    <div className="bg-[#FFFFFF] text-[#111B21] rounded-2xl rounded-tl-xs px-3.5 py-2.5 max-w-[90%] shadow-xs space-y-2">
-                      <p className="leading-relaxed">
-                        ✅ <strong>Done boss!</strong> Google Calendar invite sent to rahul@startup.in for 11:00 AM IST tomorrow with Google Meet link.
-                      </p>
-                      <p className="leading-relaxed">
-                        🚆 <strong>Train 12951 Rajdhani:</strong> Confirmed! Coach B4, Berth 21. Departs 17:00 IST from New Delhi.
-                      </p>
-                      
-                      {/* Native Contextual Sponsor Perk */}
-                      <div className="pt-2 border-t border-[#F0ECE5] text-[11px] text-[#555]">
-                        <div className="font-bold text-[#008069] flex items-center gap-1 mb-0.5">
-                          <span>⚡ Sponsored • Ixigo</span>
-                        </div>
-                        <p className="text-[#333]">Zero Payment Gateway Charges on your IRCTC train booking via UPI with code YELLZERO.</p>
-                      </div>
-
-                      <div className="text-[9px] text-[#667781] text-right mt-1">10:42 AM</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        </header>
+        <section
+          className={styles.hero}
+          id="experience"
+          aria-labelledby="hero-title"
+        >
+          <Link href="/brands" className={styles.announcement}>
+            <span>New</span> Your everyday, a little easier{" "}
+            <Icon name="chevron" size={14} />
+          </Link>
+          <h1 id="hero-title">
+            Meet Yell,
+            <br />
+            your new favorite contact
+          </h1>
+          <p className={styles.heroSubtitle}>
+            Proactive, personal, and right in your WhatsApp
+          </p>
+          <div className={styles.heroActions}>
+            <a
+              href={WA_LINK}
+              target="_blank"
+              rel="noreferrer"
+              className={`${styles.button} ${styles.darkButton}`}
+            >
+              Get Started
+            </a>
+            <a
+              href="#recipes"
+              className={`${styles.button} ${styles.lightButton}`}
+            >
+              Explore
+            </a>
           </div>
-        </section>
-
-        {/* Section: Fits into your life (Poke Style Bento Grid) */}
-        <section className="py-20 px-6 border-t border-[#EAE6DE] bg-[#F5F2EB]">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-16">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#857F77]">
-                (1) Ecosystem
-              </span>
-              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#141210] tracking-tight mt-2">
-                Yell fits into your life, <br className="hidden sm:inline" />
-                not the other way around.
-              </h2>
-              <p className="text-[#5C5752] mt-4 text-sm sm:text-base leading-relaxed">
-                Integrate all of your everyday tools and services with a familiar interface (WhatsApp) and zero friction.
-              </p>
-            </div>
-
-            {/* Bento Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {BENTO_INTEGRATIONS.map((b) => (
-                <div
-                  key={b.slug}
-                  className="bg-[#FFFFFF] border border-[#E3DED5] rounded-3xl p-7 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between group"
+          <div className={styles.phoneStage}>
+            <Phone />
+            {qrUrl && (
+              <div className={styles.qrWrap}>
+                <button
+                  className={styles.qrTrigger}
+                  onClick={() => setShowQr(!showQr)}
+                  aria-expanded={showQr}
+                  aria-controls="whatsapp-qr"
                 >
-                  <div>
-                    <div className="text-3xl mb-4 group-hover:scale-110 transition-transform origin-left">{b.icon}</div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#857F77] mb-1">
-                      {b.name}
-                    </div>
-                    <h3 className="text-lg font-bold text-[#141210] leading-snug mb-2">
-                      {b.title}
-                    </h3>
-                    <p className="text-xs text-[#5C5752] leading-relaxed">
-                      {b.description}
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="19"
+                    height="19"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    aria-hidden="true"
+                  >
+                    <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h3v3h-3zm4 4h3v3h-3zm3-4v2m-7 3v2M6 6h1m10 0h1M6 17h1" />
+                  </svg>{" "}
+                  Scan to say hi <Icon name="chevron" size={13} />
+                </button>
+                {showQr && (
+                  <div className={styles.qrPanel} id="whatsapp-qr">
+                    <img
+                      src={qrUrl}
+                      width="160"
+                      height="160"
+                      alt="Scan this QR code to chat with Yell on WhatsApp"
+                    />
+                    <p>
+                      Open your camera.
+                      <br />
+                      Meet your new favorite contact.
                     </p>
                   </div>
-                  <div className="mt-6 pt-4 border-t border-[#F2EEE6] flex items-center justify-between text-xs font-semibold text-[#1C1C1C]">
-                    <span>1-Tap Connect</span>
-                    <span>→</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
+      </div>
 
-        {/* Section: Adapts to your needs with Recipes (Poke Style) */}
-        <section id="recipes" className="py-20 px-6 border-t border-[#EAE6DE] bg-[#FAF8F5]">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center max-w-2xl mx-auto mb-14">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#857F77]">
-                (2) Capabilities
-              </span>
-              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#141210] tracking-tight mt-2">
-                Adapts to your needs with Yell Recipes.
-              </h2>
-              <p className="text-[#5C5752] mt-4 text-sm sm:text-base">
-                Set up workflows once, trigger them with simple natural speech, and never open 10 separate apps again.
-              </p>
-            </div>
-
-            {/* Recipe Tabs */}
-            <div className="flex justify-center gap-2 mb-8 overflow-x-auto pb-2">
-              {RECIPES.map((r, idx) => (
-                <button
-                  key={r.id}
-                  onClick={() => setActiveRecipe(idx)}
-                  className={`px-5 py-2.5 rounded-2xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                    activeRecipe === idx
-                      ? "bg-[#1C1C1C] text-white shadow-sm"
-                      : "bg-[#EFECE5] text-[#555] hover:text-[#1C1C1C] border border-[#DDD7CE]"
-                  }`}
+      <main id="main">
+        <section
+          className={styles.integrationSection}
+          id="integrations"
+          aria-labelledby="integration-title"
+        >
+          <div className={styles.container}>
+            <h2 id="integration-title">
+              Yell fits into your life <sup>(1)</sup>,<br />
+              not the other way around
+            </h2>
+          </div>
+          <div
+            className={styles.iconMarquees}
+            aria-label="Connected apps and services"
+          >
+            {[apps.slice(0, 12), apps.slice(12)].map((row, rowIndex) => (
+              <div className={styles.iconRow} key={rowIndex}>
+                <div
+                  className={`${styles.iconTrack} ${rowIndex === 1 ? styles.reverseTrack : ""}`}
                 >
-                  {r.icon} {r.title}
-                </button>
-              ))}
-            </div>
-
-            {/* Active Recipe Display */}
-            <div className="bg-[#FFFFFF] border border-[#E3DED5] rounded-3xl p-8 shadow-xs max-w-3xl mx-auto">
-              <div className="flex items-center justify-between pb-4 border-b border-[#F0ECE5] mb-6">
-                <span className="text-xs font-bold text-[#25D366] uppercase tracking-wider">
-                  {RECIPES[activeRecipe].badge}
-                </span>
-                <div className="flex gap-1.5">
-                  {RECIPES[activeRecipe].apps.map((app) => (
-                    <span key={app} className="text-[11px] bg-[#F3EFEA] text-[#555] px-2.5 py-0.5 rounded-full font-medium">
-                      {app}
-                    </span>
+                  {[0, 1].map((copy) => (
+                    <div
+                      className={styles.iconSet}
+                      key={copy}
+                      aria-hidden={copy === 1 ? true : undefined}
+                    >
+                      {row.map(([name, file]) => (
+                        <img
+                          src={asset(file)}
+                          alt={copy === 0 ? name : ""}
+                          title={copy === 0 ? name : undefined}
+                          width="44"
+                          height="44"
+                          loading="lazy"
+                          key={name}
+                        />
+                      ))}
+                    </div>
                   ))}
                 </div>
               </div>
+            ))}
+          </div>
+          <div className={`${styles.container} ${styles.integrationCopy}`}>
+            <span className={styles.number}>(1)</span>
+            <p>
+              Bring your apps and services together in a familiar interface{" "}
+              <span>(WhatsApp)</span> and a personality that keeps things as
+              real as a friend.
+            </p>
+            <a
+              href={WA_LINK}
+              target="_blank"
+              rel="noreferrer"
+              className={styles.textLink}
+            >
+              Find your flow <Icon name="arrow" size={18} />
+            </a>
+          </div>
+        </section>
 
-              <div className="space-y-4 text-sm">
-                <div className="bg-[#F5F2EB] p-4 rounded-2xl border border-[#E7E2D8]">
-                  <div className="text-xs font-bold text-[#777] uppercase tracking-wider mb-1">You text:</div>
-                  <p className="font-medium text-[#1C1C1C]">{RECIPES[activeRecipe].prompt}</p>
+        <div className={styles.container}>
+          <section
+            className={styles.featureRow}
+            id="recipes"
+            aria-labelledby="recipes-title"
+          >
+            <div className={`${styles.featureVisual} ${styles.recipeVisual}`}>
+              <div className={styles.recipeStack}>
+                {recipes.map((r, i) => (
+                  <button
+                    key={r.name}
+                    className={`${styles.recipeCard} ${activeRecipe === i ? styles.activeRecipe : ""}`}
+                    onClick={() => setActiveRecipe(i)}
+                    aria-pressed={activeRecipe === i}
+                  >
+                    <div className={styles.recipeCardTitle}>
+                      <img src={asset(r.icon)} alt="" width="36" height="36" />
+                      <b>{r.name}</b>
+                      <Icon name="plus" size={18} />
+                    </div>
+                    <p>{r.description}</p>
+                    <span>
+                      <Mark /> Yell Team{" "}
+                      <span className={styles.recipeChip}>
+                        Try recipe <Icon name="arrow" size={11} />
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={styles.featureCopy}>
+              <span className={styles.number}>(2)</span>
+              <h2 id="recipes-title">
+                Adapts to your needs
+                <br />
+                with Yell Recipes
+              </h2>
+              <p>
+                Set up your integrations, make everyday tasks automatic, and
+                find a little more time for yourself.
+              </p>
+              <p className={styles.recipeTitle} aria-live="polite">
+                {recipes[activeRecipe].title}
+              </p>
+              <a
+                href={whatsapp(recipes[activeRecipe].prompt)}
+                target="_blank"
+                rel="noreferrer"
+                className={styles.textLink}
+              >
+                Try this recipe <Icon name="arrow" size={18} />
+              </a>
+            </div>
+          </section>
+
+          <section
+            className={`${styles.featureRow} ${styles.reverseFeature}`}
+            aria-labelledby="schedule-title"
+          >
+            <div className={`${styles.featureVisual} ${styles.scheduleVisual}`}>
+              <div className={styles.voiceCard}>
+                <span className={styles.voiceLabel}>
+                  <span className={styles.recordingDot} /> Voice message
+                </span>
+                <div className={styles.waveform} aria-hidden="true">
+                  {Array.from({ length: 44 }, (_, i) => (
+                    <i
+                      key={i}
+                      style={{ height: `${10 + ((i * 19 + 7) % 49)}px` }}
+                    />
+                  ))}
                 </div>
+                <div className={styles.voiceTime}>
+                  <span>0:00</span>
+                  <span>0:12</span>
+                </div>
+                <p>
+                  “Remind me to call Amma
+                  <br />
+                  tomorrow at 6.”
+                </p>
+                <span className={styles.voiceReply}>
+                  <Icon name="check" size={16} /> I&apos;ll remind you. Go enjoy
+                  your day.
+                </span>
+              </div>
+            </div>
+            <div className={styles.featureCopy}>
+              <span className={styles.number}>(3)</span>
+              <h2 id="schedule-title">
+                Handles tasks according
+                <br />
+                to your schedule
+              </h2>
+              <p>
+                From meeting invites to reminders that actually arrive on time.
+                Just send a text or a voice note, in English, Hindi, or
+                Hinglish.
+              </p>
+              <a
+                href={WA_LINK}
+                target="_blank"
+                rel="noreferrer"
+                className={styles.textLink}
+              >
+                Leave it with Yell <Icon name="arrow" size={18} />
+              </a>
+            </div>
+          </section>
 
-                <div className="bg-[#FAF8F5] p-4 rounded-2xl border border-[#25D366]/30">
-                  <div className="text-xs font-bold text-[#008069] uppercase tracking-wider mb-1">Yell AI executes:</div>
-                  <p className="whitespace-pre-line leading-relaxed text-[#222]">{RECIPES[activeRecipe].reply}</p>
+          <section
+            className={styles.featureRow}
+            aria-labelledby="proactive-title"
+          >
+            <div className={`${styles.featureVisual} ${styles.peopleVisual}`}>
+              <div className={styles.peopleGrid}>
+                {[
+                  ["Rahul", "mars.jpeg"],
+                  ["Priya", "claudia.webp"],
+                  ["Arjun", "andrew.webp"],
+                ].map(([name, photo]) => (
+                  <div key={name}>
+                    <img
+                      src={asset(photo)}
+                      alt=""
+                      width="80"
+                      height="80"
+                      loading="lazy"
+                    />
+                    <span>{name}</span>
+                  </div>
+                ))}
+                <div>
+                  <Mark app />
+                  <span>Yell</span>
                 </div>
               </div>
+              <div className={styles.notification}>
+                <Mark app />
+                <div>
+                  <b>
+                    Yell <span>now</span>
+                  </b>
+                  <p>
+                    Your train leaves at 5. Leave a little early — traffic looks
+                    busy.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className={styles.featureCopy}>
+              <span className={styles.number}>(4)</span>
+              <h2 id="proactive-title">
+                Proactively keeps
+                <br />
+                you in the loop
+              </h2>
+              <p>
+                A heads-up before your train. A morning briefing before your
+                coffee. Yell remembers the little things, and reaches out when
+                it matters.
+              </p>
+              <a
+                href={WA_LINK}
+                target="_blank"
+                rel="noreferrer"
+                className={styles.textLink}
+              >
+                Meet your assistant <Icon name="arrow" size={18} />
+              </a>
+            </div>
+          </section>
+
+          <section
+            className={`${styles.featureRow} ${styles.reverseFeature}`}
+            aria-labelledby="advanced-title"
+          >
+            <div className={`${styles.featureVisual} ${styles.buildVisual}`}>
+              <div className={styles.composer}>
+                <span className={styles.composerTitle}>
+                  What would you like to make happen?
+                </span>
+                <p>Add action items from my emails to calendar</p>
+                <div>
+                  <span>
+                    <Icon name="plus" size={14} /> Integrations
+                  </span>
+                  <span className={styles.createButton}>
+                    Create <Icon name="arrow" size={13} />
+                  </span>
+                </div>
+              </div>
+              <div className={styles.connectedApps}>
+                {[
+                  "gmailapp.webp",
+                  "googlecalendarapp.webp",
+                  "notionapp.webp",
+                ].map((f) => (
+                  <img
+                    key={f}
+                    src={asset(f)}
+                    width="48"
+                    height="48"
+                    alt=""
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            </div>
+            <div className={styles.featureCopy}>
+              <span className={styles.number}>(5)</span>
+              <h2 id="advanced-title">
+                A little more powerful.
+                <br />A lot more personal.
+              </h2>
+              <p>
+                Connect Gmail, Calendar, Notion, and GitHub once. Yell puts them
+                to work together, right inside your WhatsApp.
+              </p>
+              <a href={APP_URL} className={styles.textLink}>
+                Explore Yell App <Icon name="arrow" size={18} />
+              </a>
+            </div>
+          </section>
+        </div>
+
+        <section
+          id="pricing"
+          className={`${styles.container} ${styles.pricing}`}
+          aria-labelledby="pricing-title"
+        >
+          <h2 id="pricing-title">Choose a plan to get started</h2>
+          <p className={styles.sectionSubtitle}>
+            Every plan gets all of Yell. Start free, then step up for more
+            <br className={styles.desktopBreak} /> intelligence and headroom as
+            it becomes part of your day.
+          </p>
+          <span className={styles.billingPill}>Simple monthly pricing</span>
+          <div className={styles.pricingGrid}>
+            <article className={styles.plan}>
+              <h3>Bharat Free</h3>
+              <p>Get started and explore what Yell can do for you</p>
+              <div className={styles.price}>
+                ₹0<span>/ month</span>
+              </div>
+              <span className={styles.billingNote}>
+                Free forever · Ad-supported
+              </span>
+              <div className={styles.planDivider} />
+              <b className={styles.includes}>Includes:</b>
+              <ul>
+                {[
+                  "25 AI queries & tasks per day",
+                  "Connect Gmail, Calendar, Notion & GitHub",
+                  "Train, travel & everyday expense help",
+                  "English, Hinglish & Hindi voice and text",
+                ].map((f) => (
+                  <li key={f}>
+                    <Icon name="check" size={16} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href={WA_LINK}
+                target="_blank"
+                rel="noreferrer"
+                className={`${styles.button} ${styles.lightButton}`}
+              >
+                Get Started
+              </a>
+            </article>
+            <article className={`${styles.plan} ${styles.proPlan}`}>
+              <span className={styles.planBadge}>
+                A little extra, every day
+              </span>
+              <h3>Yell Pro</h3>
+              <p>More room for founders, operators, and everyday power users</p>
+              <div className={styles.price}>
+                ₹99<span>/ month</span>
+              </div>
+              <span className={styles.billingNote}>
+                Billed monthly · UPI / Razorpay
+              </span>
+              <div className={styles.planDivider} />
+              <b className={styles.includes}>Everything in Free, plus:</b>
+              <ul>
+                {[
+                  "1,000 actions per day",
+                  "Founder outreach and personalized drafts",
+                  "A completely ad-free experience",
+                  "Proactive briefings & priority execution",
+                ].map((f) => (
+                  <li key={f}>
+                    <Icon name="check" size={16} />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => {
+                  setCheckoutError("");
+                  setShowUpgradeModal(true);
+                }}
+                className={`${styles.button} ${styles.darkButton}`}
+              >
+                Get Pro <Icon name="arrow" size={17} />
+              </button>
+            </article>
+          </div>
+          <div className={styles.brandCallout}>
+            <div>
+              <b>Good conversations. Great opportunities.</b>
+              <p>Put your brand where everyday decisions happen.</p>
+            </div>
+            <Link href="/brands" className={styles.textLink}>
+              Meet Yell for Brands <Icon name="arrow" size={18} />
+            </Link>
+          </div>
+        </section>
+
+        <section className={styles.community} aria-labelledby="community-title">
+          <div className={styles.container}>
+            <h2 id="community-title">A little everyday inspiration</h2>
+            <p className={styles.sectionSubtitle}>
+              A few conversations to have with your new favorite contact.
+            </p>
+            <div className={styles.communityGrid}>
+              {conversationIdeas.map(([title, prompt, icon]) => (
+                <a
+                  key={title}
+                  href={whatsapp(prompt)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.storyCard}
+                >
+                  <span className={styles.storyHeader}>
+                    <img
+                      src={asset(icon)}
+                      alt=""
+                      width="34"
+                      height="34"
+                      loading="lazy"
+                    />
+                    <span>
+                      <b>{title}</b>
+                      <small>Try asking Yell</small>
+                    </span>
+                    <Icon name="arrow" size={16} />
+                  </span>
+                  <p>“{prompt}”</p>
+                  <span className={styles.storyFooter}>
+                    A little help goes a long way <span>↗</span>
+                  </span>
+                </a>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Section: Simple Pricing (Poke Style) */}
-        <section id="pricing" className="py-20 px-6 border-t border-[#EAE6DE] bg-[#F5F2EB]">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center max-w-xl mx-auto mb-14">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#857F77]">
-                (3) Simple Pricing
-              </span>
-              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#141210] tracking-tight mt-2">
-                Choose a plan to get started.
-              </h2>
-              <p className="text-[#5C5752] mt-3 text-sm sm:text-base">
-                Every plan gets all of Yell. Start free, then step up for unlimited headroom.
-              </p>
-            </div>
+        <section
+          id="faq"
+          className={`${styles.container} ${styles.faq}`}
+          aria-labelledby="faq-title"
+        >
+          <h2 id="faq-title">A few things you might be wondering</h2>
+          <div>
+            {[
+              [
+                "What is Yell?",
+                "Yell is your personal AI assistant on WhatsApp. It helps with email, your calendar, reminders, research, and the little things that fill up your day.",
+              ],
+              [
+                "Do I need to download another app?",
+                "No new app needed. Tap Get Started, say hi on WhatsApp, and connect the services you want Yell to help with.",
+              ],
+              [
+                "Can I speak in Hindi or Hinglish?",
+                "Yes. Text or send voice notes in English, Hindi, or Hinglish — whatever feels natural to you.",
+              ],
+              [
+                "Can I try Yell for free?",
+                "Yes. Bharat Free includes 25 AI queries and tasks per day with curated sponsored perks. Yell Pro is ₹99 per month for more daily actions and an ad-free experience.",
+              ],
+            ].map(([question, answer]) => (
+              <details key={question}>
+                <summary>
+                  {question}
+                  <Icon name="plus" size={18} />
+                </summary>
+                <p>{answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Bharat Free Tier */}
-              <div className="bg-[#FFFFFF] border border-[#DDD7CE] rounded-3xl p-8 flex flex-col justify-between shadow-xs">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#7A746D]">Bharat Free</span>
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-4xl font-extrabold text-[#141210]">₹0</span>
-                    <span className="text-xs text-[#7A746D]">/ forever (Ad-supported)</span>
-                  </div>
-                  <p className="text-xs text-[#5C5752] mt-2">Supported by curated 1-line perks from Swiggy, Ixigo & CRED.</p>
-                  <ul className="mt-6 space-y-3 text-xs text-[#3D3A36]">
-                    <li className="flex items-center gap-2">✓ 25 AI queries & tasks per day</li>
-                    <li className="flex items-center gap-2">✓ Connect Gmail, Calendar, Notion & GitHub</li>
-                    <li className="flex items-center gap-2">✓ IRCTC train/flight helper & Swiggy spend calculator</li>
-                    <li className="flex items-center gap-2">✓ English, Hinglish & Hindi voice & text</li>
-                  </ul>
-                </div>
-                <a
-                  href={waLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-8 block text-center w-full py-3.5 rounded-xl bg-[#EDE9E1] hover:bg-[#E4DFD5] text-[#1C1C1C] font-semibold text-sm transition-colors"
-                >
-                  Start Free on WhatsApp →
-                </a>
-              </div>
-
-              {/* Pro Plan */}
-              <div className="bg-[#FFFFFF] border-2 border-[#1C1C1C] rounded-3xl p-8 flex flex-col justify-between shadow-md relative">
-                <span className="absolute -top-3 right-6 bg-[#1C1C1C] text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                  PRO • UPI AUTOPAY
-                </span>
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#25D366]">Yell Pro</span>
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-4xl font-extrabold text-[#141210]">₹99</span>
-                    <span className="text-xs text-[#7A746D]">/ month (via UPI / Razorpay)</span>
-                  </div>
-                  <p className="text-xs text-[#5C5752] mt-2">For founders, operators, and power users who want maximum throughput.</p>
-                  <ul className="mt-6 space-y-3 text-xs text-[#3D3A36]">
-                    <li className="flex items-center gap-2">✓ <strong>1,000 actions/day</strong> on Gemini 3.8 Flash</li>
-                    <li className="flex items-center gap-2">✓ Automated Backdoor Founder Cold-Outreach</li>
-                    <li className="flex items-center gap-2">✓ <strong>100% Ad-Free</strong> experience</li>
-                    <li className="flex items-center gap-2">✓ Proactive morning briefings & priority execution</li>
-                  </ul>
-                </div>
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="mt-8 block text-center w-full py-3.5 rounded-xl bg-[#1C1C1C] hover:bg-[#000] text-white font-bold text-sm transition-colors shadow-sm cursor-pointer active:scale-[0.98]"
-                >
-                  Upgrade to Pro (₹99) →
-                </button>
-              </div>
-            </div>
-
-            {/* Brands Callout Banner inside Pricing */}
-            <div className="mt-10 bg-[#FFFFFF] border border-[#DDD7CE] rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xs">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#008069]">
-                  For Brands & Advertisers
-                </span>
-                <h3 className="text-xl font-bold text-[#141210] mt-1">
-                  Monetize high-intent WhatsApp queries.
-                </h3>
-                <p className="text-xs text-[#5C5752] mt-1 max-w-xl">
-                  Reach Indian consumers with 1-line contextual perks right when they search for travel, food, jobs, or finance.
-                </p>
-              </div>
-              <Link
-                href="/brands"
-                className="shrink-0 px-6 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-black font-bold text-xs transition-colors shadow-xs"
+        <section className={styles.finalCta} aria-labelledby="cta-title">
+          <img src={asset("waves.2t7xwl857n24q.webp")} alt="" loading="lazy" />
+          <div>
+            <h2 id="cta-title">
+              Get started
+              <br />
+              with just a text
+            </h2>
+            <div className={styles.heroActions}>
+              <a
+                href={WA_LINK}
+                target="_blank"
+                rel="noreferrer"
+                className={`${styles.button} ${styles.darkButton}`}
               >
-                Launch Brand Campaign →
-              </Link>
+                Get Started
+              </a>
+              <a
+                href="#recipes"
+                className={`${styles.button} ${styles.lightButton}`}
+              >
+                Explore Recipes
+              </a>
             </div>
           </div>
         </section>
       </main>
 
-      {/* Upgrade to Pro Modal */}
-      {showUpgradeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-[#FAF8F5] border border-[#DDD7CE] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative text-left">
-            <button
-              onClick={() => setShowUpgradeModal(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-black font-bold text-lg cursor-pointer"
-            >
-              ✕
-            </button>
-
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">⚡</span>
-              <span className="text-xs font-bold uppercase tracking-wider text-[#008069]">
-                Yell AI Pro • ₹99 / Month
-              </span>
-            </div>
-
-            <h3 className="text-2xl font-extrabold text-[#141210] tracking-tight">
-              Upgrade Your WhatsApp
-            </h3>
-            <p className="text-xs text-[#5C5752] mt-1.5 leading-relaxed">
-              Enter your WhatsApp number. We will open a secure Razorpay checkout for ₹99 (supports GPay, PhonePe, Paytm, Cards & UPI Autopay).
-            </p>
-
-            <form onSubmit={handleProUpgrade} className="mt-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-[#333] mb-1.5 uppercase tracking-wider">
-                  WhatsApp Phone Number *
-                </label>
-                <div className="flex items-center bg-white border border-[#DDD7CE] rounded-xl px-3.5 py-3 shadow-xs">
-                  <span className="text-slate-400 font-semibold text-sm mr-2">🇮🇳 +91</span>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="98765 43210"
-                    value={upgradePhone}
-                    onChange={(e) => setUpgradePhone(e.target.value)}
-                    className="bg-transparent text-[#111] placeholder-slate-400 focus:outline-none w-full text-sm font-medium"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-[#F0ECE4] p-3 rounded-xl text-xs text-[#555] space-y-1">
-                <div className="flex justify-between">
-                  <span>Plan:</span>
-                  <strong className="text-black">Yell AI Pro (30 Days)</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Price:</span>
-                  <strong className="text-[#008069] font-bold">₹99.00</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>Daily limit:</span>
-                  <span className="text-black">1,000 queries/day (0 ads)</span>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={upgrading}
-                className="w-full bg-[#25D366] hover:bg-[#20ba59] text-black font-extrabold py-3.5 rounded-xl transition-all shadow-md text-sm cursor-pointer disabled:opacity-50"
-              >
-                {upgrading ? "Connecting to Razorpay..." : "Pay ₹99 via UPI / Razorpay →"}
-              </button>
-            </form>
+      <footer className={styles.footer}>
+        <div className={`${styles.container} ${styles.footerGrid}`}>
+          <Link href="/" className={styles.footerBrand} aria-label="Yell home">
+            <Mark />
+            <span>
+              A little help.
+              <br />A lot more life.
+            </span>
+          </Link>
+          <div>
+            <b>Product</b>
+            <a href={APP_URL}>Log in</a>
+            <a href="#recipes">Recipes</a>
+            <a href="#pricing">Pricing</a>
+          </div>
+          <div>
+            <b>Resources</b>
+            <a href="#integrations">Integrations</a>
+            <a href="#faq">FAQs</a>
+            <a href={WA_LINK} target="_blank" rel="noreferrer">
+              WhatsApp
+            </a>
+          </div>
+          <div>
+            <b>Company</b>
+            <Link href="/brands">For Brands</Link>
+            <a href="mailto:nithindidigam@nhancio.com">Contact</a>
+            <a href="https://nhancio.com" target="_blank" rel="noreferrer">
+              Nhancio
+            </a>
           </div>
         </div>
-      )}
-
-      {/* Footer (Poke style) */}
-      <footer className="border-t border-[#EAE6DE] py-10 px-6 text-xs text-[#7A746D] bg-[#FAF8F5]">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 Yell AI by Nhancio. Built for India 🇮🇳</p>
-          <div className="flex gap-6 font-medium text-[#5C5752]">
-            <Link href={APP_URL} className="hover:text-[#1C1C1C]">Yell App</Link>
-            <Link href="/brands" className="hover:text-[#1C1C1C]">Brands Portal</Link>
-            <a href={waLink} target="_blank" rel="noreferrer" className="hover:text-[#1C1C1C]">WhatsApp Bot</a>
-            <a href="mailto:nithindidigam@nhancio.com" className="hover:text-[#1C1C1C]">Contact</a>
-          </div>
+        <div className={`${styles.container} ${styles.footerMeta}`}>
+          <span>© {new Date().getFullYear()} Yell AI</span>
+          <span>Made for your everyday. Built for India.</span>
+          <span className={styles.systemStatus}>
+            <i /> Let&apos;s make life a little easier
+          </span>
+        </div>
+        <div className={styles.footerWordmark} aria-hidden="true">
+          yell
         </div>
       </footer>
+
+      <dialog
+        ref={upgradeDialog}
+        className={styles.upgradeDialog}
+        onCancel={() => setShowUpgradeModal(false)}
+        onClose={() => setShowUpgradeModal(false)}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setShowUpgradeModal(false);
+        }}
+        aria-labelledby="upgrade-title"
+      >
+        <div className={styles.dialogContent}>
+          <button
+            className={styles.closeDialog}
+            aria-label="Close checkout"
+            onClick={() => setShowUpgradeModal(false)}
+          >
+            <Icon name="close" />
+          </button>
+          <Mark app />
+          <span className={styles.dialogEyebrow}>Yell Pro · ₹99 / month</span>
+          <h2 id="upgrade-title">A little more Yell.</h2>
+          <p>
+            Enter your WhatsApp number to continue to secure Razorpay checkout.
+            Pay with UPI, cards, or UPI Autopay.
+          </p>
+          <form onSubmit={handleProUpgrade}>
+            <label htmlFor="upgrade-phone">
+              WhatsApp number, with country code
+            </label>
+            <input
+              id="upgrade-phone"
+              type="tel"
+              autoComplete="tel"
+              placeholder="+91 98765 43210"
+              required
+              value={upgradePhone}
+              onChange={(e) => setUpgradePhone(e.target.value)}
+              aria-describedby={checkoutError ? "checkout-error" : undefined}
+              aria-invalid={!!checkoutError}
+            />
+            <div className={styles.checkoutSummary}>
+              <span>Yell Pro · 30 days</span>
+              <b>₹99.00</b>
+            </div>
+            {checkoutError && (
+              <p
+                id="checkout-error"
+                role="alert"
+                className={styles.checkoutError}
+              >
+                {checkoutError}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={upgrading}
+              className={`${styles.button} ${styles.darkButton}`}
+            >
+              {upgrading ? "Opening checkout…" : "Continue to Razorpay"}
+              <Icon name="arrow" size={17} />
+            </button>
+          </form>
+        </div>
+      </dialog>
     </div>
   );
 }

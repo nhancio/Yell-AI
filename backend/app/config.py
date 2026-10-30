@@ -54,10 +54,11 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
 
-    # Usage limits (India mass-market: generous free tier supported by contextual ads)
-    FREE_DAILY_LIMIT: int = 25
-    PAID_DAILY_LIMIT: int = 1000
-    ADS_ENABLED: bool = True
+    # Usage limits: every reply costs ~₹0.145 (Meta ₹0.115/msg since Oct 2026 + LLM),
+    # so Pro (~₹82 net) breaks even at ~19 replies/day. Ads are shelved (LAUNCH_PLAN.md).
+    FREE_DAILY_LIMIT: int = 10
+    PAID_DAILY_LIMIT: int = 40
+    ADS_ENABLED: bool = False
 
     # Pricing (₹99/mo default = 9900 paise for mass adoption via UPI)
     MONTHLY_PRICE_PAISE: int = 9900  # INR 99

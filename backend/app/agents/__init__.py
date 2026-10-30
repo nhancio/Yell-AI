@@ -89,8 +89,16 @@ class AgentOrchestrator:
             connected_apps=connected_apps,
         )
 
-        # Combine empathy + task into a single WhatsApp-friendly response
-        full_response = f"{emotion_result['empathy_response']}\n\n{task_response}".strip()
+        # Intelligent synthesis: Avoid repeating duplicate answers!
+        # If task_response already answers the question, DO NOT double-reply with empathy_response.
+        if task_response:
+            # Only prepend empathy if user is genuinely distressed/angry/stressed
+            if emotion_result.get("emotion") in ("anger", "stress", "sadness", "frustration", "anxiety"):
+                full_response = f"{emotion_result['empathy_response']}\n\n{task_response}".strip()
+            else:
+                full_response = task_response.strip()
+        else:
+            full_response = emotion_result.get("empathy_response", "").strip()
 
         return AgentResult(
             emotion=emotion_result["emotion"],
