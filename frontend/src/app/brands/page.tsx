@@ -549,7 +549,7 @@ export default function BrandsPortal() {
                         {headline || "Your compelling ad headline will appear right here."}
                       </p>
                       <div className="text-emerald-400 underline font-medium hover:text-emerald-300 cursor-pointer">
-                        👉 {ctaText || "Claim Offer"}: https://yell.nhancio.com/r/101
+                        👉 {ctaText || "Claim Offer"}: https://astra.nhancio.com/r/101
                       </div>
                     </div>
 

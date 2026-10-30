@@ -49,7 +49,7 @@ async def track_and_redirect(campaign_id: int):
     """Public click tracking redirect. Increments campaign clicks and 302 redirects to CTA URL."""
     dest_url = await ads_service.record_click(campaign_id)
     if not dest_url:
-        return RedirectResponse(url="https://yell.nhancio.com", status_code=status.HTTP_302_FOUND)
+        return RedirectResponse(url="https://astra.nhancio.com", status_code=status.HTTP_302_FOUND)
     return RedirectResponse(url=dest_url, status_code=status.HTTP_302_FOUND)
 
 

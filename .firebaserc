@@ -6,10 +6,10 @@
     "yell-ai-nhancio": {
       "hosting": {
         "landing": [
-          "yell-ai-nhancio"
+          "astra-ai-nhancio"
         ],
         "app": [
-          "yellapp-nhancio"
+          "astraapp-nhancio"
         ]
       }
     }

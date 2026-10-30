@@ -5,12 +5,12 @@
 Use three surfaces:
 
 ### Frontend
-- Domain: `yell.nhancio.com`
+- Domain: `astra.nhancio.com`
 - Host: Vercel
 - App: `frontend/`
 
 ### Backend API
-- Domain: `api.yell.nhancio.com`
+- Domain: `api.astra.nhancio.com`
 - Host: Vercel or another HTTPS host
 - App: `backend/`
 
@@ -42,7 +42,7 @@ Because of that:
 
 ### Required environment variables
 - `DATABASE_URL`
-- `NEXTAUTH_URL=https://yell.nhancio.com`
+- `NEXTAUTH_URL=https://astra.nhancio.com`
 - `NEXTAUTH_SECRET`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
@@ -64,7 +64,7 @@ This prevents the UI from pretending that NanoClaw deployments can run inside a 
 - `backend/`
 
 ### Suggested domain
-- `api.yell.nhancio.com`
+- `api.astra.nhancio.com`
 
 ### Required environment variables
 - `WHATSAPP_PROVIDER`
@@ -77,8 +77,8 @@ This prevents the UI from pretending that NanoClaw deployments can run inside a 
 - `RAZORPAY_KEY_ID`
 - `RAZORPAY_KEY_SECRET`
 - `ADMIN_API_KEY`
-- `CORS_ALLOWED_ORIGINS=https://yell.nhancio.com`
-- `APP_URL=https://api.yell.nhancio.com`
+- `CORS_ALLOWED_ORIGINS=https://astra.nhancio.com`
+- `APP_URL=https://api.astra.nhancio.com`
 
 ### Notes
 - `backend/vercel.json` already exists
@@ -89,10 +89,10 @@ This prevents the UI from pretending that NanoClaw deployments can run inside a 
 These are the records to add in your DNS provider once the Vercel projects exist.
 
 ### Frontend
-- `yell.nhancio.com` -> Vercel project alias
+- `astra.nhancio.com` -> Vercel project alias
 
 ### Backend
-- `api.yell.nhancio.com` -> Vercel project alias
+- `api.astra.nhancio.com` -> Vercel project alias
 
 If you prefer manual records:
 - add the standard Vercel CNAME or A records shown by the Vercel domain setup screen
@@ -126,9 +126,9 @@ If you prefer manual records:
 ## 7. Practical rollout order
 
 1. Deploy frontend to Vercel
-2. Bind `yell.nhancio.com`
+2. Bind `astra.nhancio.com`
 3. Deploy backend to Vercel
-4. Bind `api.yell.nhancio.com`
+4. Bind `api.astra.nhancio.com`
 5. Provision one Docker-capable runtime VM
 6. Rewire `POST /api/deploy` to forward jobs to that runtime host
 7. Re-enable the live `Deploy Now -> QR -> Chat` flow

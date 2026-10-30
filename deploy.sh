@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Astra AI — Firebase Hosting + Cloud Run (Mumbai asia-south1) Deploy Script
-# Domain Management: Netlify DNS (yell.nhancio.com, api.yell.nhancio.com)
+# Domain Management: Netlify DNS (astra.nhancio.com, api.astra.nhancio.com)
 # Deployment: Firebase Project yell-ai-nhancio (nithindidigam@nhancio.com)
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,8 +27,8 @@ for line in open(".env"):
         env_vars[k] = v
 
 env_vars["DATABASE_URL"] = "sqlite+aiosqlite:////tmp/yellai.db"
-env_vars["APP_URL"] = "https://yell.nhancio.com"
-env_vars["FRONTEND_URL"] = "https://yell.nhancio.com"
+env_vars["APP_URL"] = "https://astra.nhancio.com"
+env_vars["FRONTEND_URL"] = "https://astra.nhancio.com"
 env_vars["ADS_ENABLED"] = "true"
 env_vars["MONTHLY_PRICE_PAISE"] = "9900"
 env_vars["BUSINESS_PRICE_PAISE"] = "99900"
@@ -54,6 +54,6 @@ echo "==> 3/3 Deploying Multi-Site Hosting to Firebase ($PROJECT)..."
 firebase deploy --only hosting --project "$PROJECT"
 
 echo "✅ Deployment complete 100% on Firebase & Cloud Run!"
-echo "   Landing (Firebase): https://yell-ai-nhancio.web.app"
-echo "   App Hub (Firebase): https://yellapp-nhancio.web.app"
+echo "   Landing (Firebase): https://astra-ai-nhancio.web.app"
+echo "   App Hub (Firebase): https://astraapp-nhancio.web.app"
 echo "   Cloud Run API:      https://yell-ai-api-6epx3aakpq-el.a.run.app"

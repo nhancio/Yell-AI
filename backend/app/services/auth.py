@@ -1,4 +1,4 @@
-"""Firebase Phone Auth verification for the Astra App (yellapp.nhancio.com)."""
+"""Firebase Phone Auth verification for the Astra App (astraapp.nhancio.com)."""
 
 import logging
 from typing import Optional

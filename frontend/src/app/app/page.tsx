@@ -16,7 +16,7 @@ import { accountApi as api, type Account as Me, type Setup, type SetupPatch } fr
 import Onboarding, { SetupFrame } from "@/components/onboarding/Onboarding";
 import setupStyles from "@/components/onboarding/onboarding.module.css";
 
-const LANDING_URL = "https://yell.nhancio.com";
+const LANDING_URL = "https://astra.nhancio.com";
 
 function Logo() {
   return (

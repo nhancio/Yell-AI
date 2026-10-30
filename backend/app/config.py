@@ -76,9 +76,9 @@ class Settings(BaseSettings):
     # Production Hardening
     ADMIN_API_KEY: str = ""  # Admin routes refuse every request until this is set
     CORS_ALLOWED_ORIGINS: str = ""  # Defaults to the configured frontend origins
-    APP_URL: str = "https://api.yell.nhancio.com"
-    FRONTEND_URL: str = "https://yell.nhancio.com"
-    APP_FRONTEND_URL: str = "https://yellapp.nhancio.com"
+    APP_URL: str = "https://api.astra.nhancio.com"
+    FRONTEND_URL: str = "https://astra.nhancio.com"
+    APP_FRONTEND_URL: str = "https://astraapp.nhancio.com"
 
     # Firebase Phone Auth (Astra App login)
     FIREBASE_PROJECT_ID: str = "yell-ai-nhancio"

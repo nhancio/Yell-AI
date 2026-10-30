@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import styles from "./home.module.css";
 
-const APP_URL = "https://yellapp.nhancio.com";
+const APP_URL = "https://astraapp.nhancio.com";
 const WA_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "918790968218";
 const whatsapp = (text = "Hi Astra!") =>
   `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(text)}`;
