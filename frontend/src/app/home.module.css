@@ -49,11 +49,11 @@
   pointer-events: none;
 }
 .site ::selection {
-  background: #bedce7;
-  color: #242424;
+  background: #c3e6d0;
+  color: #133924;
 }
 .site :is(button, a, input, summary):focus-visible {
-  outline: 2px solid #466a7a;
+  outline: 2px solid #1f7a4c;
   outline-offset: 5px;
 }
 .site :is(h1, h2, h3, p) {
@@ -173,7 +173,7 @@
   width: 28px;
   height: 32px;
   display: inline-flex;
-  color: #20221f;
+  color: #1b7a4e;
   flex-shrink: 0;
 }
 .mark svg,
@@ -191,11 +191,11 @@
   padding: 10px;
   color: #fffdf4;
   border-radius: 14px;
-  background: linear-gradient(145deg, #7e9aaa, #30536b 70%, #839a9f);
+  background: linear-gradient(145deg, #2fb36d, #165e39 70%, #258f58);
   box-shadow:
     inset 0 0 0 1px #ffffff65,
     inset 0 2px 4px #ffffff50,
-    0 3px 9px #203f5525;
+    0 3px 9px #14492f35;
 }
 .desktopNav {
   display: flex;
@@ -292,13 +292,13 @@
   transform: translateY(0) scale(0.98);
 }
 .darkButton {
-  background: linear-gradient(180deg, #41413f, #272726);
+  background: linear-gradient(180deg, #24754d, #154d31);
   color: #fff !important;
-  border-color: #333330;
+  border-color: #124028;
   box-shadow:
-    inset 0 1px 2px #ffffff38,
-    0 3px 7px #27272626,
-    0 1px 2px #27272612;
+    inset 0 1px 2px #ffffff45,
+    0 4px 10px #154d3130,
+    0 1px 2px #154d311a;
 }
 .lightButton {
   background: linear-gradient(180deg, #f9f6f2, #e8e6e0);
@@ -538,7 +538,7 @@
   align-self: flex-start;
 }
 .outgoing {
-  background: #8e9da7;
+  background: #23784f;
   color: white;
   align-self: flex-end;
 }
@@ -742,6 +742,7 @@
   align-items: center;
   font-size: 14px;
   font-weight: 500;
+  color: #1b6b45 !important;
   width: fit-content;
   transition: gap 0.2s;
 }
@@ -929,7 +930,7 @@
 }
 .waveform i {
   display: block;
-  background: #5d777b;
+  background: #287a52;
   width: 3px;
   border-radius: 5px;
   flex-shrink: 0;
@@ -1063,7 +1064,7 @@
   gap: 5px;
 }
 .createButton {
-  background: #292c29;
+  background: #1b6340;
   color: #fff;
   padding: 7px 11px;
   border-radius: 9px;
@@ -1092,20 +1093,20 @@
 }
 .billingPill {
   display: inline-flex;
-  background: #efeee8;
-  border: 1px solid #dfded6;
-  box-shadow: inset 0 1px 2px #d1d1c733;
+  background: #e8f4ec;
+  border: 1px solid #c5dfd0;
+  box-shadow: inset 0 1px 2px #ffffff80;
   border-radius: 30px;
   padding: 7px 15px;
   margin: 32px 0;
   font-size: 12px;
-  color: #676b63;
+  color: #1f5c3a;
 }
 .pricingGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  max-width: 900px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  max-width: 1160px;
   margin: auto;
   text-align: left;
 }
@@ -1114,13 +1115,13 @@
   display: flex;
   flex-direction: column;
   min-height: 500px;
-  border: 1px solid #d3d2cb;
+  border: 1px solid #cce0d4;
   border-radius: 24px;
-  padding: 32px;
-  background: linear-gradient(150deg, #fffefa, #fbfaf6);
+  padding: 28px;
+  background: linear-gradient(150deg, #fffefa, #f7fbf8);
   box-shadow:
     inset 0 1px 2px #fff,
-    0 3px 7px #282e2705;
+    0 3px 7px #1b4d3108;
 }
 .plan h3 {
   font-size: 23px;
@@ -1177,7 +1178,7 @@
   gap: 8px;
 }
 .plan li svg {
-  color: #5c695c;
+  color: #1b7a4e;
   flex-shrink: 0;
 }
 .plan .button {
@@ -1185,25 +1186,26 @@
   margin-top: auto;
 }
 .proPlan {
-  border-color: #bfc4b6;
-  background: linear-gradient(140deg, #f8faf2, #eef0e5);
+  border-color: #98c7ab;
+  background: linear-gradient(140deg, #f2fbf5, #e3f3e9);
   box-shadow:
     inset 0 1px 2px #fff,
-    0 4px 10px #35402707;
+    0 6px 16px #185a3912;
 }
 .planBadge {
   position: absolute;
-  right: 24px;
+  right: 20px;
   top: -12px;
-  background: #e6eadd;
-  border: 1px solid #c8cfbd;
+  background: #dcf2e4;
+  border: 1px solid #a3d4b5;
   border-radius: 30px;
   font-size: 10px;
-  color: #68725d;
-  padding: 4px 10px;
+  font-weight: 600;
+  color: #195936;
+  padding: 4px 11px;
 }
 .brandCallout {
-  max-width: 900px;
+  max-width: 1160px;
   margin: 28px auto 0;
   border: 1px solid #ddded7;
   border-radius: 20px;
@@ -1448,7 +1450,7 @@
   text-align: center;
   margin: 55px auto -34px;
   padding-right: 0.1em;
-  color: #cfcec5;
+  color: #bdd4c5;
   mask-image: linear-gradient(#0009, #0001 85%);
   user-select: none;
 }

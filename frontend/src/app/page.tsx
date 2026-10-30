@@ -135,17 +135,16 @@ function Mark({ app = false }: { app?: boolean }) {
     <span className={app ? styles.appMark : styles.mark} aria-hidden="true">
       <svg viewBox="0 0 40 44" fill="none">
         <path
-          d="m7 5 13 15L33 5M20 20v18M7 39h26"
+          d="M20 5 7 38M20 5l13 33M11.5 27h17"
           stroke="currentColor"
           strokeWidth="4"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         <path
-          d="M6 13 20 20l14-7"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
+          d="M20 14l4.5 9h-9L20 14Z"
+          fill="currentColor"
+          opacity="0.28"
         />
       </svg>
     </span>
@@ -1121,9 +1120,9 @@ export default function HomePage() {
                 flex: 1,
                 padding: "8px",
                 borderRadius: "8px",
-                border: selectedPlan === "pro" ? "2px solid #1C1C1C" : "1px solid #DDD",
-                backgroundColor: selectedPlan === "pro" ? "#1C1C1C" : "#FFF",
-                color: selectedPlan === "pro" ? "#FFF" : "#1C1C1C",
+                border: selectedPlan === "pro" ? "2px solid #185a39" : "1px solid #cce0d1",
+                backgroundColor: selectedPlan === "pro" ? "#185a39" : "#FFF",
+                color: selectedPlan === "pro" ? "#FFF" : "#185a39",
                 fontWeight: 600,
                 fontSize: "13px",
                 cursor: "pointer"
@@ -1138,9 +1137,9 @@ export default function HomePage() {
                 flex: 1,
                 padding: "8px",
                 borderRadius: "8px",
-                border: selectedPlan === "business" ? "2px solid #1C1C1C" : "1px solid #DDD",
-                backgroundColor: selectedPlan === "business" ? "#1C1C1C" : "#FFF",
-                color: selectedPlan === "business" ? "#FFF" : "#1C1C1C",
+                border: selectedPlan === "business" ? "2px solid #185a39" : "1px solid #cce0d1",
+                backgroundColor: selectedPlan === "business" ? "#185a39" : "#FFF",
+                color: selectedPlan === "business" ? "#FFF" : "#185a39",
                 fontWeight: 600,
                 fontSize: "13px",
                 cursor: "pointer"
