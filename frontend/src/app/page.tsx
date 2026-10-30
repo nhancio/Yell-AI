@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FAQS } from "@/lib/faq";
+import { publicApi, saveWhatsAppSession } from "@/lib/account";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import styles from "./home.module.css";
@@ -205,21 +206,62 @@ export default function HomePage() {
 
   const [scrolled, setScrolled] = useState(false);
   const [qrUrl, setQrUrl] = useState("");
-  const [showQr, setShowQr] = useState(false);
+  const [waLoginTarget, setWaLoginTarget] = useState("/api/me/whatsapp-login/qr");
+  const [waChallenge, setWaChallenge] = useState<{ code: string; poll_token: string; whatsapp_url: string } | null>(null);
   useEffect(() => {
     if (window.location.hash === "#login" || new URLSearchParams(window.location.search).has("connected")) {
       window.location.replace(`/app${window.location.search}`);
       return;
     }
-    QRCode.toDataURL(new URL(APP_ENTRY, window.location.origin).href, {
-      width: 180,
-      margin: 1,
-      color: { dark: "#18241d", light: "#FFFFFF" },
-    })
-      .then(setQrUrl)
-      .catch(() => setQrUrl(""));
+    const renderQr = (targetUrl: string) =>
+      QRCode.toDataURL(targetUrl, {
+        width: 225,
+        margin: 1,
+        color: { dark: "#18241d", light: "#FFFFFF" },
+      })
+        .then(setQrUrl)
+        .catch(() => setQrUrl(""));
 
+    void renderQr(new URL("/api/me/whatsapp-login/qr", window.location.origin).href);
+
+    publicApi<{ code: string; poll_token: string; whatsapp_url: string }>("/api/me/whatsapp-login/start", {
+      method: "POST",
+    })
+      .then((res) => {
+        if (res?.whatsapp_url) {
+          setWaChallenge(res);
+          setWaLoginTarget(res.whatsapp_url);
+          void renderQr(res.whatsapp_url);
+        }
+      })
+      .catch(() => { /* fallback QR redirect (/api/me/whatsapp-login/qr) remains active */ });
   }, []);
+
+  useEffect(() => {
+    if (!waChallenge) return;
+    let cancelled = false;
+    const timer = window.setInterval(async () => {
+      try {
+        const res = await publicApi<{ status: string; token?: string; phone_number?: string }>(
+          "/api/me/whatsapp-login/poll",
+          {
+            method: "POST",
+            body: JSON.stringify({ code: waChallenge.code, poll_token: waChallenge.poll_token }),
+          }
+        );
+        if (!cancelled && res.status === "verified" && res.token && res.phone_number) {
+          saveWhatsAppSession(res.token, res.phone_number);
+          window.location.assign(APP_ENTRY);
+        }
+      } catch {
+        /* ignore transient poll errors on landing page */
+      }
+    }, 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [waChallenge]);
 
   useEffect(() => {
     const updateHeader = () => setScrolled(window.scrollY > 70);
@@ -366,15 +408,14 @@ export default function HomePage() {
             {qrUrl && (
               <div className={styles.qrWrap}>
                 <button
+                  type="button"
                   className={styles.qrTrigger}
-                  onClick={() => setShowQr(!showQr)}
-                  aria-expanded={showQr}
-                  aria-controls="whatsapp-qr"
+                  onClick={() => window.open(waLoginTarget, "_blank", "noopener,noreferrer")}
                 >
                   <svg
                     viewBox="0 0 24 24"
-                    width="19"
-                    height="19"
+                    width="24"
+                    height="24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.5"
@@ -382,23 +423,26 @@ export default function HomePage() {
                   >
                     <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h3v3h-3zm4 4h3v3h-3zm3-4v2m-7 3v2M6 6h1m10 0h1M6 17h1" />
                   </svg>{" "}
-                  Scan to get started <Icon name="chevron" size={13} />
+                  Scan to get started <Icon name="chevron" size={16} />
                 </button>
-                {showQr && (
-                  <div className={styles.qrPanel} id="whatsapp-qr">
-                    <img
-                      src={qrUrl}
-                      width="160"
-                      height="160"
-                      alt="Scan this QR code to sign in to Astra"
-                    />
-                    <p>
-                      Open your camera.
-                      <br />
-                      Sign in, then open WhatsApp.
-                    </p>
-                  </div>
-                )}
+                <div
+                  className={styles.qrPanel}
+                  id="whatsapp-qr"
+                  onClick={() => window.open(waLoginTarget, "_blank", "noopener,noreferrer")}
+                  style={{ cursor: "pointer" }}
+                >
+                  <img
+                    src={qrUrl}
+                    width="200"
+                    height="200"
+                    alt="Scan this QR code to sign in to Astra on WhatsApp"
+                  />
+                  <p>
+                    Open your camera.
+                    <br />
+                    Sign in, then open WhatsApp.
+                  </p>
+                </div>
               </div>
             )}
           </div>

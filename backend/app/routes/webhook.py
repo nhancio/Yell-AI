@@ -43,14 +43,21 @@ chat_actions = ChatActions(gemini, ToolRunService(composio_service))
 
 PROCESSED_MESSAGE_IDS = collections.OrderedDict()
 MAX_DEDUP_CACHE = 10000
+DEDUP_TTL_SECONDS = 600
 
 
-def check_and_record_message(message_id: str) -> bool:
+async def check_and_record_message(message_id: str) -> bool:
     if not message_id:
         return False
     now = time.time()
     if message_id in PROCESSED_MESSAGE_IDS:
         logger.info("Deduplicated incoming message_id: %s (dropped duplicate retry)", message_id)
+        return True
+    if not await memory.claim_once(f"msg_dedup:{message_id}", DEDUP_TTL_SECONDS):
+        PROCESSED_MESSAGE_IDS[message_id] = now
+        if len(PROCESSED_MESSAGE_IDS) > MAX_DEDUP_CACHE:
+            PROCESSED_MESSAGE_IDS.popitem(last=False)
+        logger.info("Deduplicated incoming message_id via shared store: %s (dropped duplicate retry)", message_id)
         return True
     PROCESSED_MESSAGE_IDS[message_id] = now
     if len(PROCESSED_MESSAGE_IDS) > MAX_DEDUP_CACHE:
@@ -191,7 +198,7 @@ async def process_user_message(
 
     # 2c. WhatsApp Login (1-tap challenge from /app or direct /login magic link)
     login_match = re.search(
-        r"(?:^(?:/?login|sign\s*in)(?:\s+([a-hj-np-z2-9]{8}))?$|(?:sign|log)\s*in\s+to\s+astra\b.*?\b([a-hj-np-z2-9]{8})\b)",
+        r"(?:^(?:/?login|sign\s*in(?:\s+to\s+astra)?)(?:\s+([a-hj-np-z2-9]{8}))?$|(?:sign|log)\s*in\s+to\s+astra\b.*?\b([a-hj-np-z2-9]{8})\b)",
         clean_text,
     )
     if login_match:
@@ -367,7 +374,7 @@ async def handle_webhook(request: Request, background_tasks: BackgroundTasks) ->
         return {"status": "ignored"}
 
     message_id = parsed.get("message_id", "")
-    if check_and_record_message(message_id):
+    if await check_and_record_message(message_id):
         return {"status": "already_processed"}
 
     # Display feedback before database/tool work. This also marks the message read.

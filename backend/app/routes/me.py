@@ -4,10 +4,12 @@ from datetime import date
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from urllib.parse import quote
 
 from app.config import get_settings
 from app.models.database import async_session, get_db
@@ -50,6 +52,17 @@ class WhatsAppExchangeBody(BaseModel):
 async def whatsapp_login_start() -> dict[str, Any]:
     """Start a passwordless WhatsApp sign-in challenge."""
     return await start_whatsapp_login_challenge()
+
+
+@router.get("/whatsapp-login/qr")
+async def whatsapp_login_qr() -> RedirectResponse:
+    """Redirect QR scans directly to WhatsApp with a pre-filled sign-in message."""
+    challenge = await start_whatsapp_login_challenge()
+    return RedirectResponse(
+        url=challenge["whatsapp_url"],
+        status_code=302,
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+    )
 
 
 @router.post("/whatsapp-login/poll")

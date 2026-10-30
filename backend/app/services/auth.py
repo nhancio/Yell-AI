@@ -117,13 +117,15 @@ async def complete_whatsapp_login_from_webhook(phone: str, code: Optional[str] =
             data = json.loads(raw)
         except Exception:
             return False, ""
+        if data.get("phone") is not None:
+            return False, ""
         data["phone"] = norm
         await memory_service.set_value(
             f"astra:wa_login:{clean_code}",
             json.dumps(data),
             ttl=_CHALLENGE_TTL_SECONDS,
         )
-        await _record_verified_whatsapp(norm)
+    await _record_verified_whatsapp(norm)
     ticket = secrets.token_urlsafe(24)
     await memory_service.set_value(f"astra:wa_ticket:{ticket}", norm, ttl=_CHALLENGE_TTL_SECONDS)
     magic_url = f"{settings.APP_FRONTEND_URL.rstrip('/')}/app?wa_token={ticket}"
