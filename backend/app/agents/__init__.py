@@ -1,11 +1,9 @@
-"""Agent orchestration — emotion → intent → Composio connector check → task routing."""
+"""Agent orchestration — one router call (emotion + intent) → task routing."""
 
-import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from app.agents.emotion import EmotionAgent
 from app.agents.intent import IntentAgent
 from app.agents.tasks import TaskAgentRouter
 from app.services.gemini import GeminiService
@@ -28,8 +26,7 @@ class AgentOrchestrator:
     """Runs the full pipeline: emotion → intent → task agent + Composio toolkit detection."""
 
     def __init__(self, gemini: GeminiService) -> None:
-        self.emotion_agent = EmotionAgent(gemini)
-        self.intent_agent = IntentAgent(gemini)
+        self.router = IntentAgent(gemini)
         self.task_router = TaskAgentRouter(gemini)
 
     async def process(
@@ -41,12 +38,8 @@ class AgentOrchestrator:
         history = history or []
         connected_apps = connected_apps or []
 
-        # Step 1 — Emotion and intent run concurrently on the fast model (the intent call is
-        # wasted for venting/crisis messages; a cheap Flash-Lite call buys ~1s per reply).
-        emotion_result, intent_result = await asyncio.gather(
-            self.emotion_agent.detect_and_respond(message, history),
-            self.intent_agent.classify(message),
-        )
+        # Step 1 — One Flash-Lite call reads emotion, crisis and intent together.
+        emotion_result = intent_result = await self.router.classify(message, history)
         logger.info("Emotion: %s | needs_action: %s", emotion_result["emotion"], emotion_result["needs_action"])
 
         # Crisis check — immediate return with helpline info

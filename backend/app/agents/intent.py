@@ -1,4 +1,4 @@
-"""Intent classification agent — maps user message to India Life-OS & Composio tool intents."""
+"""Single router call: emotion, crisis check and intent in one Flash-Lite request (was two calls)."""
 
 import logging
 from typing import Any
@@ -8,9 +8,15 @@ from app.services.gemini import GeminiService
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are the intent classifier for Astra AI — India's #1 WhatsApp AI Super-Agent (like Instinct + Poke + Backdoor built for India).
+SYSTEM_PROMPT = """You are the router for Astra AI, a WhatsApp assistant for India. For each message, read the feelings and the request.
 
-Given a user's message, classify what they want done.
+Emotion:
+- Detect the user's primary emotion.
+- Write a warm, human, non-judgmental empathy line: 1 short sentence, under 120 characters, in the user's language (Hindi, English, Hinglish, Telugu, Tamil). Sound like a caring friend, never start with "I understand", at most 1-2 emojis, stay calm if they are abusive.
+- needs_action = true when they want something done (solve, draft, find, plan); false when they only want to vent or talk.
+- is_crisis = true ONLY for suicidal ideation, self-harm, or extreme hopelessness ("I want to end it all", "life is not worth living").
+
+Intent: classify what they want done.
 
 Available intents:
 - gmail_action: User wants to read, search, draft, or send an email in Gmail
@@ -34,6 +40,10 @@ Also identify if a Composio connector toolkit is needed (one of: {TOOLKITS}; or 
 
 Return ONLY valid JSON:
 {
+  "emotion": "anger|stress|sadness|frustration|confusion|anxiety|joy|neutral",
+  "empathy_response": "your warm line",
+  "needs_action": true/false,
+  "is_crisis": true/false,
   "intent": "one_of_the_above_intents",
   "required_toolkit": "one toolkit slug from the list above, or null",
   "details": {
@@ -48,17 +58,24 @@ class IntentAgent:
         self.gemini = gemini
 
     async def classify(
-        self, message: str
+        self, message: str, history: list[dict] | None = None
     ) -> dict[str, Any]:
-        enriched_message = f"User message: {message}"
-
         result = await self.gemini.generate_json_response(
             system_prompt=SYSTEM_PROMPT,
-            user_message=enriched_message,
+            user_message=message,
+            history=history,
         )
 
+        # Parse failure: answer the request rather than only sympathising.
+        empathy = result.get("empathy_response") or "I hear you. Tell me more. 💛"
+        feelings = {
+            "emotion": result.get("emotion", "neutral"),
+            "empathy_response": empathy,
+            "needs_action": bool(result.get("needs_action", True)),
+            "is_crisis": bool(result.get("is_crisis", False)),
+        }
         if not result:
-            return {
+            return feelings | {
                 "intent": "general_help",
                 "required_toolkit": None,
                 "details": {"summary": message[:100], "key_points": []},
@@ -90,7 +107,7 @@ class IntentAgent:
         if req_tk in ("null", "None", ""):
             req_tk = None
 
-        return {
+        return feelings | {
             "intent": intent,
             "required_toolkit": req_tk,
             "details": result.get("details", {}),

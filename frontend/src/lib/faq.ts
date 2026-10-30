@@ -18,6 +18,6 @@ export const FAQS: [question: string, answer: string][] = [
   ],
   [
     "Can I try Astra for free?",
-    "Yes. Bharat Free includes 15 AI tasks per day with curated sponsored perks. Astra Pro is ₹99 per month (80 tasks/day FUP), and Astra Business is ₹999 per month (1,000 tasks/day).",
+    "Yes. Bharat Free includes 5 messages a day with curated sponsored perks. Astra Pro is ₹99 per month (10 messages a day), and Astra Business is ₹299 per month (30 messages a day).",
   ],
 ];

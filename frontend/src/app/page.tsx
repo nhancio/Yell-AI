@@ -689,7 +689,7 @@ export default function HomePage() {
               <b className={styles.includes}>Includes:</b>
               <ul>
                 {[
-                  "15 AI tasks per day (Ad-supported)",
+                  "5 messages per day (Ad-supported)",
                   "Link Gmail, Calendar, Notion & 14 more apps",
                   "Drafts, day plans & quick answers",
                   "English, Hindi, Hinglish, Telugu & Tamil",
@@ -725,8 +725,8 @@ export default function HomePage() {
               <b className={styles.includes}>Everything in Free, plus:</b>
               <ul>
                 {[
-                  "80 actions per day (FUP: ~2,400 tasks/mo)",
-                  "5× the Free daily limit",
+                  "10 messages per day",
+                  "2× the Free daily limit",
                   "Founder cold outreach & custom drafts",
                   "100% Ad-Free experience",
                 ].map((f) => (
@@ -747,12 +747,12 @@ export default function HomePage() {
             {/* Business / Team Plan */}
             <article className={`${styles.plan} ${styles.proPlan}`}>
               <span className={styles.planBadge}>
-                Enterprise Headroom
+                Most Room
               </span>
               <h3>Astra Business</h3>
-              <p>For heavy daily users who text Astra all day</p>
+              <p>For people who text Astra all through the day</p>
               <div className={styles.price}>
-                ₹999<span>/ month</span>
+                ₹299<span>/ month</span>
               </div>
               <span className={styles.billingNote}>
                 Billed monthly · 30 days of access
@@ -761,8 +761,8 @@ export default function HomePage() {
               <b className={styles.includes}>Everything in Pro, plus:</b>
               <ul>
                 {[
-                  "1,000 messages per day",
-                  "12× the Pro daily limit",
+                  "30 messages per day",
+                  "3× the Pro daily limit",
                 ].map((f) => (
                   <li key={f}>
                     <Icon name="check" size={16} />
@@ -774,7 +774,7 @@ export default function HomePage() {
                 href="/app?plan=business"
                 className={`${styles.button} ${styles.darkButton}`}
               >
-                Get Business (₹999) <Icon name="arrow" size={17} />
+                Get Business (₹299) <Icon name="arrow" size={17} />
               </a>
             </article>
           </div>

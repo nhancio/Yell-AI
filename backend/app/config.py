@@ -64,15 +64,16 @@ class Settings(BaseSettings):
     RAZORPAY_WEBHOOK_SECRET: str = ""  # Dashboard webhook secret; falls back to RAZORPAY_KEY_SECRET
 
     # Usage limits: Fair Usage Policy (FUP) & Tiers
-    FREE_DAILY_LIMIT: int = 15  # Free tier: 15 tasks/day (ad-supported)
-    PAID_DAILY_LIMIT: int = 80  # Pro plan (₹99/mo): 80 tasks/day FUP (~2,400 tasks/mo)
-    BUSINESS_DAILY_LIMIT: int = 1000  # Business/Team plan (₹999/mo): 1,000 tasks/day enterprise
+    # Each reply costs ~₹0.30 (Gemini + Meta + Cloud Run, Oct 2026), so caps keep every paid plan above cost.
+    FREE_DAILY_LIMIT: int = 5  # Free tier: 5 messages/day (ad-supported)
+    PAID_DAILY_LIMIT: int = 10  # Pro (₹99/mo): 10 messages/day
+    BUSINESS_DAILY_LIMIT: int = 30  # Business (₹299/mo): 30 messages/day
     SIGNUP_PREVIEW_MESSAGES: int = 2  # Lifetime AI replies a number gets before it must log in to the app
     ADS_ENABLED: bool = True
 
     # Pricing
     MONTHLY_PRICE_PAISE: int = 9900  # Pro: ₹99/mo (9900 paise)
-    BUSINESS_PRICE_PAISE: int = 99900  # Business: ₹999/mo (99900 paise)
+    BUSINESS_PRICE_PAISE: int = 29900  # Business: ₹299/mo (29900 paise)
 
     # Production Hardening
     ADMIN_API_KEY: str = ""  # Admin routes refuse every request until this is set

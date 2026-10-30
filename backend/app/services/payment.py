@@ -34,14 +34,15 @@ class PaymentService:
     async def create_payment_link(
         self, phone_number: str, user_id: int, plan: str = "pro"
     ) -> Optional[str]:
-        """Create a Razorpay payment link for Pro (₹99) or Business (₹999) and return the short URL."""
+        """Create a Razorpay payment link for Pro or Business (prices from settings) and return the short URL."""
         if not self.client:
             logger.error("Razorpay client not initialised")
             return None
 
         is_biz = plan.lower() in ("business", "biz", "team")
-        amount = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) if is_biz else settings.MONTHLY_PRICE_PAISE
-        desc = "Astra AI Business (1,000 tasks/day) - 30 Days" if is_biz else "Astra AI Pro (80 tasks/day FUP) - 30 Days"
+        amount = settings.BUSINESS_PRICE_PAISE if is_biz else settings.MONTHLY_PRICE_PAISE
+        limit = settings.BUSINESS_DAILY_LIMIT if is_biz else settings.PAID_DAILY_LIMIT
+        desc = f"Astra AI {'Business' if is_biz else 'Pro'} ({limit} messages/day) - 30 Days"
 
         try:
             data = {

@@ -80,11 +80,11 @@ class UsageService:
         user = await self.get_or_create_user(phone_number)
         tier = ("business" if user.plan_tier == "business" else "pro") if user.is_premium else "free"
         if tier == "business":
-            limit = settings.BUSINESS_DAILY_LIMIT  # 1,000 tasks/day
+            limit = settings.BUSINESS_DAILY_LIMIT
         elif tier == "pro" or user.is_premium:
-            limit = settings.PAID_DAILY_LIMIT      # 80 tasks/day FUP
+            limit = settings.PAID_DAILY_LIMIT
         else:
-            limit = settings.FREE_DAILY_LIMIT      # 15 tasks/day free
+            limit = settings.FREE_DAILY_LIMIT
 
         async with async_session() as session:
             result = await session.execute(

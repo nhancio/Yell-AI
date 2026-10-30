@@ -34,7 +34,7 @@ const appSchema = {
   offers: [
     { "@type": "Offer", name: "Bharat Free", price: "0", priceCurrency: "INR" },
     { "@type": "Offer", name: "Astra Pro", price: "99", priceCurrency: "INR" },
-    { "@type": "Offer", name: "Astra Business", price: "999", priceCurrency: "INR" },
+    { "@type": "Offer", name: "Astra Business", price: "299", priceCurrency: "INR" },
   ],
   publisher: { "@type": "Organization", name: "Nhancio", url: SITE_URL },
 };

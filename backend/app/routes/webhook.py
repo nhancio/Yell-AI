@@ -170,17 +170,17 @@ async def process_user_message(
         biz_url = await payment_service.create_payment_link(sender, user.id, plan="business")
         
         pro_price = settings.MONTHLY_PRICE_PAISE // 100
-        biz_price = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) // 100
+        biz_price = settings.BUSINESS_PRICE_PAISE // 100
 
         msg = (
             "⚡ *Astra AI Subscription Plans (Fair Usage Policy):*\n\n"
             f"1️⃣ *Astra Pro — ₹{pro_price}/month (Most Popular)*\n"
-            f"• {settings.PAID_DAILY_LIMIT} tasks & queries/day (~2,400 tasks/mo)\n"
+            f"• {settings.PAID_DAILY_LIMIT} messages/day\n"
             "• 100% Ad-Free experience\n"
             f"👉 *Subscribe to Pro (₹{pro_price}):* {pro_url or f'{settings.FRONTEND_URL}#pricing'}\n\n"
-            f"2️⃣ *Astra Business / Team — ₹{biz_price}/month*\n"
-            f"• {settings.BUSINESS_DAILY_LIMIT} tasks & queries/day (Enterprise headroom)\n"
-            "• Dedicated priority execution & custom connectors\n"
+            f"2️⃣ *Astra Business — ₹{biz_price}/month*\n"
+            f"• {settings.BUSINESS_DAILY_LIMIT} messages/day\n"
+            "• 100% Ad-Free experience\n"
             f"👉 *Subscribe to Business (₹{biz_price}):* {biz_url or f'{settings.FRONTEND_URL}#pricing'}"
         )
 
@@ -218,15 +218,19 @@ async def process_user_message(
                 "• 100% Zero sponsored ads\n\n"
                 f"👉 *Upgrade via UPI / Razorpay (₹{pro_price}):* {pro_url or f'{settings.FRONTEND_URL}#pricing'}"
             )
-        else:
-            # Pro user hit the 80/day limit -> upsell to Business 1,000 tasks/day
-            biz_url = await payment_service.create_payment_link(sender, user.id, plan="business")
-            biz_price = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) // 100
+        elif current_tier == "business":
             upsell_text = (
-                f"You've reached your Pro daily Fair Usage limit of {settings.PAID_DAILY_LIMIT} tasks! ⚡\n\n"
-                f"Need heavy enterprise throughput? Upgrade to *Astra Business* for *₹{biz_price}/month*:\n"
-                f"• {settings.BUSINESS_DAILY_LIMIT} tasks/day headroom\n"
-                "• Multi-workflow automation & team prioritization\n\n"
+                f"You've used all {settings.BUSINESS_DAILY_LIMIT} of today's messages. ⚡\n\n"
+                "Your limit resets tomorrow. See you then!"
+            )
+        else:
+            # Pro user hit the daily limit -> offer Business
+            biz_url = await payment_service.create_payment_link(sender, user.id, plan="business")
+            biz_price = settings.BUSINESS_PRICE_PAISE // 100
+            upsell_text = (
+                f"You've used all {settings.PAID_DAILY_LIMIT} of today's Pro messages! ⚡\n\n"
+                f"Need more room? Upgrade to *Astra Business* for *₹{biz_price}/month*:\n"
+                f"• {settings.BUSINESS_DAILY_LIMIT} messages/day\n\n"
                 f"👉 *Upgrade to Business (₹{biz_price}):* {biz_url or f'{settings.FRONTEND_URL}#pricing'}"
             )
 

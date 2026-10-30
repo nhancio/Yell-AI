@@ -31,7 +31,7 @@ class PublicPaymentLinkRequest(BaseModel):
 
 @router.post("/create-link")
 async def create_public_payment_link(req: PublicPaymentLinkRequest, owner: str = Depends(current_phone)) -> dict:
-    """Create a Razorpay payment link for Pro (₹99) or Business (₹999)."""
+    """Create a Razorpay payment link for Pro or Business (prices from settings)."""
     norm_phone = normalize_phone(req.phone_number)
     if norm_phone != owner:
         raise HTTPException(status_code=403, detail="Payment must belong to the logged-in account")
@@ -40,7 +40,7 @@ async def create_public_payment_link(req: PublicPaymentLinkRequest, owner: str =
     if not url:
         raise HTTPException(status_code=503, detail="Razorpay payment initiation failed")
     is_biz = req.plan.lower() in ("business", "biz", "team")
-    amount = getattr(settings, "BUSINESS_PRICE_PAISE", 99900) // 100 if is_biz else settings.MONTHLY_PRICE_PAISE // 100
+    amount = settings.BUSINESS_PRICE_PAISE // 100 if is_biz else settings.MONTHLY_PRICE_PAISE // 100
     return {
         "payment_url": url,
         "amount_inr": amount,
