@@ -154,6 +154,21 @@ class AsyncGeminiTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await asyncio.wait_for(
                 GeminiService().generate_response("system", "hello"), timeout=0.5), FALLBACK_RESPONSE)
 
+    async def test_stalled_flash_reply_retries_once_on_flash_lite(self):
+        models = []
+
+        async def generate(model, thinking, body):
+            models.append((model, thinking))
+            if model == GeminiService.MODEL_NAME:
+                await asyncio.Event().wait()
+            return "lite answer"
+
+        with patch.object(GeminiService, "_generate", side_effect=generate), \
+             patch.object(GeminiService, "FLASH_TIMEOUT_SECONDS", 0.01):
+            self.assertEqual(await asyncio.wait_for(
+                GeminiService().generate_response("system", "hello"), timeout=0.5), "lite answer")
+        self.assertEqual(models, [(GeminiService.MODEL_NAME, "low"), (GeminiService.FAST_MODEL_NAME, "minimal")])
+
     async def test_router_picks_model_and_thinking_level_and_maps_roles(self):
         requests = []
 

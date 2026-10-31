@@ -66,7 +66,7 @@ class _FlowLogSink:
 
 
 class WebhookGateTests(unittest.IsolatedAsyncioTestCase):
-    async def run_message(self, state, first_today=True, latest=True):
+    async def run_message(self, state, first_today=True, latest=True, history=(), text="plan my week"):
         send = AsyncMock()
         process = AsyncMock(return_value=SimpleNamespace(
             full_response="Here you go", required_toolkit=None, intent="general",
@@ -76,14 +76,15 @@ class WebhookGateTests(unittest.IsolatedAsyncioTestCase):
              patch.object(webhook.usage_service, "increment_usage", AsyncMock()), \
              patch.object(webhook.whatsapp, "send_message", send), \
              patch.object(webhook.orchestrator, "process", process), \
-             patch.object(webhook.memory, "get_conversation_history", AsyncMock(return_value=[])), \
+             patch.object(webhook.memory, "get_conversation_history", AsyncMock(return_value=list(history))), \
              patch.object(webhook.memory, "add_message", AsyncMock()), \
              patch.object(webhook.memory, "first_today", AsyncMock(return_value=first_today)), \
              patch.object(webhook.memory, "is_latest", AsyncMock(return_value=latest)), \
              patch.object(webhook.composio_service, "get_user_connections", AsyncMock(return_value=[])), \
              patch.object(webhook.ads_service, "get_contextual_ad", AsyncMock(return_value=None)), \
-             patch.object(webhook, "async_session", lambda: _FlowLogSink()):
-            result = await webhook.process_user_message(PHONE, "plan my week", "wamid.1", "Ravi Kumar", 0)
+             patch.object(webhook, "async_session", lambda: _FlowLogSink()), \
+             patch.object(webhook, "BURST_WAIT_SECONDS", 0):
+            result = await webhook.process_user_message(PHONE, text, "wamid.1", "Ravi Kumar", 0)
         return result, process, send.await_args.args[1] if send.await_args else None
 
     async def test_exhausted_preview_sends_onboarding_link_without_ai(self):
@@ -110,6 +111,15 @@ class WebhookGateTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, {"status": "superseded"})
         process.assert_not_awaited()
         self.assertIsNone(reply)
+
+    async def test_burst_of_unanswered_messages_gets_one_combined_reply(self):
+        history = [{"role": "user", "content": "hi there"}, {"role": "assistant", "content": "Hey!"},
+                   {"role": "user", "content": "draft a leave application"},
+                   {"role": "user", "content": "also SIP for 15k?"}]
+        _, process, _ = await self.run_message((True, 0), history=history, text="also SIP for 15k?")
+        text, past = process.await_args.args[:2]
+        self.assertEqual(text, "draft a leave application\nalso SIP for 15k?")
+        self.assertEqual(past, history[:2])
 
     async def test_signed_up_reply_has_no_nudge(self):
         _, _, reply = await self.run_message((True, 0))

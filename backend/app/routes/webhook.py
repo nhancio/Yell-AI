@@ -56,6 +56,9 @@ def _may_be_app_action(text: str, history: list[dict]) -> bool:
     return False
 
 
+# Messages sent back-to-back within this window get one combined reply (costs this much latency).
+BURST_WAIT_SECONDS = 1.0
+
 PROCESSED_MESSAGE_IDS = collections.OrderedDict()
 MAX_DEDUP_CACHE = 10000
 DEDUP_TTL_SECONDS = 600
@@ -179,6 +182,8 @@ async def process_user_message(
     if clean_text in ("stop", "/stop", "cancel", "/cancel"):
         # This message already superseded any reply still being generated (see mark_latest).
         await whatsapp.send_message(sender, "Stopped ✋ What should I do instead?")
+        # Close out the cancelled messages so the next reply doesn't answer them too.
+        await memory.add_message(sender, "assistant", "Stopped ✋ What should I do instead?")
         return {"status": "ok"}
 
     if clean_text == "/clear":
@@ -283,17 +288,27 @@ async def process_user_message(
         await whatsapp.send_message(sender, upsell_text)
         return {"status": "limit_reached"}
 
-    # 4. Get conversation history & user's active Composio connections concurrently
+    # 4. Save first, let a burst of messages settle, and only the newest one goes on to the LLM.
+    await memory.add_message(sender, "user", text)
+    await asyncio.sleep(BURST_WAIT_SECONDS)
+    # A newer message already arrived: it will see this one in history, so skip the LLM work.
+    if not await memory.is_latest(sender, message_id):
+        return await _superseded(message_id, log_id)
+
+    # Read history after saving, so it includes every message of the burst.
     history, user_conns = await asyncio.gather(
         memory.get_conversation_history(sender),
         composio_service.get_user_connections(sender),
     )
     active_apps = [c["slug"] for c in user_conns if c["status"] == "active"]
 
-    await memory.add_message(sender, "user", text)
-    # A newer message already arrived: it will see this one in history, so skip the LLM work.
-    if not await memory.is_latest(sender, message_id):
-        return await _superseded(message_id, log_id)
+    # Everything sent since the last reply is answered together, in one reply.
+    unanswered = []
+    while history and history[-1].get("role") == "user":
+        unanswered.insert(0, history.pop().get("content", ""))
+    if not unanswered or unanswered[-1] != text:
+        unanswered.append(text)
+    text = "\n".join(unanswered)
 
     # 5. Process through AgentOrchestrator
     try:

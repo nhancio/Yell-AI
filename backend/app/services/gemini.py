@@ -32,6 +32,9 @@ class GeminiService:
     # User-facing replies stay on 3.5, which formats for WhatsApp and stays on-brand better.
     JSON_MODEL_NAME = "gemini-3.1-flash-lite"
     REQUEST_TIMEOUT_SECONDS = 20
+    # Flash replies measured p95 ~6s; a stalled call gets cut here and retried once on Flash-Lite
+    # inside the remaining REQUEST_TIMEOUT budget, instead of a 20s wait ending in FALLBACK_RESPONSE.
+    FLASH_TIMEOUT_SECONDS = 10
 
     def __init__(self) -> None:
         self._client: Optional[httpx.AsyncClient] = None
@@ -84,11 +87,19 @@ class GeminiService:
                 model = self.JSON_MODEL_NAME
 
             async with asyncio.timeout(self.REQUEST_TIMEOUT_SECONDS):
-                text = await self._generate(model, thinking, body)
+                if model != self.MODEL_NAME:
+                    text = await self._generate(model, thinking, body)
+                else:
+                    try:
+                        async with asyncio.timeout(self.FLASH_TIMEOUT_SECONDS):
+                            text = await self._generate(model, thinking, body)
+                    except Exception as exc:
+                        logger.warning("Gemini %s failed (%r); retrying on %s", model, exc, self.FAST_MODEL_NAME)
+                        text = await self._generate(self.FAST_MODEL_NAME, "minimal", body)
             return text or FALLBACK_RESPONSE
 
         except Exception as exc:
-            logger.error("Gemini API error: %s", exc)
+            logger.error("Gemini API error: %r", exc)
             return FALLBACK_RESPONSE
 
     async def generate_json_response(
