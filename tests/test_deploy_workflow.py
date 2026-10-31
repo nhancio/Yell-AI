@@ -152,11 +152,18 @@ if [ "$1" = - ]; then exec "$DEPLOY_TEST_PYTHON" "$@"; fi
         self.feature("feature/one")
         (self.repo / "backend/app.py").write_text("uncommitted = True\n")
         before = self.git("rev-parse", "origin/main").stdout
-        self.assertNotEqual(self.deploy().returncode, 0)
+        self.assertNotEqual(self.deploy(DEPLOY_WAIT_SECONDS="0").returncode, 0)
         self.assertIn("feature/one", self.branches())
         self.assertEqual((self.repo / "backend/app.py").read_text(), "uncommitted = True\n")
         self.assertEqual(self.git("rev-parse", "origin/main").stdout, before)
         self.assert_not_deployed()
+
+    def test_untracked_files_do_not_block_and_are_left_alone(self):
+        (self.repo / "scratch.txt").write_text("leftover\n")
+        result = self.deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.repo / "scratch.txt").read_text(), "leftover\n")
+        self.assertNotIn("scratch.txt", self.git("ls-tree", "-r", "--name-only", "origin/main").stdout)
 
     def test_merge_conflict_preserves_both_branches_and_aborts_the_failed_merge(self):
         self.feature("feature/one", "backend/app.py", "one = True\n")

@@ -9,6 +9,7 @@ ACCOUNT="${FIREBASE_ACCOUNT:-nithindidigam@nhancio.com}"
 REGION="${CLOUD_RUN_REGION:-asia-south1}"
 REQUIRE_REDIS="${REQUIRE_REDIS:-0}"
 GITHUB_ACCOUNT="${GITHUB_ACCOUNT:-didigamnithin}"
+DEPLOY_WAIT_SECONDS="${DEPLOY_WAIT_SECONDS:-1800}"
 BACKEND_PYTHON="${BACKEND_PYTHON:-$DIR/backend/.venv/bin/python}"
 github_token=""
 export -n github_token
@@ -42,11 +43,12 @@ verify_checkout() {
 wait_for_commit() {
     local waited=0
     while [[ -n "$(git status --porcelain --untracked-files=no)" ]]; do
-        (( waited < 1800 )) || die "Tracked edits are still uncommitted after 30 minutes. Commit them and rerun."
         if (( waited == 0 )); then
             printf 'Waiting for these edits to be committed (Ctrl-C to cancel):\n'
             git status --short --untracked-files=no
         fi
+        (( waited < DEPLOY_WAIT_SECONDS )) \
+            || die "Tracked edits are still uncommitted after ${DEPLOY_WAIT_SECONDS}s. Commit them and rerun."
         sleep 20
         waited=$((waited + 20))
     done
