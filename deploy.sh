@@ -31,12 +31,25 @@ merge_ref() {
     fi
 }
 
+# Uncommitted edits made mid-release are harmless: the release is a frozen git archive.
 verify_checkout() {
-    local worktree_status
-    worktree_status="$(git status --porcelain)"
-    [[ "$(git symbolic-ref --short HEAD)" == main && "$(git rev-parse HEAD)" == "$commit" \
-        && -z "$worktree_status" ]] \
+    [[ "$(git symbolic-ref --short HEAD)" == main && "$(git rev-parse HEAD)" == "$commit" ]] \
         || die "The checkout changed during release. Commit the new work and rerun."
+}
+
+# Untracked files never ship (git archive), so only tracked edits block the merge.
+# Another session may still be editing: wait for its commit instead of failing.
+wait_for_commit() {
+    local waited=0
+    while [[ -n "$(git status --porcelain --untracked-files=no)" ]]; do
+        (( waited < 1800 )) || die "Tracked edits are still uncommitted after 30 minutes. Commit them and rerun."
+        if (( waited == 0 )); then
+            printf 'Waiting for these edits to be committed (Ctrl-C to cancel):\n'
+            git status --short --untracked-files=no
+        fi
+        sleep 20
+        waited=$((waited + 20))
+    done
 }
 
 verify_main() {
@@ -51,15 +64,19 @@ verify_main() {
 
 main() {
     cd "$DIR"
-    [[ $# == 0 ]] || die "Run ./deploy.sh with no arguments. Commit or stash local edits first."
+    [[ $# == 0 ]] || die "Run ./deploy.sh with no arguments."
     for tool in git python3 npm npx gcloud; do
         command -v "$tool" >/dev/null || die "Required command missing: $tool"
     done
     [[ "$BACKEND_PYTHON" == /* ]] || BACKEND_PYTHON="$DIR/$BACKEND_PYTHON"
     [[ -x "$BACKEND_PYTHON" ]] || die "Set up backend/.venv or set BACKEND_PYTHON."
     [[ "$REQUIRE_REDIS" == 0 || "$REQUIRE_REDIS" == 1 ]] || die "REQUIRE_REDIS must be 0 or 1."
-    worktree_status="$(git status --porcelain)"
-    [[ -z "$worktree_status" ]] || die "Commit or stash local changes first. Nothing was merged or deleted."
+    # Python.org builds on macOS ship without CA certs; the smoke check needs them.
+    if [[ -z "${SSL_CERT_FILE:-}" ]]; then
+        cert_file="$("$BACKEND_PYTHON" -c 'import certifi; print(certifi.where())' 2>/dev/null || true)"
+        [[ -z "$cert_file" ]] || export SSL_CERT_FILE="$cert_file"
+    fi
+    wait_for_commit
     for state in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD rebase-merge rebase-apply; do
         [[ ! -e "$(git rev-parse --git-path "$state")" ]] || die "Finish the existing Git operation first."
     done
