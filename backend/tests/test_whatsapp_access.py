@@ -3,6 +3,7 @@
 from contextlib import ExitStack
 import unittest
 from unittest.mock import AsyncMock, patch
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 from fastapi import FastAPI
@@ -92,9 +93,11 @@ class WhatsAppAccessTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(bad_poll.status_code, 403)
 
             # User sends the pre-filled message on WhatsApp
+            prefilled = parse_qs(urlsplit(challenge["whatsapp_url"]).query)["text"][0]
+            self.assertEqual(prefilled, f"✨ Sign in to Astra · 🔐 *{code}*")
             wh_result = await webhook.process_user_message(
                 PHONE,
-                f"Sign in to Astra (code: {code})",
+                prefilled,
                 "wamid.login1",
                 "Nithi",
                 0,

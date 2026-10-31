@@ -38,13 +38,13 @@ async def lifespan(app: FastAPI):
         logger.warning("Ad seeding skipped: %s", exc)
 
     if await memory_service.ping():
-        logger.info("Redis connected")
+        logger.info("Shared memory ready")
     elif not get_settings().memory_fallback_allowed:
         await memory_service.close()
         await engine.dispose()
-        raise RuntimeError("Redis must be available before accepting traffic")
+        raise RuntimeError("Shared memory must be available before accepting traffic")
     else:
-        logger.warning("Redis unavailable; development memory fallback enabled")
+        logger.warning("Redis unavailable; using the database for shared memory")
 
     try:
         yield

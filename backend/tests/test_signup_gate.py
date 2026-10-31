@@ -133,6 +133,25 @@ class FirstTodayTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(await service.first_today("signup_link:1"))
             self.assertTrue(await service.first_today("signup_link:2"))
 
+    async def test_without_redis_separate_instances_share_the_database(self):
+        a, b = MemoryService(), MemoryService()
+        phone = "919800000001"
+        with patch.object(a, "_get_redis", AsyncMock(return_value=None)), \
+             patch.object(b, "_get_redis", AsyncMock(return_value=None)):
+            await a.set_value("astra:wa_login:SHARED01", "pending", ttl=60)
+            self.assertEqual(await b.pop_value("astra:wa_login:SHARED01"), "pending")
+            self.assertIsNone(await a.pop_value("astra:wa_login:SHARED01"))
+
+            await b.set_value("astra:gone", "x", ttl=-1)
+            self.assertIsNone(await a.get_value("astra:gone"))
+
+            for i in range(55):
+                await a.add_message(phone, "user", f"m{i}")
+            history = await b.get_conversation_history(phone, limit=100)
+            self.assertEqual([m["content"] for m in history], [f"m{i}" for i in range(5, 55)])
+            await b.clear_history(phone)
+            self.assertEqual(await a.get_conversation_history(phone), [])
+
     async def test_redis_uses_atomic_set_nx_with_ttl(self):
         redis = AsyncMock()
         redis.set.side_effect = [True, None]

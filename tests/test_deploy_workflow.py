@@ -33,7 +33,7 @@ class DeployWorkflowTests(unittest.TestCase):
             def do_GET(self):
                 if self.path == "/ready":
                     checks = {"database": "ok" if self.server.database_ok else "unavailable",
-                              "redis": "ok" if self.server.redis_ok else "unavailable"}
+                              "memory": "ok" if self.server.redis_ok else "unavailable"}
                     code, body = (200 if all(v == "ok" for v in checks.values()) else 503), {"checks": checks}
                 elif self.path == "/api/brands/campaigns":
                     code, body = 403, {}
@@ -226,7 +226,7 @@ if [ "$1" = - ]; then exec "$DEPLOY_TEST_PYTHON" "$@"; fi
         self.server.redis_ok = False
         result = self.deploy(REQUIRE_REDIS="0")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("Redis", result.stderr)
+        self.assertIn("shared memory", result.stderr)
 
     def test_branch_checked_out_elsewhere_is_not_force_deleted(self):
         self.feature("feature/one", push=True)

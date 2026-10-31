@@ -1,4 +1,4 @@
-"""Redis-backed short-term conversation memory."""
+"""Short-term conversation memory and shared short-lived values."""
 
 import json
 import logging
@@ -9,14 +9,21 @@ from typing import Any, Optional
 from urllib.parse import urlsplit
 
 import redis.asyncio as aioredis
+from sqlalchemy import delete, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from app.config import get_settings
+from app.models import database
+from app.models.database import ensure_tables
+from app.models.memory import MemoryMessage, MemoryValue
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 SESSION_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 REDIS_RETRY_INTERVAL_SECONDS = 30
+HISTORY_MAX_MESSAGES = 50
 
 
 class MemoryUnavailable(RuntimeError):
@@ -25,28 +32,24 @@ class MemoryUnavailable(RuntimeError):
 
 class MemoryService:
     """Store and retrieve recent conversation history.
-    
-    Prefers Redis if available, falls back to a local dictionary (in-memory) 
-    if Redis is disconnected.
+
+    Prefers Redis if available, otherwise uses the app database, so every
+    container sees the same login codes, history and dedup keys.
     """
 
     def __init__(self, redis_client: Optional[aioredis.Redis] = None) -> None:
         self._redis = redis_client
-        self._local_storage: dict[str, list[str]] = {}
-        self._local_once: dict[str, float] = {}
-        self._local_latest: dict[str, str] = {}
-        self._local_values: dict[str, tuple[str, float]] = {}
         self._connect_lock = asyncio.Lock()
         self._retry_after = 0.0
 
     async def _get_redis(self) -> Optional[aioredis.Redis]:
+        """Return a Redis client, or None to use the database instead."""
         if self._redis is not None:
             return self._redis
         # On Cloud Run (K_SERVICE set), if REDIS_URL points to localhost, there is no local
-        # Redis daemon inside the container—skip the 1-2s TCP timeout retry loop entirely.
+        # Redis daemon inside the container: use the shared database without a connect attempt.
         if (
             os.environ.get("K_SERVICE")
-            and settings.memory_fallback_allowed
             and urlsplit(settings.REDIS_URL).hostname in {None, "localhost", "127.0.0.1", "::1"}
         ):
             return None
@@ -77,12 +80,16 @@ class MemoryService:
         return self._redis
 
     async def ping(self) -> bool:
-        """Check the shared Redis connection; a local dictionary is never ready."""
+        """Check the shared store; the database backend is checked by the database probe."""
         try:
             client = await self._get_redis()
-            return client is not None and bool(await client.ping())
+            return client is None or bool(await client.ping())
         except Exception:
             return False
+
+    def _insert(self):
+        insert = pg_insert if database.engine.dialect.name == "postgresql" else sqlite_insert
+        return insert(MemoryValue)
 
     def _key(self, phone_number: str) -> str:
         return f"astra:conv:{phone_number}"
@@ -97,10 +104,17 @@ class MemoryService:
                 key = self._key(phone_number)
                 raw_messages = await r.lrange(key, -limit, -1)
                 return [json.loads(m) for m in raw_messages]
-            
-            # Local fallback
-            raw_messages = self._local_storage.get(phone_number, [])[-limit:]
-            return [json.loads(m) for m in raw_messages]
+
+            await ensure_tables()
+            async with database.async_session() as session:
+                rows = (await session.scalars(
+                    select(MemoryMessage.entry)
+                    .where(MemoryMessage.phone_number == phone_number,
+                           MemoryMessage.created_at > time.time() - SESSION_TTL_SECONDS)
+                    .order_by(MemoryMessage.id.desc())
+                    .limit(limit)
+                )).all()
+            return [json.loads(m) for m in reversed(rows)]
         except Exception as exc:
             logger.error("Memory read failed (%s)", type(exc).__name__)
             if not settings.memory_fallback_allowed:
@@ -124,7 +138,7 @@ class MemoryService:
             entry["emotion"] = emotion
         if intent:
             entry["intent"] = intent
-        
+
         json_entry = json.dumps(entry)
 
         try:
@@ -134,20 +148,34 @@ class MemoryService:
                 if hasattr(r, "pipeline"):
                     pipe = r.pipeline(transaction=False)
                     pipe.rpush(key, json_entry)
-                    pipe.ltrim(key, -50, -1)
+                    pipe.ltrim(key, -HISTORY_MAX_MESSAGES, -1)
                     pipe.expire(key, SESSION_TTL_SECONDS)
                     await pipe.execute()
                 else:
                     await r.rpush(key, json_entry)
-                    await r.ltrim(key, -50, -1)
+                    await r.ltrim(key, -HISTORY_MAX_MESSAGES, -1)
                     await r.expire(key, SESSION_TTL_SECONDS)
                 return
 
-            # Local fallback
-            if phone_number not in self._local_storage:
-                self._local_storage[phone_number] = []
-            self._local_storage[phone_number].append(json_entry)
-            self._local_storage[phone_number] = self._local_storage[phone_number][-50:]
+            now = time.time()
+            oldest_kept = (
+                select(MemoryMessage.id)
+                .where(MemoryMessage.phone_number == phone_number)
+                .order_by(MemoryMessage.id.desc())
+                .offset(HISTORY_MAX_MESSAGES - 1)
+                .limit(1)
+                .scalar_subquery()
+            )
+            await ensure_tables()
+            async with database.async_session() as session:
+                session.add(MemoryMessage(phone_number=phone_number, entry=json_entry, created_at=now))
+                await session.flush()
+                await session.execute(delete(MemoryMessage).where(
+                    MemoryMessage.phone_number == phone_number,
+                    or_(MemoryMessage.created_at <= now - SESSION_TTL_SECONDS,
+                        MemoryMessage.id < oldest_kept),
+                ))
+                await session.commit()
         except Exception as exc:
             logger.error("Memory write failed (%s)", type(exc).__name__)
             if not settings.memory_fallback_allowed:
@@ -159,9 +187,12 @@ class MemoryService:
             r = await self._get_redis()
             if r:
                 await r.delete(self._key(phone_number))
-            
-            if phone_number in self._local_storage:
-                del self._local_storage[phone_number]
+                return
+
+            await ensure_tables()
+            async with database.async_session() as session:
+                await session.execute(delete(MemoryMessage).where(MemoryMessage.phone_number == phone_number))
+                await session.commit()
         except Exception as exc:
             logger.error("Memory clear failed (%s)", type(exc).__name__)
             if not settings.memory_fallback_allowed:
@@ -173,8 +204,17 @@ class MemoryService:
             r = await self._get_redis()
             if r:
                 await r.set(key, value, ex=ttl)
-            else:
-                self._local_values[key] = (value, time.time() + ttl)
+                return
+
+            stmt = self._insert().values(key=key, value=value, expires_at=time.time() + ttl)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[MemoryValue.key],
+                set_={"value": stmt.excluded.value, "expires_at": stmt.excluded.expires_at},
+            )
+            await ensure_tables()
+            async with database.async_session() as session:
+                await session.execute(stmt)
+                await session.commit()
         except Exception as exc:
             logger.error("Value write failed (%s)", type(exc).__name__)
 
@@ -184,11 +224,11 @@ class MemoryService:
             r = await self._get_redis()
             if r:
                 return await r.get(key)
-            value, expires = self._local_values.get(key, (None, 0))
-            if value is not None and time.time() < expires:
-                return value
-            self._local_values.pop(key, None)
-            return None
+
+            await ensure_tables()
+            async with database.async_session() as session:
+                return await session.scalar(select(MemoryValue.value).where(
+                    MemoryValue.key == key, MemoryValue.expires_at > time.time()))
         except Exception as exc:
             logger.error("Value read failed (%s)", type(exc).__name__)
             return None
@@ -199,32 +239,25 @@ class MemoryService:
             r = await self._get_redis()
             if r:
                 return await r.getdel(key)
-            value, expires = self._local_values.pop(key, (None, 0))
-            return value if time.time() < expires else None
+
+            await ensure_tables()
+            async with database.async_session() as session:
+                value = await session.scalar(delete(MemoryValue).where(
+                    MemoryValue.key == key, MemoryValue.expires_at > time.time()
+                ).returning(MemoryValue.value))
+                await session.commit()
+            return value
         except Exception as exc:
             logger.error("Value read failed (%s)", type(exc).__name__)
             return None
 
     async def mark_latest(self, phone_number: str, message_id: str) -> None:
         """Record the newest inbound message so older in-flight replies can be dropped."""
-        try:
-            r = await self._get_redis()
-            if r:
-                await r.set(f"astra:latest:{phone_number}", message_id, ex=600)
-            else:
-                self._local_latest[phone_number] = message_id
-        except Exception as exc:
-            logger.error("Latest-message write failed (%s)", type(exc).__name__)
+        await self.set_value(f"astra:latest:{phone_number}", message_id, ttl=600)
 
     async def is_latest(self, phone_number: str, message_id: str) -> bool:
         """False once the user has sent something newer. Fails open so replies never vanish on errors."""
-        try:
-            r = await self._get_redis()
-            latest = await r.get(f"astra:latest:{phone_number}") if r else self._local_latest.get(phone_number)
-            return latest in (None, message_id)
-        except Exception as exc:
-            logger.error("Latest-message read failed (%s)", type(exc).__name__)
-            return True
+        return await self.get_value(f"astra:latest:{phone_number}") in (None, message_id)
 
     async def claim_once(self, key: str, ttl: int) -> bool:
         """True only for the first caller within `ttl` seconds, shared across instances."""
@@ -233,12 +266,21 @@ class MemoryService:
             if r:
                 return bool(await r.set(f"astra:once:{key}", 1, nx=True, ex=ttl))
 
-            # Local fallback
+            # Insert, or take over an expired row; a live row returns nothing, so the claim fails.
             now = time.time()
-            if now - self._local_once.get(key, 0) < ttl:
-                return False
-            self._local_once[key] = now
-            return True
+            stmt = self._insert().values(key=f"astra:once:{key}", value="1", expires_at=now + ttl)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=[MemoryValue.key],
+                set_={"value": stmt.excluded.value, "expires_at": stmt.excluded.expires_at},
+                where=MemoryValue.expires_at <= now,
+            ).returning(MemoryValue.key)
+            await ensure_tables()
+            async with database.async_session() as session:
+                claimed = (await session.execute(stmt)).first() is not None
+                # Called on every inbound message, so it also sweeps expired values.
+                await session.execute(delete(MemoryValue).where(MemoryValue.expires_at <= now))
+                await session.commit()
+            return claimed
         except Exception as exc:
             logger.error("Once-per-key check failed (%s)", type(exc).__name__)
             return True

@@ -187,13 +187,13 @@ dependencies=ready.get("checks",{})
 checks={"health":request("/health")[0],"login_gate":request("/api/me/session","POST")[0],
         "campaign_admin_gate":request("/api/brands/campaigns")[0],"dependencies":dependencies}
 print(json.dumps(checks))
-healthy=ready_status==200 and dependencies=={"database":"ok","redis":"ok"}
+healthy=ready_status==200 and dependencies=={"database":"ok","memory":"ok"}
 fallback=(sys.argv[2]=="0" and ready_status==503
-          and dependencies=={"database":"ok","redis":"unavailable"})
+          and dependencies=={"database":"ok","memory":"unavailable"})
 if not (healthy or fallback) or (checks["health"],checks["login_gate"],checks["campaign_admin_gate"])!=(200,401,403):
     raise SystemExit("Backend smoke checks failed; live traffic was not changed.")
 if fallback:
-    print("Warning: Redis is unavailable; retaining the existing local-memory fallback. Set REQUIRE_REDIS=1 to block this release.",file=sys.stderr)
+    print("Warning: shared memory is unavailable. Set REQUIRE_REDIS=1 to block this release.",file=sys.stderr)
 PY
     verify_main
     gcloud run services update-traffic yell-ai-api --to-revisions "$revision=100" \

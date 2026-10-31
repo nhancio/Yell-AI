@@ -178,10 +178,8 @@ class AtomicAndLatencyOptimizationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_webhook_dedup_uses_shared_atomic_claim_once_and_login_challenge_cannot_be_overwritten(self):
         with patch.object(webhook_module, "PROCESSED_MESSAGE_IDS", {}), \
-             patch.object(memory_service, "_get_redis", AsyncMock(return_value=None)), \
-             patch.object(memory_service, "_local_once", {}), \
-             patch.object(memory_service, "_local_values", {}):
-            # First worker records message in shared memory; second worker with empty local dict still deduplicates
+             patch.object(memory_service, "_get_redis", AsyncMock(return_value=None)):
+            # First worker records message in the shared database; a second worker with a cold cache still deduplicates
             first = await webhook_module.check_and_record_message("wamid.cross-worker-1")
             webhook_module.PROCESSED_MESSAGE_IDS.clear()
             second = await webhook_module.check_and_record_message("wamid.cross-worker-1")

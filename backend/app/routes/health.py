@@ -22,7 +22,7 @@ async def health_check() -> dict:
 
 @router.get("/ready")
 async def readiness():
-    checks = {"database": "unavailable", "redis": "unavailable"}
+    checks = {"database": "unavailable", "memory": "unavailable"}
     try:
         async with asyncio.timeout(5):
             async with engine.connect() as connection:
@@ -31,7 +31,7 @@ async def readiness():
     except Exception:
         pass
     if await memory_service.ping():
-        checks["redis"] = "ok"
+        checks["memory"] = "ok"
     ready = all(value == "ok" for value in checks.values())
     return JSONResponse(status_code=200 if ready else 503,
                         content={"status": "ready" if ready else "not_ready", "checks": checks})

@@ -106,7 +106,7 @@ class MemoryRetryTests(unittest.IsolatedAsyncioTestCase):
         service = MemoryService()
         with patch.dict(memory_module.settings.__dict__, ENVIRONMENT="development", ALLOW_MEMORY_FALLBACK=True), \
              patch.object(memory_module.aioredis, "from_url", side_effect=connect), \
-             patch.object(memory_module, "time", SimpleNamespace(monotonic=lambda: clock[0]), create=True):
+             patch.object(memory_module, "time", SimpleNamespace(monotonic=lambda: clock[0], time=lambda: 1000.0), create=True):
             await service.add_message("919876543210", "user", "hello")
             histories = await asyncio.gather(*(service.get_conversation_history("919876543210") for _ in range(3)))
             self.assertEqual(histories, [[{"role": "user", "content": "hello"}]] * 3)
