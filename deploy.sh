@@ -9,7 +9,6 @@ ACCOUNT="${FIREBASE_ACCOUNT:-nithindidigam@nhancio.com}"
 REGION="${CLOUD_RUN_REGION:-asia-south1}"
 REQUIRE_REDIS="${REQUIRE_REDIS:-0}"
 GITHUB_ACCOUNT="${GITHUB_ACCOUNT:-didigamnithin}"
-DEPLOY_WAIT_SECONDS="${DEPLOY_WAIT_SECONDS:-1800}"
 BACKEND_PYTHON="${BACKEND_PYTHON:-$DIR/backend/.venv/bin/python}"
 github_token=""
 export -n github_token
@@ -38,20 +37,11 @@ verify_checkout() {
         || die "The checkout changed during release. Commit the new work and rerun."
 }
 
-# Untracked files never ship (git archive), so only tracked edits block the merge.
-# Another session may still be editing: wait for its commit instead of failing.
-wait_for_commit() {
-    local waited=0
-    while [[ -n "$(git status --porcelain --untracked-files=no)" ]]; do
-        if (( waited == 0 )); then
-            printf 'Waiting for these edits to be committed (Ctrl-C to cancel):\n'
-            git status --short --untracked-files=no
-        fi
-        (( waited < DEPLOY_WAIT_SECONDS )) \
-            || die "Tracked edits are still uncommitted after ${DEPLOY_WAIT_SECONDS}s. Commit them and rerun."
-        sleep 20
-        waited=$((waited + 20))
-    done
+# Everything pending ships: tracked edits and new files that .gitignore doesn't exclude.
+# The tests below still run before anything is pushed or deployed.
+commit_pending() {
+    git add -A
+    git diff --cached --quiet || git commit -q -m "Commit pending changes for deploy"
 }
 
 verify_main() {
@@ -78,10 +68,10 @@ main() {
         cert_file="$("$BACKEND_PYTHON" -c 'import certifi; print(certifi.where())' 2>/dev/null || true)"
         [[ -z "$cert_file" ]] || export SSL_CERT_FILE="$cert_file"
     fi
-    wait_for_commit
     for state in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD rebase-merge rebase-apply; do
         [[ ! -e "$(git rev-parse --git-path "$state")" ]] || die "Finish the existing Git operation first."
     done
+    commit_pending
     git show-ref --verify --quiet refs/heads/main || die "Local main does not exist."
     origin_url="$(git remote get-url origin)"
     if [[ "$origin_url" == https://github.com/* ]] && command -v gh >/dev/null; then

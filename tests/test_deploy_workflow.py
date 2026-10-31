@@ -148,22 +148,29 @@ if [ "$1" = - ]; then exec "$DEPLOY_TEST_PYTHON" "$@"; fi
         self.assertEqual(self.git("status", "--porcelain").stdout, "")
         self.assertIn("gcloud run deploy", self.trace.read_text())
 
-    def test_dirty_worktree_is_preserved_without_push_or_deployment(self):
-        self.feature("feature/one")
-        (self.repo / "backend/app.py").write_text("uncommitted = True\n")
+    def test_pending_edits_and_new_files_are_committed_and_deployed(self):
+        (self.repo / "backend/app.py").write_text("edited = True\n")
+        (self.repo / "backend/new.txt").write_text("new\n")
+        result = self.deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.git("status", "--porcelain").stdout, "")
+        self.assertEqual(self.git("show", "origin/main:backend/app.py").stdout, "edited = True\n")
+        self.assertIn("backend/new.txt", self.git("ls-tree", "-r", "--name-only", "origin/main").stdout)
+        self.assertIn("gcloud run deploy", self.trace.read_text())
+
+    def test_failed_validation_keeps_the_auto_commit_local(self):
+        (self.repo / "backend/app.py").write_text("broken = True\n")
         before = self.git("rev-parse", "origin/main").stdout
-        self.assertNotEqual(self.deploy(DEPLOY_WAIT_SECONDS="0").returncode, 0)
-        self.assertIn("feature/one", self.branches())
-        self.assertEqual((self.repo / "backend/app.py").read_text(), "uncommitted = True\n")
+        self.assertNotEqual(self.deploy(DEPLOY_TEST_FAIL_TESTS="1").returncode, 0)
+        self.assertEqual(self.git("show", "main:backend/app.py").stdout, "broken = True\n")
         self.assertEqual(self.git("rev-parse", "origin/main").stdout, before)
         self.assert_not_deployed()
 
-    def test_untracked_files_do_not_block_and_are_left_alone(self):
-        (self.repo / "scratch.txt").write_text("leftover\n")
+    def test_ignored_files_are_never_committed(self):
+        (self.repo / "backend/.venv/secret.env").write_text("TOKEN=x\n")
         result = self.deploy()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual((self.repo / "scratch.txt").read_text(), "leftover\n")
-        self.assertNotIn("scratch.txt", self.git("ls-tree", "-r", "--name-only", "origin/main").stdout)
+        self.assertNotIn(".venv", self.git("ls-tree", "-r", "--name-only", "origin/main").stdout)
 
     def test_merge_conflict_preserves_both_branches_and_aborts_the_failed_merge(self):
         self.feature("feature/one", "backend/app.py", "one = True\n")
