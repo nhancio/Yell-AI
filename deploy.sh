@@ -39,8 +39,37 @@ verify_checkout() {
 
 # Everything pending ships: tracked edits and new files that .gitignore doesn't exclude.
 # The tests below still run before anything is pushed or deployed.
+# Unstages everything and fails if `git add -A` picked up a new file that must not be committed.
+_sync_check_staged() {
+    local raw big line meta path mode sha bad=""
+    raw="$(git -c core.quotePath=false diff --cached --diff-filter=A --no-renames --raw --no-abbrev)"
+    [ -n "$raw" ] || return 0
+    big=" $(printf '%s\n' "$raw" | awk '$2 != "160000" {print $4}' \
+      | git cat-file --batch-check='%(objectsize) %(objectname)' | awk '$1 > 100000000 {print $2}' | tr '\n' ' ')"
+    while IFS= read -r line; do
+      meta="${line%%	*}"; path="${line#*	}"
+      read -r _ mode _ sha _ <<< "$meta"
+      case "/$path" in
+        */.env.example|*/.env.sample|*/.env.template|*.example) ;;
+        */.env|*/.env.*|*.pem|*.key|*.p12|*.pfx|*.jks|*.keystore|*/id_rsa*|*/id_ed25519*|*service-account*.json|*serviceAccount*.json|*/credentials.json|*client_secret*.json)
+          bad="$bad"$'\n'"  $path  (looks like a secret)" ;;
+        */node_modules/*) bad="$bad"$'\n'"  $path  (dependency folder)" ;;
+      esac
+      case "$big" in *" $sha "*) bad="$bad"$'\n'"  $path  (over 100 MB; GitHub rejects it)" ;; esac
+      if [ "$mode" = 160000 ] && ! git config -f .gitmodules --get-regexp '\.path$' 2>/dev/null | awk '{print $2}' | grep -qxF "$path"; then
+        bad="$bad"$'\n'"  $path  (nested git repo; its files would not ship)"
+      fi
+    done <<< "$raw"
+    [ -n "$bad" ] || return 0
+    git reset -q
+    echo "Deploy stopped: nothing was committed, because these new files should not go into git:$bad" >&2
+    echo "Add them to .gitignore (or commit them yourself if they really belong in git), then rerun." >&2
+    return 1
+}
+
 commit_pending() {
     git add -A
+    _sync_check_staged || exit 1
     git diff --cached --quiet || git commit -q -m "Commit pending changes for deploy"
 }
 
