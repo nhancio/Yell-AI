@@ -67,7 +67,15 @@ _sync_check_staged() {
     return 1
 }
 
+# Each app keeps its videos and marketing files in content/, which never goes into git.
+_sync_ignore_content() {
+    grep -qxF '/content/' .gitignore 2>/dev/null \
+        || printf '\n# Videos and marketing content live here; never committed.\n/content/\n' >> .gitignore
+    [ -z "$(git ls-files content)" ] || git rm -r -q --cached content
+}
+
 commit_pending() {
+    _sync_ignore_content
     git add -A
     _sync_check_staged || exit 1
     git diff --cached --quiet || git commit -q -m "Commit pending changes for deploy"

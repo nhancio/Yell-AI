@@ -27,3 +27,6 @@ frontend/out/
 frontend/out-app/
 .firebase/
 *.tsbuildinfo
+
+# Videos and marketing content live here; never committed.
+/content/
