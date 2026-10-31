@@ -2,7 +2,7 @@
 set -euo pipefail
 set +x # Never trace credential values, even when invoked with bash -x.
 
-# Merge -> validate -> delete merged branches -> push main -> check origin -> deploy.
+# Commit -> merge local + GitHub branches -> validate -> delete merged branches -> push main -> check origin -> deploy.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT="${FIREBASE_PROJECT:-yell-ai-nhancio}"
 ACCOUNT="${FIREBASE_ACCOUNT:-nithindidigam@nhancio.com}"
@@ -79,7 +79,7 @@ main() {
             || die "GitHub credentials unavailable for $GITHUB_ACCOUNT."
     fi
 
-    printf '\n==> 1/5 Merge local branches into main\n'
+    printf '\n==> 1/5 Commit, then merge local and GitHub branches into main\n'
     git_remote fetch --prune origin
     git checkout main
     if git show-ref --verify --quiet refs/remotes/origin/main; then
@@ -89,6 +89,10 @@ main() {
     while IFS= read -r ref; do
         [[ -z "$ref" || "$ref" == refs/heads/main ]] || merge_ref "$ref"
     done <<< "$branches"
+    # Branches that exist only on GitHub are merged too, before validation, so nothing untested is pushed.
+    while IFS= read -r ref; do
+        [[ -z "$ref" || "$ref" == refs/remotes/origin/main || "$ref" == refs/remotes/origin/HEAD ]] || merge_ref "$ref"
+    done <<< "$(git for-each-ref --format='%(refname)' refs/remotes/origin)"
     commit="$(git rev-parse HEAD)"
 
     # Freeze the merged commit. Concurrent edits cannot enter the deployed artifact.

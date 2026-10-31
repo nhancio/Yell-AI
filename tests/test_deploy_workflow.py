@@ -196,9 +196,19 @@ if [ "$1" = - ]; then exec "$DEPLOY_TEST_PYTHON" "$@"; fi
         self.assertEqual(self.git("rev-parse", "origin/main").stdout, before)
         self.assert_not_deployed()
 
-    def test_unmerged_remote_only_branch_is_not_deleted_or_deployed(self):
-        self.feature("remote-only", push=True)
+    def test_remote_only_branch_is_merged_deployed_then_deleted(self):
+        tip = self.feature("remote-only", "backend/remote.txt", push=True)
         self.git("branch", "-D", "remote-only")
+        result = self.deploy()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.git("merge-base", "--is-ancestor", tip, "origin/main")
+        self.assertEqual(self.remote_branches(), ["refs/heads/main"])
+        self.assertIn("gcloud run deploy", self.trace.read_text())
+
+    def test_remote_only_branch_conflict_stops_before_push_or_deployment(self):
+        self.feature("remote-only", "backend/app.py", "remote = True\n", push=True)
+        self.git("branch", "-D", "remote-only")
+        self.feature("feature/local", "backend/app.py", "local = True\n")
         self.assertNotEqual(self.deploy().returncode, 0)
         self.assertIn("refs/heads/remote-only", self.remote_branches())
         self.assert_not_deployed()
