@@ -94,7 +94,7 @@ class WhatsAppAccessTests(unittest.IsolatedAsyncioTestCase):
 
             # User sends the pre-filled message on WhatsApp
             prefilled = parse_qs(urlsplit(challenge["whatsapp_url"]).query)["text"][0]
-            self.assertEqual(prefilled, f"✨ Sign in to Astra · 🔐 *{code}*")
+            self.assertEqual(prefilled, f"Sign in to Astra → *{code}*")
             wh_result = await webhook.process_user_message(
                 PHONE,
                 prefilled,

@@ -96,7 +96,8 @@ async def start_whatsapp_login_challenge() -> dict:
         ttl=_CHALLENGE_TTL_SECONDS,
     )
     # Keep it on one line with no 8-letter words: the webhook takes the first 8-char token after "astra" as the code.
-    text = f"✨ Sign in to Astra · 🔐 *{code}*"
+    # No emojis: wa.me replaces them with "�" before the message reaches WhatsApp.
+    text = f"Sign in to Astra → *{code}*"
     wa_url = f"https://wa.me/{settings.WHATSAPP_DISPLAY_NUMBER}?text={quote(text)}"
     return {
         "code": code,

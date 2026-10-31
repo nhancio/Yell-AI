@@ -8,6 +8,19 @@ import QRCode from "qrcode";
 import styles from "./home.module.css";
 const APP_ENTRY = "/app";
 const startWithPrompt = (text: string) => `${APP_ENTRY}?prompt=${encodeURIComponent(text)}`;
+// Signed-in users (WhatsApp or phone OTP) pay from /app, where Razorpay opens with their verified number,
+// so it never asks for one. Guests use the anonymous checkout, where that number is how the plan is attached.
+async function openCheckout(plan: "pro" | "business") {
+  let signedIn = Boolean(loadWhatsAppSession());
+  if (!signedIn) {
+    try {
+      const { auth } = await import("@/lib/firebase");
+      await auth.authStateReady();
+      signedIn = Boolean(auth.currentUser);
+    } catch { /* Fall back to guest checkout. */ }
+  }
+  window.location.assign(signedIn ? `${APP_ENTRY}?plan=${plan}` : `/payment/checkout?plan=${plan}`);
+}
 const asset = (name: string) => `/poke/${name}`;
 const apps = [
   ["Gmail", "gmailapp.webp"],
@@ -795,11 +808,8 @@ export default function HomePage() {
               <a
                 href="/payment/checkout?plan=pro"
                 onClick={(e) => {
-                  const phone = loadWhatsAppSession()?.phoneNumber;
-                  if (phone) {
-                    e.preventDefault();
-                    window.location.assign(`/payment/checkout?plan=pro&phone=${encodeURIComponent(phone)}`);
-                  }
+                  e.preventDefault();
+                  void openCheckout("pro");
                 }}
                 className={`${styles.button} ${styles.darkButton}`}
               >
@@ -836,11 +846,8 @@ export default function HomePage() {
               <a
                 href="/payment/checkout?plan=business"
                 onClick={(e) => {
-                  const phone = loadWhatsAppSession()?.phoneNumber;
-                  if (phone) {
-                    e.preventDefault();
-                    window.location.assign(`/payment/checkout?plan=business&phone=${encodeURIComponent(phone)}`);
-                  }
+                  e.preventDefault();
+                  void openCheckout("business");
                 }}
                 className={`${styles.button} ${styles.darkButton}`}
               >
